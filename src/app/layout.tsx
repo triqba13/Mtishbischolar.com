@@ -92,6 +92,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
+    apple: "/logo.jpeg",
+    shortcut: "/logo.jpeg",
   },
   verification: {
     google: "google89835c77cb77f8f8",

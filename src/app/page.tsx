@@ -25,7 +25,7 @@ const jsonLd = {
       name: "MtishbiScholar",
       alternateName: "Mtishbi Scholar",
       url: baseUrl,
-      logo: `${baseUrl}/favicon.ico`,
+      logo: `${baseUrl}/logo.jpeg`,
       image: `${baseUrl}/og-image.png`,
       description:
         "Platform helping Tanzanian students discover international universities, scholarships, and university admission opportunities.",
