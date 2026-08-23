@@ -159,24 +159,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 5. Fetch all documents for pending tasks & verification metrics
-    const { data: documents } = await adminClient
-      .from("documents")
-      .select("id, student_id, application_id, document_type, file_url, file_name, is_verified, created_at");
-
-    // 6. Fetch passport assistance requests
-    const { data: passportProfiles } = await adminClient
-      .from("profiles")
-      .select("id, first_name, last_name, has_passport")
-      .in("has_passport", ["No", "Assistance Requested", "assistance_requested"]);
-
-    // 7. Fetch unread notifications
-    const { data: notifs } = await adminClient
-      .from("notifications")
-      .select("id, title, message, type, is_read, created_at")
-      .order("created_at", { ascending: false })
-      .limit(10);
-
     // ── DATE CALCULATIONS FOR PERCENTAGE CHANGES ──
     const now = new Date();
     const nowMs = now.getTime();
@@ -191,17 +173,72 @@ export async function GET(req: NextRequest) {
     const tCurrent30d = new Date(nowMs - ms30d);
     const tPrevious30d = new Date(nowMs - ms60d);
 
+    // 5. Database-side aggregation for pending unverified academic documents (0-byte payload head queries)
+    let docsPendingTotal = 0;
+    let docsPendingCurr = 0;
+    let docsPendingPrev = 0;
+
+    if (approvedStudentIds.length > 0) {
+      const [
+        { count: totalUnverified },
+        { count: currUnverified },
+        { count: prevUnverified },
+      ] = await Promise.all([
+        // Total unverified academic documents for approved applicants (excludes payment receipts)
+        adminClient
+          .from("documents")
+          .select("*", { count: "exact", head: true })
+          .in("student_id", approvedStudentIds)
+          .eq("is_verified", false)
+          .neq("document_type", "Payment_Receipt"),
+
+        // Unverified academic documents created in current 7-day period
+        adminClient
+          .from("documents")
+          .select("*", { count: "exact", head: true })
+          .in("student_id", approvedStudentIds)
+          .eq("is_verified", false)
+          .neq("document_type", "Payment_Receipt")
+          .gte("created_at", tCurrent7d.toISOString())
+          .lte("created_at", now.toISOString()),
+
+        // Unverified academic documents created in previous 7-day period (7d to 14d ago)
+        adminClient
+          .from("documents")
+          .select("*", { count: "exact", head: true })
+          .in("student_id", approvedStudentIds)
+          .eq("is_verified", false)
+          .neq("document_type", "Payment_Receipt")
+          .gte("created_at", tPrevious7d.toISOString())
+          .lte("created_at", tCurrent7d.toISOString()),
+      ]);
+
+      docsPendingTotal = totalUnverified || 0;
+      docsPendingCurr = currUnverified || 0;
+      docsPendingPrev = prevUnverified || 0;
+    }
+
+    const docsPendingChange = calcPercentageChange(docsPendingCurr, docsPendingPrev, "last 7 days");
+
+    // 6. Database-side count for passport assistance requests (0-byte payload head query)
+    const { count: passportAssistanceCount } = await adminClient
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .in("has_passport", ["No", "Assistance Requested", "assistance_requested"]);
+
+    const passportRequestsCount = passportAssistanceCount || 0;
+
+    // 7. Fetch unread notifications
+    const { data: notifs } = await adminClient
+      .from("notifications")
+      .select("id, title, message, type, is_read, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
     // Helper: is application in date range
     const isAppInRange = (a: any, start: Date, end: Date) => {
       if (!a.created_at) return false;
       const t = new Date(a.created_at);
-      return t >= start && t <= end;
-    };
-
-    // Helper: is document in date range
-    const isDocInRange = (d: any, start: Date, end: Date) => {
-      if (!d.created_at) return false;
-      const t = new Date(d.created_at);
       return t >= start && t <= end;
     };
 
@@ -223,10 +260,7 @@ export async function GET(req: NextRequest) {
     const readyChange = calcPercentageChange(readyCurr, readyPrev, "last 7 days");
 
     // C. Documents Pending
-    const unverifiedDocsTotal = (documents || []).filter((d) => !d.is_verified);
-    const docsPendingCurr = unverifiedDocsTotal.filter((d) => isDocInRange(d, tCurrent7d, now)).length;
-    const docsPendingPrev = unverifiedDocsTotal.filter((d) => isDocInRange(d, tPrevious7d, tCurrent7d)).length;
-    const docsPendingChange = calcPercentageChange(docsPendingCurr, docsPendingPrev, "last 7 days");
+    // (Calculated above via database count aggregation)
 
     // D. University Processing (Submitted to University / University Processing)
     const uniProcessingApps = applications.filter((a) =>
@@ -269,10 +303,10 @@ export async function GET(req: NextRequest) {
 
       const dateStr = app.created_at
         ? new Date(app.created_at).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
         : "Recent";
 
       return {
@@ -296,7 +330,7 @@ export async function GET(req: NextRequest) {
       },
       {
         label: "Review Pending Documents",
-        count: unverifiedDocsTotal.length,
+        count: docsPendingTotal,
         href: "/admin/admission/documents?tab=pending",
       },
       {
@@ -306,7 +340,7 @@ export async function GET(req: NextRequest) {
       },
       {
         label: "Passport Requests",
-        count: (passportProfiles || []).length,
+        count: passportRequestsCount,
         href: "/admin/admission/passport",
       },
       {
@@ -396,7 +430,7 @@ export async function GET(req: NextRequest) {
         readyForReviewChange: readyChange.change,
         readyForReviewChangeUp: readyChange.changeUp,
 
-        documentsPending: unverifiedDocsTotal.length,
+        documentsPending: docsPendingTotal,
         documentsPendingChange: docsPendingChange.change,
         documentsPendingChangeUp: docsPendingChange.changeUp,
 

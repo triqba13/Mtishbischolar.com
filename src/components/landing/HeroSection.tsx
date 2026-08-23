@@ -159,7 +159,7 @@ export default function HeroSection() {
               className="flex flex-wrap gap-4"
             >
               <Link
-                href="/register"
+                href="/auth/register"
                 className="group inline-flex items-center gap-2 bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] text-[#0F172A] font-bold px-8 py-4 rounded-2xl hover:shadow-2xl hover:shadow-[#D4AF37]/30 transition-all duration-300 hover:-translate-y-1 text-base"
               >
                 Start Your Journey

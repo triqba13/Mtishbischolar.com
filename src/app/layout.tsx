@@ -16,25 +16,82 @@ const inter = Inter({
   display: "swap",
 });
 
+const baseUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "https://mtishbischolar.com"
+).replace(/\/$/, "");
+
 export const metadata: Metadata = {
-  title: "MtishbiScholar — Your Pathway to Global Education",
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
+    template: "%s | MtishbiScholar",
+  },
   description:
-    "MtishbiScholar is Tanzania's leading study-abroad platform. We help students achieve international education goals through university admissions, scholarships, visa support, and expert guidance.",
+    "MtishbiScholar helps Tanzanian students discover international universities, explore scholarships, submit university applications, manage admission documents, and receive support throughout their study abroad journey.",
   keywords: [
-    "study abroad Tanzania",
-    "university admission",
-    "scholarships",
-    "international education",
     "MtishbiScholar",
-    "study in UK",
-    "study in India",
-    "study in China",
+    "Mtishbi Scholar",
+    "MtishbiScholar Tanzania",
+    "study abroad Tanzania",
+    "study abroad for Tanzanian students",
+    "universities abroad for Tanzanian students",
+    "international universities Tanzania",
+    "university applications Tanzania",
+    "study in India for Tanzanian students",
+    "scholarships for Tanzanian students",
+    "international student admissions",
+    "overseas education Tanzania",
+    "university admission Tanzania",
+    "study overseas Tanzania",
+    "scholarships abroad Tanzania",
+    "international education Tanzania",
   ],
+  authors: [{ name: "MtishbiScholar", url: baseUrl }],
+  creator: "MtishbiScholar",
+  publisher: "MtishbiScholar",
+  applicationName: "MtishbiScholar",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "MtishbiScholar  Your Pathway to Global Education",
-    description:
-      "Tanzania's leading study-abroad platform. University admissions, scholarships & visa support.",
     type: "website",
+    locale: "en_TZ",
+    url: "/",
+    siteName: "MtishbiScholar",
+    title: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
+    description:
+      "Discover international universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MtishbiScholar — Study Abroad & University Admissions",
+    description:
+      "Discover universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/favicon.ico",
   },
 };
 

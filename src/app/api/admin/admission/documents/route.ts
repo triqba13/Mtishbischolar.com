@@ -85,7 +85,25 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 3. Visibility Rule: Only fetch academic/admission documents belonging to students with Approved payment
+    // 3. Parse and sanitize query parameters for pagination & filters
+    const { searchParams } = new URL(req.url);
+
+    // Page: default 1, min 1
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+
+    // PageSize: default 10, min 1, max 100
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const pageSize = isNaN(rawPageSize) || rawPageSize < 1 ? 10 : Math.min(rawPageSize, 100);
+
+    // Tab filter: "All", "Pending", "Verified"
+    const tab = (searchParams.get("tab") || "All").trim();
+
+    // Search query: max 100 characters, sanitize wildcards
+    const rawSearch = (searchParams.get("search") || "").trim().slice(0, 100);
+    const search = rawSearch.replace(/[%_\\]/g, "");
+
+    // 4. Visibility Rule: Only fetch academic/admission documents belonging to students with Approved payment
     const { data: approvedPayments } = await adminClient
       .from("payments")
       .select("student_id")
@@ -96,15 +114,85 @@ export async function GET(req: NextRequest) {
     );
 
     if (approvedStudentIds.length === 0) {
+      const emptyCounts = { All: 0, Pending: 0, Verified: 0 };
       return NextResponse.json({
         success: true,
+        data: {
+          items: [],
+          pagination: {
+            page: 1,
+            pageSize,
+            totalRecords: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+          tabCounts: emptyCounts,
+        },
         documents: [],
-        counts: { All: 0, Pending: 0, Verified: 0 },
+        counts: emptyCounts,
+        pagination: {
+          page: 1,
+          pageSize,
+          totalRecords: 0,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       });
     }
 
-    // 4. Fetch all documents EXCLUDING Payment_Receipt (strictly for Finance Officers)
-    const { data: docsData, error: docErr } = await adminClient
+    // 5. Parallel count aggregations for each tab (Head count queries, 0-byte payload)
+    const [
+      { count: countAll },
+      { count: countPending },
+      { count: countVerified },
+    ] = await Promise.all([
+      adminClient
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", approvedStudentIds)
+        .neq("document_type", "Payment_Receipt"),
+      adminClient
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", approvedStudentIds)
+        .neq("document_type", "Payment_Receipt")
+        .eq("is_verified", false),
+      adminClient
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", approvedStudentIds)
+        .neq("document_type", "Payment_Receipt")
+        .eq("is_verified", true),
+    ]);
+
+    const tabCounts = {
+      All: countAll || 0,
+      Pending: countPending || 0,
+      Verified: countVerified || 0,
+    };
+
+    // 6. Handle Search filtering at database level
+    let targetStudentIds = approvedStudentIds;
+    let isSearchEmptyResult = false;
+
+    if (search) {
+      const { data: matchedProfiles } = await adminClient
+        .from("profiles")
+        .select("id")
+        .in("id", approvedStudentIds)
+        .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
+
+      const profileMatchedIds = (matchedProfiles || []).map((p) => p.id);
+
+      if (profileMatchedIds.length > 0) {
+        targetStudentIds = profileMatchedIds;
+      }
+    }
+
+    // 7. Build Paginated Database Query EXCLUDING Payment_Receipt (strictly for Finance Officers)
+    let query = adminClient
       .from("documents")
       .select(
         `
@@ -133,11 +221,31 @@ export async function GET(req: NextRequest) {
             name
           )
         )
-      `
+      `,
+        { count: "exact" }
       )
-      .in("student_id", approvedStudentIds)
-      .neq("document_type", "Payment_Receipt")
-      .order("created_at", { ascending: false });
+      .in("student_id", targetStudentIds)
+      .neq("document_type", "Payment_Receipt");
+
+    // Apply Verification Tab Filter
+    if (tab === "Pending") {
+      query = query.eq("is_verified", false);
+    } else if (tab === "Verified") {
+      query = query.eq("is_verified", true);
+    }
+
+    // Apply file name / doc type search if user searched for specific document names
+    if (search && targetStudentIds === approvedStudentIds) {
+      query = query.or(`file_name.ilike.%${search}%,document_type.ilike.%${search}%`);
+    }
+
+    // Server-Side Range Calculation
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data: docsData, count: totalRecordsCount, error: docErr } = await query
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (docErr) {
       return NextResponse.json({ success: false, error: docErr.message }, { status: 500 });
@@ -148,6 +256,11 @@ export async function GET(req: NextRequest) {
       const typeLower = (d.document_type || "").toLowerCase();
       return !typeLower.includes("receipt") && !typeLower.includes("payment");
     });
+
+    const totalRecords = totalRecordsCount || 0;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
 
     const documents = filteredDocs.map((d: any) => {
       const studentObj = Array.isArray(d.profiles) ? d.profiles[0] : d.profiles;
@@ -212,16 +325,31 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const counts = {
-      All: documents.length,
-      Pending: documents.filter((d) => !d.isVerified).length,
-      Verified: documents.filter((d) => d.isVerified).length,
-    };
-
     return NextResponse.json({
       success: true,
+      data: {
+        items: documents,
+        pagination: {
+          page,
+          pageSize,
+          totalRecords,
+          totalPages,
+          hasNextPage,
+          hasPrevPage,
+        },
+        tabCounts,
+      },
+      // Backward-compatible keys for current frontend
       documents,
-      counts,
+      counts: tabCounts,
+      pagination: {
+        page,
+        pageSize,
+        totalRecords,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
     });
   } catch (err: any) {
     console.error("[DocumentsAPI] Error:", err);

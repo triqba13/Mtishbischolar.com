@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Home, Search, Eye, CheckCircle2, RefreshCw, X, FileText, ChevronRight, AlertTriangle, ExternalLink } from "lucide-react";
+import { Home, Search, Eye, CheckCircle2, RefreshCw, X, FileText, ChevronRight, ChevronLeft, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
@@ -24,6 +24,15 @@ export interface DocumentItem {
   university: string;
   uploaded: string;
   signedUrl?: string;
+}
+
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 function DocumentReviewModal({
@@ -190,13 +199,34 @@ export default function DocumentsPage() {
   const { loading: authLoading } = useAdminAuth();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 10,
+    totalRecords: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState("All");
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const [reviewDoc, setReviewDoc] = useState<DocumentItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+
+  // Debounce search input by 350ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -213,7 +243,18 @@ export default function DocumentsPage() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const res = await fetch("/api/admin/admission/documents", {
+      // Build server-side pagination query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        tab: activeTab,
+      });
+
+      if (debouncedSearch) {
+        params.set("search", debouncedSearch);
+      }
+
+      const res = await fetch(`/api/admin/admission/documents?${params.toString()}`, {
         headers,
         credentials: "include",
       });
@@ -223,15 +264,26 @@ export default function DocumentsPage() {
         throw new Error(json.error || "Failed to load documents.");
       }
 
-      setDocuments(json.documents || []);
-      setCounts(json.counts || {});
+      const fetchedItems = json.data?.items || json.documents || [];
+      const fetchedPagination = json.data?.pagination || json.pagination || {
+        page: currentPage,
+        pageSize,
+        totalRecords: fetchedItems.length,
+        totalPages: Math.max(1, Math.ceil(fetchedItems.length / pageSize)),
+        hasNextPage: false,
+        hasPrevPage: currentPage > 1,
+      };
+
+      setDocuments(fetchedItems);
+      setPagination(fetchedPagination);
+      setCounts(json.data?.tabCounts || json.counts || {});
     } catch (err: any) {
       console.error("[DocumentsPage] Error fetching documents:", err);
       setError(err.message || "Failed to load documents.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, activeTab, debouncedSearch]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -260,16 +312,10 @@ export default function DocumentsPage() {
         throw new Error(json.error || "Failed to verify document.");
       }
 
-      // Update state locally
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === docId ? { ...d, isVerified: true, status: "Verified" } : d
-        )
-      );
-
       setActionSuccessMessage("Document verified successfully!");
       setTimeout(() => setActionSuccessMessage(null), 4000);
 
+      // Re-fetch current page data from server
       await loadDocuments();
     } catch (err: any) {
       console.error("Verify error:", err);
@@ -305,16 +351,10 @@ export default function DocumentsPage() {
         throw new Error(json.error || "Failed to request replacement.");
       }
 
-      // Update state locally
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === docId ? { ...d, isVerified: false, status: "Replacement Requested" } : d
-        )
-      );
-
       setActionSuccessMessage("Replacement request sent to student dashboard successfully.");
       setTimeout(() => setActionSuccessMessage(null), 4000);
 
+      // Re-fetch current page data from server
       await loadDocuments();
     } catch (err: any) {
       console.error("Replacement error:", err);
@@ -324,23 +364,8 @@ export default function DocumentsPage() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return documents.filter((d) => {
-      const matchTab =
-        activeTab === "All" ||
-        (activeTab === "Pending" && !d.isVerified) ||
-        (activeTab === "Verified" && d.isVerified);
-
-      const matchSearch =
-        !search.trim() ||
-        d.student.toLowerCase().includes(search.toLowerCase()) ||
-        d.document.toLowerCase().includes(search.toLowerCase()) ||
-        d.fileName.toLowerCase().includes(search.toLowerCase()) ||
-        d.appId.toLowerCase().includes(search.toLowerCase());
-
-      return matchTab && matchSearch;
-    });
-  }, [documents, activeTab, search]);
+  const totalRecords = pagination.totalRecords;
+  const totalPages = pagination.totalPages;
 
   return (
     <>
@@ -411,14 +436,17 @@ export default function DocumentsPage() {
             {TABS.map((tab) => {
               const count =
                 tab === "All"
-                  ? documents.length
+                  ? counts.All ?? totalRecords
                   : tab === "Pending"
                   ? counts.Pending ?? 0
                   : counts.Verified ?? 0;
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setCurrentPage(1);
+                  }}
                   className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
                     activeTab === tab
                       ? "border-blue-600 text-blue-600"
@@ -445,9 +473,12 @@ export default function DocumentsPage() {
               <input
                 type="text"
                 placeholder="Search student, document..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
@@ -477,14 +508,14 @@ export default function DocumentsPage() {
                       </div>
                     </td>
                   </tr>
-                ) : filtered.length === 0 ? (
+                ) : documents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">
                       No academic documents found in this review category.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((d) => (
+                  documents.map((d) => (
                     <tr
                       key={d.id}
                       className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors last:border-0"
@@ -518,10 +549,46 @@ export default function DocumentsPage() {
             </table>
           </div>
 
-          <div className="px-5 py-3 border-t border-slate-100">
+          {/* Pagination & Summary */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100">
             <p className="text-xs text-slate-500">
-              Showing {filtered.length > 0 ? 1 : 0} to {filtered.length} of {filtered.length} documents
+              Showing {totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+              {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} documents
             </p>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={!pagination.hasPrevPage || loading}
+                  className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    disabled={loading}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      currentPage === p
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={!pagination.hasNextPage || loading}
+                  className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

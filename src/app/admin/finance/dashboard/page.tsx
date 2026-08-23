@@ -42,6 +42,13 @@ export interface DbPaymentItem {
 export default function FinanceOverviewDashboard() {
   const { fullName } = useAdminAuth();
   const [payments, setPayments] = useState<DbPaymentItem[]>([]);
+  const [counts, setCounts] = useState({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    approvedAmount: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,13 +58,18 @@ export default function FinanceOverviewDashboard() {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const headers: Record<string, string> = {};
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const res = await fetch("/api/admin/finance/payments", { headers });
+      const res = await fetch("/api/admin/finance/payments?pageSize=50", {
+        headers,
+        credentials: "include",
+      });
       const result = await res.json();
 
       if (!res.ok || !result.success) {
@@ -68,6 +80,9 @@ export default function FinanceOverviewDashboard() {
         setError("Unable to load financial data. Please try again.");
       } else {
         setPayments((result.data as DbPaymentItem[]) || []);
+        if (result.counts) {
+          setCounts(result.counts);
+        }
       }
     } catch (err: any) {
       console.error("Finance Dashboard Error:", {
@@ -101,8 +116,12 @@ export default function FinanceOverviewDashboard() {
     };
   }, [supabase]);
 
-  // Live KPI Calculations
-  const totalPaymentsCount = payments.length;
+  // Live KPI Calculations from Database Response
+  const totalPaymentsCount = counts.all;
+  const pendingPaymentsCount = counts.pending;
+  const approvedPaymentsCount = counts.approved;
+  const rejectedPaymentsCount = counts.rejected;
+  const totalAmountReceived = counts.approvedAmount || 0;
 
   const pendingPayments = useMemo(() => {
     return payments.filter((p) => {
@@ -122,10 +141,6 @@ export default function FinanceOverviewDashboard() {
       (p) => (p.status || "").toLowerCase() === "rejected"
     );
   }, [payments]);
-
-  const totalAmountReceived = useMemo(() => {
-    return approvedPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  }, [approvedPayments]);
 
   // Today's Payments Count
   const todaysPaymentsCount = useMemo(() => {
@@ -231,7 +246,7 @@ export default function FinanceOverviewDashboard() {
               <Clock className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-black text-amber-600 mt-2">{pendingPayments.length}</p>
+          <p className="text-2xl font-black text-amber-600 mt-2">{pendingPaymentsCount}</p>
           <p className="text-xs text-slate-400 mt-1">Requires officer action</p>
         </div>
 
@@ -243,8 +258,8 @@ export default function FinanceOverviewDashboard() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-black text-emerald-600 mt-2">{approvedPayments.length}</p>
-          <p className="text-xs text-slate-400 mt-1">Verified & cleared</p>
+          <p className="text-2xl font-black text-emerald-600 mt-2">{approvedPaymentsCount}</p>
+          <p className="text-xs text-slate-400 mt-1">Verified &amp; cleared</p>
         </div>
 
         {/* Rejected Payments */}
@@ -255,7 +270,7 @@ export default function FinanceOverviewDashboard() {
               <ShieldAlert className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-black text-red-600 mt-2">{rejectedPayments.length}</p>
+          <p className="text-2xl font-black text-red-600 mt-2">{rejectedPaymentsCount}</p>
           <p className="text-xs text-slate-400 mt-1">Declined transactions</p>
         </div>
       </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, Filter, Download, Eye, ChevronLeft, ChevronRight, Home, RefreshCw, AlertTriangle } from "lucide-react";
+import { Search, Download, Eye, ChevronLeft, ChevronRight, Home, RefreshCw, AlertTriangle } from "lucide-react";
 import StatusBadge from "@/components/admin/admission/StatusBadge";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -18,16 +18,6 @@ const TABS = [
   "Completed",
 ];
 
-const TAB_STATUS_GROUPS: Record<string, string[]> = {
-  "New": ["Profile Completed", "New", "Submitted"],
-  "Ready for Review": ["Ready for Review", "Under Review"],
-  "Documents Pending": ["Documents Pending", "Replacement Requested"],
-  "University Processing": ["Submitted to University", "University Processing"],
-  "University Approved": ["University Approved", "Offer Received"],
-  "Visa Processing": ["Visa Processing", "Visa Approved"],
-  "Completed": ["Completed", "Visa Approved"],
-};
-
 export interface ApplicationListItem {
   id: string;
   displayId: string;
@@ -40,20 +30,46 @@ export interface ApplicationListItem {
   created_at: string;
 }
 
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export default function ApplicationsPage() {
   const { loading: authLoading } = useAdminAuth();
   const [applications, setApplications] = useState<ApplicationListItem[]>([]);
   const [universities, setUniversities] = useState<string[]>(["All Universities"]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 10,
+    totalRecords: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState("All Applications");
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [universityFilter, setUniversityFilter] = useState("All Universities");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Debounce search input by 350ms to prevent excessive API requests while typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const loadApplications = useCallback(async () => {
     try {
@@ -70,7 +86,20 @@ export default function ApplicationsPage() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const res = await fetch("/api/admin/admission/applications", {
+      // Build server-side pagination query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        tab: activeTab,
+        university: universityFilter,
+        status: statusFilter,
+      });
+
+      if (debouncedSearch) {
+        params.set("search", debouncedSearch);
+      }
+
+      const res = await fetch(`/api/admin/admission/applications?${params.toString()}`, {
         headers,
         credentials: "include",
       });
@@ -80,16 +109,27 @@ export default function ApplicationsPage() {
         throw new Error(json.error || "Failed to load applications.");
       }
 
-      setApplications(json.applications || []);
-      setUniversities(json.universities || ["All Universities"]);
-      setCounts(json.counts || {});
+      const fetchedItems = json.data?.items || json.applications || [];
+      const fetchedPagination = json.data?.pagination || json.pagination || {
+        page: currentPage,
+        pageSize,
+        totalRecords: fetchedItems.length,
+        totalPages: Math.max(1, Math.ceil(fetchedItems.length / pageSize)),
+        hasNextPage: false,
+        hasPrevPage: currentPage > 1,
+      };
+
+      setApplications(fetchedItems);
+      setPagination(fetchedPagination);
+      setUniversities(json.data?.filterOptions?.universities || json.universities || ["All Universities"]);
+      setCounts(json.data?.tabCounts || json.counts || {});
     } catch (err: any) {
       console.error("[ApplicationsPage] Error fetching applications:", err);
       setError(err.message || "Failed to load applications.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, activeTab, debouncedSearch, universityFilter, statusFilter]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -97,39 +137,10 @@ export default function ApplicationsPage() {
     }
   }, [authLoading, loadApplications]);
 
-  const filtered = useMemo(() => {
-    return applications.filter((app) => {
-      const matchTab =
-        activeTab === "All Applications" ||
-        (TAB_STATUS_GROUPS[activeTab] && TAB_STATUS_GROUPS[activeTab].includes(app.status));
-
-      const matchSearch =
-        !search.trim() ||
-        app.student.toLowerCase().includes(search.toLowerCase()) ||
-        app.studentEmail.toLowerCase().includes(search.toLowerCase()) ||
-        app.displayId.toLowerCase().includes(search.toLowerCase()) ||
-        app.id.toLowerCase().includes(search.toLowerCase());
-
-      const matchUni =
-        universityFilter === "All Universities" || app.university === universityFilter;
-
-      const matchStatus =
-        statusFilter === "All Status" || app.status === statusFilter;
-
-      return matchTab && matchSearch && matchUni && matchStatus;
-    });
-  }, [applications, activeTab, search, universityFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage]);
-
   const handleExportCSV = () => {
-    if (filtered.length === 0) return;
+    if (applications.length === 0) return;
     const headers = ["Application ID", "Student", "Email", "University", "Course", "Status", "Submitted"];
-    const rows = filtered.map((a) => [
+    const rows = applications.map((a) => [
       `"${a.displayId}"`,
       `"${a.student}"`,
       `"${a.studentEmail}"`,
@@ -143,11 +154,14 @@ export default function ApplicationsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `applications_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `applications_page_${currentPage}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  const totalRecords = pagination.totalRecords;
+  const totalPages = pagination.totalPages;
 
   return (
     <div className="space-y-5">
@@ -196,7 +210,7 @@ export default function ApplicationsPage() {
         {/* Tab Bar */}
         <div className="flex overflow-x-auto border-b border-slate-100 px-4 scrollbar-hide">
           {TABS.map((tab) => {
-            const count = counts[tab] ?? (tab === "All Applications" ? applications.length : 0);
+            const count = counts[tab] ?? (tab === "All Applications" ? totalRecords : 0);
             return (
               <button
                 key={tab}
@@ -231,9 +245,9 @@ export default function ApplicationsPage() {
             <input
               type="text"
               placeholder="Search student, email, ID..."
-              value={search}
+              value={searchInput}
               onChange={(e) => {
-                setSearch(e.target.value);
+                setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -274,7 +288,7 @@ export default function ApplicationsPage() {
           {/* Export CSV */}
           <button
             onClick={handleExportCSV}
-            disabled={filtered.length === 0}
+            disabled={applications.length === 0}
             className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition-all ml-auto cursor-pointer disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
@@ -309,14 +323,14 @@ export default function ApplicationsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : paginated.length === 0 ? (
+              ) : applications.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400 text-sm">
                     No applications match the selected criteria.
                   </td>
                 </tr>
               ) : (
-                paginated.map((app) => (
+                applications.map((app) => (
                   <tr
                     key={app.id}
                     className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors last:border-0"
@@ -350,15 +364,16 @@ export default function ApplicationsPage() {
         {/* Pagination & Summary */}
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100">
           <p className="text-xs text-slate-500">
-            Showing {filtered.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-            {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} results
+            Showing {totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+            {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} results
           </p>
           {totalPages > 1 && (
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                disabled={!pagination.hasPrevPage || loading}
                 className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Previous Page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -366,6 +381,7 @@ export default function ApplicationsPage() {
                 <button
                   key={p}
                   onClick={() => setCurrentPage(p)}
+                  disabled={loading}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     currentPage === p
                       ? "bg-blue-600 text-white"
@@ -377,8 +393,9 @@ export default function ApplicationsPage() {
               ))}
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                disabled={!pagination.hasNextPage || loading}
                 className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Next Page"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
