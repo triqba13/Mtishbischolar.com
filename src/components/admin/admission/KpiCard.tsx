@@ -1,15 +1,17 @@
+import Link from "next/link";
 import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
 
 interface KpiCardProps {
   title: string;
   value: string | number;
-  change: string;
-  changeUp: boolean;
+  change?: string;
+  changeUp?: boolean;
   icon: LucideIcon;
   iconBg: string;
   iconColor: string;
   subtitle?: string;
   breakdown?: { label: string; value: number }[];
+  href?: string;
 }
 
 export default function KpiCard({
@@ -22,9 +24,10 @@ export default function KpiCard({
   iconColor,
   subtitle,
   breakdown,
+  href,
 }: KpiCardProps) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+  const cardContent = (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-all cursor-pointer h-full">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
@@ -63,4 +66,10 @@ export default function KpiCard({
       )}
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block h-full">{cardContent}</Link>;
+  }
+
+  return cardContent;
 }

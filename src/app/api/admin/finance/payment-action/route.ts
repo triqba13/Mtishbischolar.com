@@ -203,6 +203,22 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Notification warning:", notifErr);
       }
 
+      // 6d. Synchronize corresponding Payment_Receipt in documents table
+      if (targetPayment.student_id) {
+        try {
+          await adminClient
+            .from("documents")
+            .update({
+              is_verified: true,
+              verified_by: authenticatedUserId,
+            })
+            .eq("student_id", targetPayment.student_id)
+            .eq("document_type", "Payment_Receipt");
+        } catch (docErr) {
+          console.warn("[FinancePaymentAction] Document verification sync warning:", docErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         message: "Payment successfully approved.",
@@ -263,9 +279,25 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Notification warning:", notifErr);
       }
 
+      // 7d. Synchronize corresponding Payment_Receipt in documents table
+      if (targetPayment.student_id) {
+        try {
+          await adminClient
+            .from("documents")
+            .update({
+              is_verified: false,
+              verified_by: null,
+            })
+            .eq("student_id", targetPayment.student_id)
+            .eq("document_type", "Payment_Receipt");
+        } catch (docErr) {
+          console.warn("[FinancePaymentAction] Document rejection sync warning:", docErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
-        message: "Payment rejected.",
+        message: "Payment successfully rejected.",
         payment: updatedPayment,
       });
     }

@@ -77,6 +77,30 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Immediate admin theme loader
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("mtishbi_admin_theme") || "light";
+      const root = document.documentElement;
+      root.classList.remove("theme-dark", "theme-gold-dark");
+      if (savedTheme === "dark") {
+        root.classList.add("theme-dark");
+        root.setAttribute("data-theme", "dark");
+      } else if (savedTheme === "gold_dark") {
+        root.classList.add("theme-gold-dark");
+        root.setAttribute("data-theme", "gold_dark");
+      } else if (savedTheme === "system") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (prefersDark) {
+          root.classList.add("theme-dark");
+          root.setAttribute("data-theme", "dark");
+        } else {
+          root.removeAttribute("data-theme");
+        }
+      } else {
+        root.removeAttribute("data-theme");
+      }
+    }
+
     fetchOfficerProfile();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -28,26 +28,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Authenticate user strictly from verified session (cookie or Authorization header)
+    // 1. Authenticate user strictly from verified session (Bearer header prioritized, fallback to cookies)
     let authenticatedUserId: string | null = null;
 
-    try {
-      const serverClient = await createServerClient();
-      const {
-        data: { user },
-      } = await serverClient.auth.getUser();
-      if (user?.id) {
-        authenticatedUserId = user.id;
-      }
-    } catch {
-      // Ignore cookie parsing error and check Authorization header
-    }
-
-    if (!authenticatedUserId) {
-      const authHeader = req.headers.get("Authorization");
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.replace("Bearer ", "").trim();
-        if (token && supabaseAnonKey) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      if (token && supabaseAnonKey) {
+        try {
           const clientWithToken = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
             global: { headers: { Authorization: `Bearer ${token}` } },
           });
@@ -57,7 +45,23 @@ export async function POST(req: NextRequest) {
           if (user?.id) {
             authenticatedUserId = user.id;
           }
+        } catch (tokenErr) {
+          console.warn("[WithdrawApp] Bearer token auth error:", tokenErr);
         }
+      }
+    }
+
+    if (!authenticatedUserId) {
+      try {
+        const serverClient = await createServerClient();
+        const {
+          data: { user },
+        } = await serverClient.auth.getUser();
+        if (user?.id) {
+          authenticatedUserId = user.id;
+        }
+      } catch {
+        // Ignore cookie parsing error
       }
     }
 
@@ -71,6 +75,7 @@ export async function POST(req: NextRequest) {
     // 2. Parse request body
     const body = await req.json().catch(() => ({}));
     const { applicationId } = body;
+    const reason = (body.reason || body.withdrawalReason || "").trim();
 
     if (!applicationId || typeof applicationId !== "string") {
       return NextResponse.json(
@@ -84,29 +89,55 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // 4. Fetch existing application to verify ownership & stage
+    // 4. Resolve authenticated user's profile
+    const { data: profile, error: profileErr } = await adminClient
+      .from("profiles")
+      .select("id, role, first_name, last_name, email")
+      .eq("id", authenticatedUserId)
+      .maybeSingle();
+
+    if (profileErr || !profile) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: User profile not found." },
+        { status: 401 }
+      );
+    }
+
+    // 5. Fetch existing application to verify ownership & stage
     const { data: existingApp, error: fetchErr } = await adminClient
       .from("applications")
-      .select("id, status, student_id")
+      .select("id, status, student_id, preferred_course, target_country")
       .eq("id", applicationId)
-      .single();
+      .maybeSingle();
 
     if (fetchErr || !existingApp) {
       return NextResponse.json(
-        { success: false, error: "Application not found or unauthorized." },
+        { success: false, error: "Application not found." },
         { status: 404 }
       );
     }
 
-    // 5. Verify ownership
-    if (existingApp.student_id !== authenticatedUserId) {
+    // 6. Verify ownership (application.student_id === authenticatedUserId or profile.id)
+    const isOwner =
+      existingApp.student_id === authenticatedUserId ||
+      existingApp.student_id === profile.id;
+
+    console.log("[WithdrawApp] Diagnostics:", {
+      authenticatedUserId,
+      profileId: profile.id,
+      applicationId,
+      applicationOwnerId: existingApp.student_id,
+      isOwner,
+    });
+
+    if (!isOwner) {
       return NextResponse.json(
         { success: false, error: "Unauthorized: You do not own this application." },
         { status: 403 }
       );
     }
 
-    // 6. Verify deletable status
+    // 7. Verify deletable status
     if (!ALLOWED_DELETE_STATUSES.includes(existingApp.status)) {
       return NextResponse.json(
         {
@@ -118,7 +149,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 7. Safely unlink child records (set application_id = NULL) without deleting student academic files or payment history
+    // 8. Record audit log if reason was provided
+    try {
+      await adminClient.from("audit_logs").insert({
+        user_id: authenticatedUserId,
+        action: "application_withdrawn",
+        target_type: "application",
+        target_id: applicationId,
+        details: {
+          preferred_course: existingApp.preferred_course,
+          target_country: existingApp.target_country,
+          status_at_withdrawal: existingApp.status,
+          reason: reason || null,
+        },
+      });
+    } catch (auditErr) {
+      console.warn("[WithdrawApp] Audit log warning:", auditErr);
+    }
+
+    // 9. Safely unlink child records (set application_id = NULL) without deleting student academic files or payment history
     await adminClient
       .from("documents")
       .update({ application_id: null })
@@ -131,7 +180,7 @@ export async function POST(req: NextRequest) {
       .eq("application_id", applicationId)
       .eq("student_id", authenticatedUserId);
 
-    // 8. Permanently delete the application from public.applications
+    // 10. Permanently delete the application from public.applications
     const { error: deleteErr, count } = await adminClient
       .from("applications")
       .delete({ count: "exact" })

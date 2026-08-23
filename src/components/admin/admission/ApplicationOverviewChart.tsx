@@ -13,15 +13,19 @@ import {
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const WEEKLY_DATA = [
-  { day: "20 Aug", New: 18, "Ready for Review": 12, "Documents Pending": 8, "University Processing": 6, "Visa Processing": 3 },
-  { day: "21 Aug", New: 22, "Ready for Review": 14, "Documents Pending": 10, "University Processing": 8, "Visa Processing": 4 },
-  { day: "22 Aug", New: 16, "Ready for Review": 10, "Documents Pending": 7, "University Processing": 9, "Visa Processing": 5 },
-  { day: "23 Aug", New: 25, "Ready for Review": 18, "Documents Pending": 9, "University Processing": 11, "Visa Processing": 6 },
-  { day: "24 Aug", New: 20, "Ready for Review": 15, "Documents Pending": 6, "University Processing": 12, "Visa Processing": 7 },
-  { day: "25 Aug", New: 28, "Ready for Review": 22, "Documents Pending": 11, "University Processing": 14, "Visa Processing": 8 },
-  { day: "26 Aug", New: 35, "Ready for Review": 28, "Documents Pending": 14, "University Processing": 16, "Visa Processing": 9 },
-];
+export interface ChartDataPoint {
+  day: string;
+  New: number;
+  "Ready for Review": number;
+  "Documents Pending": number;
+  "University Processing": number;
+  "Visa Processing": number;
+}
+
+interface ApplicationOverviewChartProps {
+  chartData?: ChartDataPoint[];
+  chartDataByRange?: Record<string, ChartDataPoint[]>;
+}
 
 const SERIES = [
   { key: "New", color: "#3B82F6" },
@@ -31,11 +35,27 @@ const SERIES = [
   { key: "Visa Processing", color: "#06B6D4" },
 ];
 
-const RANGES = ["Last 7 days", "Last 30 days", "Last 3 months", "Custom"];
+const RANGES = ["Last 7 Days", "Last 30 Days", "Last 3 Months", "Custom"];
 
-export default function ApplicationOverviewChart() {
+export default function ApplicationOverviewChart({
+  chartData,
+  chartDataByRange,
+}: ApplicationOverviewChartProps) {
   const [range, setRange] = useState("Last 7 Days");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const selectedData =
+    chartDataByRange?.[range] ||
+    chartData || [
+      {
+        day: "Today",
+        New: 0,
+        "Ready for Review": 0,
+        "Documents Pending": 0,
+        "University Processing": 0,
+        "Visa Processing": 0,
+      },
+    ];
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -44,7 +64,7 @@ export default function ApplicationOverviewChart() {
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all"
+            className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
           >
             {range}
             <ChevronDown className="w-3.5 h-3.5" />
@@ -54,8 +74,13 @@ export default function ApplicationOverviewChart() {
               {RANGES.map((r) => (
                 <button
                   key={r}
-                  onClick={() => { setRange(r); setDropdownOpen(false); }}
-                  className={`block w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${range === r ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:bg-slate-50"}`}
+                  onClick={() => {
+                    setRange(r);
+                    setDropdownOpen(false);
+                  }}
+                  className={`block w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${
+                    range === r ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   {r}
                 </button>
@@ -66,7 +91,7 @@ export default function ApplicationOverviewChart() {
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={WEEKLY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+        <LineChart data={selectedData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
           <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />

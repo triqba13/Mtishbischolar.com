@@ -258,11 +258,9 @@ export async function requestUnlistedCourseApplication(payload: {
       };
     }
 
-    const courseRequestNote = `[UNLISTED COURSE REQUEST]: Student requested "${payload.preferred_course}" for ${
-      payload.target_country
-    } (${payload.target_intake || "Upcoming Intake"})${
-      payload.notes ? `. Notes: ${payload.notes}` : ""
-    }`;
+    const courseRequestNote = `[UNLISTED COURSE REQUEST]: Student requested "${payload.preferred_course}" for ${payload.target_country
+      } (${payload.target_intake || "Upcoming Intake"})${payload.notes ? `. Notes: ${payload.notes}` : ""
+      }`;
 
     const { data, error } = await supabase
       .from("applications")
@@ -350,11 +348,21 @@ export async function deleteStudentApplication(
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. First attempt via secure server API endpoint
+    const supabase = createClient();
+
+    // 1. First attempt via secure server API endpoint with verified session token
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/student/withdraw-application", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ applicationId, reason }),
       });
 
@@ -370,8 +378,6 @@ export async function deleteStudentApplication(
     }
 
     // 2. Direct client SDK execution as fallback
-    const supabase = createClient();
-
     // Verify ownership and deletable status
     const { data: existingApp, error: fetchErr } = await supabase
       .from("applications")
@@ -1088,6 +1094,52 @@ export async function fetchStudentDocuments(studentId: string): Promise<DbDocume
 }
 
 /**
+ * Delete a student document from database and storage bucket
+ */
+export async function deleteStudentDocument(
+  studentId: string,
+  docId: string,
+  fileUrl?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const response = await fetch("/api/student/delete-document", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        documentId: docId,
+        studentId: studentId,
+        fileUrl: fileUrl,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to delete document.",
+      };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in deleteStudentDocument:", err);
+    return { success: false, error: err.message || "Failed to delete document." };
+  }
+}
+
+/**
  * Fetch all notifications for a specific student, ordered newest first
  */
 export async function fetchStudentNotifications(userId: string): Promise<DbNotification[]> {
@@ -1696,7 +1748,7 @@ export function checkHasApprovedPayment(
   if (dashData.hasApprovedPayment) return true;
   return Boolean(
     dashData.payments &&
-      dashData.payments.some((p) => (p.status || "").toLowerCase() === "approved")
+    dashData.payments.some((p) => (p.status || "").toLowerCase() === "approved")
   );
 }
 

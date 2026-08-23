@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { Search, Bell, ChevronDown, LogOut, User, ShieldCheck } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   title?: string;
@@ -11,8 +13,27 @@ interface HeaderProps {
 export default function Header({ title }: HeaderProps) {
   const [searchValue, setSearchValue] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { fullName, roleLabel, avatarLetter, logout, profile } = useAdminAuth();
+
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const supabase = createClient();
+        const { count, error } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("is_read", false);
+        if (!error && count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch notification count:", err);
+      }
+    }
+    fetchUnreadCount();
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -42,12 +63,17 @@ export default function Header({ title }: HeaderProps) {
       <div className="flex-1" />
 
       {/* Notifications */}
-      <button className="relative w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer">
+      <Link
+        href="/admin/admission/notifications"
+        className="relative w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+      >
         <Bell className="w-4.5 h-4.5" />
-        <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-          8
-        </span>
-      </button>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </Link>
 
       {/* Profile Dropdown */}
       <div className="relative" ref={dropdownRef}>

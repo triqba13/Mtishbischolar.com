@@ -8,7 +8,6 @@ import {
   Users,
   FileText,
   FolderOpen,
-  Building2,
   Globe,
   Bell,
   BarChart3,
@@ -19,15 +18,15 @@ import {
   DollarSign,
   ShieldAlert,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/admin/admission/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/admission/students", icon: Users, label: "Students" },
   { href: "/admin/admission/applications", icon: FileText, label: "Applications" },
   { href: "/admin/admission/documents", icon: FolderOpen, label: "Documents" },
-  { href: "/admin/admission/universities", icon: Building2, label: "Universities" },
   {
     label: "Passport & Visa",
     icon: Globe,
@@ -36,7 +35,7 @@ const navItems = [
       { href: "/admin/admission/visa", label: "Visa" },
     ],
   },
-  { href: "/admin/admission/notifications", icon: Bell, label: "Notifications", badge: 8 },
+  { href: "/admin/admission/notifications", icon: Bell, label: "Notifications" },
   { href: "/admin/admission/reports", icon: BarChart3, label: "Reports" },
   { href: "/admin/admission/settings", icon: Settings, label: "Settings" },
 ];
@@ -44,9 +43,28 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { logout, role, roleLabel } = useAdminAuth();
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [passportOpen, setPassportOpen] = useState(
     pathname.includes("/passport") || pathname.includes("/visa")
   );
+
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const supabase = createClient();
+        const { count, error } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("is_read", false);
+        if (!error && count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch notification count for sidebar:", err);
+      }
+    }
+    fetchUnreadCount();
+  }, [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -133,9 +151,9 @@ export default function Sidebar() {
             >
               <item.icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {item.badge}
+              {item.href === "/admin/admission/notifications" && unreadCount > 0 && (
+                <span className="min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </Link>

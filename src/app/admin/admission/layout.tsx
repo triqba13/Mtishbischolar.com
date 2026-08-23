@@ -9,7 +9,7 @@ export default function AdmissionLayout({
 }) {
   return (
     <AdminAuthProvider>
-      <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="min-h-screen admin-root-layout bg-[#F8FAFC] transition-colors duration-200">
         <Sidebar />
         <Header />
         <main className="ml-[220px] pt-16 min-h-screen">

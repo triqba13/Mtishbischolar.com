@@ -1,100 +1,358 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Home, Search, Eye, CheckCircle2, RefreshCw, X, FileText, ChevronRight } from "lucide-react";
-import StatusBadge from "@/components/admin/admission/StatusBadge";
+import { Home, Search, Eye, CheckCircle2, RefreshCw, X, FileText, ChevronRight, AlertTriangle, ExternalLink } from "lucide-react";
+import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { createClient } from "@/lib/supabase/client";
 
-const TABS = ["All", "Pending", "Under Review", "Verified"];
+const TABS = ["All", "Pending", "Verified"];
 
-const DOCUMENTS = [
-  { student: "Tariq Hamza", appId: "APP-00124", document: "Academic Transcript", issue: "Missing", status: "Pending", university: "SRM University AP" },
-  { student: "Amina Ali", appId: "APP-00123", document: "Passport Photo", issue: "Unclear", status: "Pending", university: "Parul University" },
-  { student: "John Mwita", appId: "APP-00122", document: "Academic Certificate", issue: "Wrong file", status: "Pending", university: "X University" },
-  { student: "Neema Said", appId: "APP-00121", document: "Proof of Passport", issue: "Expired", status: "Under Review", university: "Manipal University" },
-  { student: "David Mushi", appId: "APP-00120", document: "Academic Transcript", issue: "Unclear", status: "Under Review", university: "SRM University AP" },
-  { student: "Daniel Kayombo", appId: "APP-00118", document: "Academic Certificate", issue: "—", status: "Verified", university: "LU University" },
-  { student: "Peter John", appId: "APP-00117", document: "Passport Photo", issue: "—", status: "Verified", university: "X University" },
-];
+export interface DocumentItem {
+  id: string;
+  studentId: string;
+  applicationId?: string;
+  appId: string;
+  student: string;
+  studentEmail?: string;
+  document: string;
+  rawType: string;
+  fileName: string;
+  fileSize: string;
+  status: string;
+  isVerified: boolean;
+  university: string;
+  uploaded: string;
+  signedUrl?: string;
+}
 
-function DocumentReviewModal({ doc, onClose }: { doc: typeof DOCUMENTS[0]; onClose: () => void }) {
+function DocumentReviewModal({
+  doc,
+  onClose,
+  onVerify,
+  onRequestReplacement,
+  actionLoading,
+}: {
+  doc: DocumentItem;
+  onClose: () => void;
+  onVerify: (docId: string) => Promise<void>;
+  onRequestReplacement: (docId: string, reason: string, comment: string) => Promise<void>;
+  actionLoading: boolean;
+}) {
+  const [showReplacementForm, setShowReplacementForm] = useState(false);
+  const [reason, setReason] = useState("Unclear / Blurry");
+  const [comment, setComment] = useState("");
+
+  const handleReplacement = async () => {
+    await onRequestReplacement(doc.id, reason, comment);
+    onClose();
+  };
+
+  const previewUrl = doc.signedUrl || `/api/admin/admission/documents/${doc.id}/preview`;
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-slate-200">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="font-bold text-slate-800 text-lg">Document Review</h3>
-            <p className="text-xs text-slate-500 mt-0.5 font-mono">{doc.appId} — {doc.document}</p>
+            <p className="text-xs text-slate-500 mt-0.5 font-mono">
+              {doc.appId} — {doc.document}
+            </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Mock document preview */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 mb-5 flex flex-col items-center justify-center min-h-[160px]">
-          <FileText className="w-12 h-12 text-slate-300 mb-3" />
-          <p className="text-sm text-slate-500 font-medium">transcript.NBL.pdf</p>
-          <p className="text-xs text-slate-400 mt-1">PDF · 2.3 MB</p>
+        {/* Document preview / link */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-5 flex flex-col items-center justify-center min-h-[140px]">
+          <FileText className="w-12 h-12 text-blue-500 mb-2" />
+          <p className="text-sm text-slate-800 font-semibold text-center">{doc.fileName}</p>
+          <p className="text-xs text-slate-400 mt-1">Uploaded by {doc.student}</p>
+          
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" /> Open File Preview <ExternalLink className="w-3 h-3" />
+          </a>
         </div>
 
         {/* Metadata */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {[
-            ["File Name", "transcript.NBL.pdf"],
-            ["File Type", "PDF"],
-            ["Uploaded", "26 Aug 2026, 10:30 AM"],
-            ["Uploaded By", doc.student],
-            ["Status", "Under Review"],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
-              <p className="text-sm text-slate-700 font-medium mt-0.5">{value}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-3 mb-5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Document Type</p>
+            <p className="text-sm text-slate-700 font-medium mt-0.5">{doc.document}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Student</p>
+            <p className="text-sm text-slate-700 font-medium mt-0.5">{doc.student}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Uploaded</p>
+            <p className="text-sm text-slate-700 font-medium mt-0.5">{doc.uploaded}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Status</p>
+            <p className={`text-xs font-bold mt-1 inline-block px-2 py-0.5 rounded-full ${
+              doc.isVerified ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
+            }`}>
+              {doc.status}
+            </p>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-all"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Verify Document
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 text-sm font-semibold hover:bg-orange-100 transition-all"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Request Replacement
-          </button>
-        </div>
+        {/* Replacement Form Toggle */}
+        {showReplacementForm ? (
+          <div className="space-y-3 pt-2 border-t border-slate-100 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Reason for Replacement</label>
+              <select
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option>Unclear / Blurry</option>
+                <option>Incomplete Pages</option>
+                <option>Wrong Document Uploaded</option>
+                <option>Expired Document</option>
+                <option>Certified True Copy Required</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Instructions for Student</label>
+              <textarea
+                rows={2}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="e.g., Please upload a clearer scanned PDF copy of your academic certificate..."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowReplacementForm(false)}
+                className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReplacement}
+                disabled={actionLoading}
+                className="flex-1 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 transition-all cursor-pointer disabled:opacity-60"
+              >
+                {actionLoading ? "Sending..." : "Send Replacement Request to Student"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Actions */
+          <div className="flex gap-3">
+            {!doc.isVerified && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await onVerify(doc.id);
+                  onClose();
+                }}
+                disabled={actionLoading}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-60 shadow-sm"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {actionLoading ? "Verifying..." : "Verify Document"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowReplacementForm(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-100 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Request Replacement
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export default function DocumentsPage() {
+  const { loading: authLoading } = useAdminAuth();
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
-  const [reviewDoc, setReviewDoc] = useState<typeof DOCUMENTS[0] | null>(null);
+  const [reviewDoc, setReviewDoc] = useState<DocumentItem | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
-  const filtered = DOCUMENTS.filter((d) => {
-    const matchTab = activeTab === "All" || d.status === activeTab;
-    const matchSearch = !search || d.student.toLowerCase().includes(search.toLowerCase()) || d.appId.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
-  });
+  const loadDocuments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const counts: Record<string, number> = {};
-  TABS.forEach((t) => {
-    counts[t] = t === "All" ? DOCUMENTS.length : DOCUMENTS.filter((d) => d.status === t).length;
-  });
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/admin/admission/documents", {
+        headers,
+        credentials: "include",
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to load documents.");
+      }
+
+      setDocuments(json.documents || []);
+      setCounts(json.counts || {});
+    } catch (err: any) {
+      console.error("[DocumentsPage] Error fetching documents:", err);
+      setError(err.message || "Failed to load documents.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading) {
+      loadDocuments();
+    }
+  }, [authLoading, loadDocuments]);
+
+  const handleVerifyDoc = async (docId: string) => {
+    try {
+      setActionLoading(true);
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+      const res = await fetch("/api/admin/admission/documents/action", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "verify", documentId: docId }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to verify document.");
+      }
+
+      // Update state locally
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.id === docId ? { ...d, isVerified: true, status: "Verified" } : d
+        )
+      );
+
+      setActionSuccessMessage("Document verified successfully!");
+      setTimeout(() => setActionSuccessMessage(null), 4000);
+
+      await loadDocuments();
+    } catch (err: any) {
+      console.error("Verify error:", err);
+      setError(err.message || "Failed to verify document.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRequestReplacement = async (docId: string, reason: string, comment: string) => {
+    try {
+      setActionLoading(true);
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+      const res = await fetch("/api/admin/admission/documents/action", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "request_replacement",
+          documentId: docId,
+          reason,
+          comment,
+        }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to request replacement.");
+      }
+
+      // Update state locally
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.id === docId ? { ...d, isVerified: false, status: "Replacement Requested" } : d
+        )
+      );
+
+      setActionSuccessMessage("Replacement request sent to student dashboard successfully.");
+      setTimeout(() => setActionSuccessMessage(null), 4000);
+
+      await loadDocuments();
+    } catch (err: any) {
+      console.error("Replacement error:", err);
+      setError(err.message || "Failed to request replacement.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    return documents.filter((d) => {
+      const matchTab =
+        activeTab === "All" ||
+        (activeTab === "Pending" && !d.isVerified) ||
+        (activeTab === "Verified" && d.isVerified);
+
+      const matchSearch =
+        !search.trim() ||
+        d.student.toLowerCase().includes(search.toLowerCase()) ||
+        d.document.toLowerCase().includes(search.toLowerCase()) ||
+        d.fileName.toLowerCase().includes(search.toLowerCase()) ||
+        d.appId.toLowerCase().includes(search.toLowerCase());
+
+      return matchTab && matchSearch;
+    });
+  }, [documents, activeTab, search]);
 
   return (
     <>
-      {reviewDoc && <DocumentReviewModal doc={reviewDoc} onClose={() => setReviewDoc(null)} />}
+      {reviewDoc && (
+        <DocumentReviewModal
+          doc={reviewDoc}
+          onClose={() => setReviewDoc(null)}
+          onVerify={handleVerifyDoc}
+          onRequestReplacement={handleRequestReplacement}
+          actionLoading={actionLoading}
+        />
+      )}
 
       <div className="space-y-5">
         {/* Header */}
@@ -102,61 +360,96 @@ export default function DocumentsPage() {
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <Home className="w-3.5 h-3.5" />
             <ChevronRight className="w-3 h-3" />
-            <Link href="/admin/admission/dashboard" className="hover:text-blue-600">Dashboard</Link>
+            <Link href="/admin/admission/dashboard" className="hover:text-blue-600">
+              Dashboard
+            </Link>
             <ChevronRight className="w-3 h-3" />
             <span className="text-slate-600 font-medium">Documents</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Documents</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Documents</h1>
+              <p className="text-slate-500 text-sm mt-1">Review and verify student academic admission documents.</p>
+            </div>
+            <button
+              onClick={loadDocuments}
+              disabled={loading}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              title="Refresh documents"
+            >
+              <RefreshCw className={`w-4 h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
+              <span className="text-xs font-semibold">Refresh</span>
+            </button>
+          </div>
         </div>
+
+        {actionSuccessMessage && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <p className="text-sm font-medium">{actionSuccessMessage}</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            <button
+              onClick={loadDocuments}
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-slate-200">
           {/* Tabs */}
           <div className="flex border-b border-slate-100 px-4">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-                  activeTab === tab
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {tab}
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
-                }`}>
-                  {counts[tab]}
-                </span>
-              </button>
-            ))}
+            {TABS.map((tab) => {
+              const count =
+                tab === "All"
+                  ? documents.length
+                  : tab === "Pending"
+                  ? counts.Pending ?? 0
+                  : counts.Verified ?? 0;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+                    activeTab === tab
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {tab}
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      activeTab === tab ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-            <div className="relative flex-1 max-w-xs">
+          {/* Search */}
+          <div className="px-5 py-4 border-b border-slate-100">
+            <div className="relative max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search student or application ID..."
+                placeholder="Search student, document..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
-            <select className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-              <option>All Document Types</option>
-              <option>Academic Certificate</option>
-              <option>Academic Transcript</option>
-              <option>Passport Photo</option>
-              <option>Proof of Passport</option>
-            </select>
-            <select className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-              <option>All Universities</option>
-              <option>SRM University AP</option>
-              <option>Parul University</option>
-              <option>X University</option>
-            </select>
           </div>
 
           {/* Table */}
@@ -164,47 +457,71 @@ export default function DocumentsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-100">
-                  {["Student", "Application", "Document", "Issue", "Status", "Action"].map((h) => (
-                    <th key={h} className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">
+                  {["Student", "Application ID", "Document", "Status", "Uploaded", "Action"].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-5 py-3"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((doc, i) => (
-                  <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors last:border-0">
-                    <td className="px-5 py-3.5 text-sm font-medium text-slate-800">{doc.student}</td>
-                    <td className="px-5 py-3.5 text-xs font-mono text-slate-600">{doc.appId}</td>
-                    <td className="px-5 py-3.5 text-sm text-slate-700">{doc.document}</td>
-                    <td className="px-5 py-3.5">
-                      {doc.issue !== "—" ? (
-                        <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">{doc.issue}</span>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={doc.status} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <button
-                        onClick={() => setReviewDoc(doc)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        {doc.status === "Under Review" ? "Review" : "View"}
-                      </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                        Loading academic documents...
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">
+                      No academic documents found in this review category.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((d) => (
+                    <tr
+                      key={d.id}
+                      className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors last:border-0"
+                    >
+                      <td className="px-5 py-3.5 text-sm font-medium text-slate-800">{d.student}</td>
+                      <td className="px-5 py-3.5 text-xs font-mono text-slate-600">{d.appId}</td>
+                      <td className="px-5 py-3.5 text-sm font-medium text-slate-700">{d.document}</td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            d.isVerified ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
+                          }`}
+                        >
+                          {d.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500">{d.uploaded}</td>
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={() => setReviewDoc(d)}
+                          className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Footer */}
           <div className="px-5 py-3 border-t border-slate-100">
-            <p className="text-xs text-slate-500">Showing 1 to {filtered.length} of {filtered.length} results</p>
+            <p className="text-xs text-slate-500">
+              Showing {filtered.length > 0 ? 1 : 0} to {filtered.length} of {filtered.length} documents
+            </p>
           </div>
         </div>
       </div>

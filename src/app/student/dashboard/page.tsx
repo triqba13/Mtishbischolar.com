@@ -21,6 +21,7 @@ import {
   saveStudentContact,
   fetchStudentContacts,
   uploadStudentDocument,
+  deleteStudentDocument,
   fetchStudentDocuments,
   getStudentDocumentSignedUrl,
   deleteStudentProfileAndAccount,
@@ -397,9 +398,13 @@ function DashboardContent() {
             }));
           }
 
-          // Fetch student uploaded documents
-          const docs = await fetchStudentDocuments(user.id);
+          // Fetch student uploaded documents & notifications
+          const [docs, notifs] = await Promise.all([
+            fetchStudentDocuments(user.id),
+            fetchStudentNotifications(user.id),
+          ]);
           setStudentDocs(docs || []);
+          setNotificationsList(notifs || []);
 
           // Calculate current student stage
           if (!liveData.profile?.is_profile_completed) {
@@ -481,6 +486,37 @@ function DashboardContent() {
           filter: `student_id=eq.${currentUser.id}`,
         },
         () => refreshDashboard()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUser.id}`,
+        },
+        async () => {
+          refreshDashboard();
+          if (currentUser?.id) {
+            const notifs = await fetchStudentNotifications(currentUser.id);
+            setNotificationsList(notifs || []);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "documents",
+          filter: `student_id=eq.${currentUser.id}`,
+        },
+        async () => {
+          if (currentUser?.id) {
+            const docs = await fetchStudentDocuments(currentUser.id);
+            setStudentDocs(docs || []);
+          }
+        }
       )
       .on(
         "postgres_changes",
@@ -978,6 +1014,7 @@ function DashboardContent() {
   const [uploadDocFile, setUploadDocFile] = useState<File | null>(null);
   const [uploadingDocModal, setUploadingDocModal] = useState<boolean>(false);
   const [uploadDocModalError, setUploadDocModalError] = useState<string>("");
+  const [deletingDocId, setDeletingDocId] = useState<string>("");
 
   useEffect(() => {
     async function loadDocs() {
@@ -1115,9 +1152,39 @@ function DashboardContent() {
       required: false,
       category: "Language & Tests",
     },
+    CV_Resume: {
+      label: "Curriculum Vitae (CV) / Resume",
+      description: "Updated CV or academic curriculum vitae highlighting education, skills, and activities.",
+      required: false,
+      category: "Supporting Documents",
+    },
+    Motivation_Letter: {
+      label: "Statement of Purpose / Motivation Letter",
+      description: "Personal statement or motivation letter explaining your academic goals and intent.",
+      required: false,
+      category: "Supporting Documents",
+    },
+    Police_Clearance: {
+      label: "Police Clearance Certificate / Good Conduct",
+      description: "Official certificate of good conduct or police clearance issued by national authorities.",
+      required: false,
+      category: "Identity & Travel",
+    },
+    Sponsorship_Letter: {
+      label: "Financial Sponsorship / Bank Statement",
+      description: "Proof of sponsorship, parent guarantee letter, or bank statement for financial support.",
+      required: false,
+      category: "Supporting Documents",
+    },
+    Medical_Report: {
+      label: "Medical Examination / Health Certificate",
+      description: "Official medical fitness certificate or health check report from an accredited clinic.",
+      required: false,
+      category: "Supporting Documents",
+    },
     Other: {
       label: "Other Supporting Document",
-      description: "Curriculum Vitae (CV), awards, extracurricular certificates, or medical report.",
+      description: "Any other additional certificate, award, or document requested by the admissions office.",
       required: false,
       category: "Supporting Documents",
     },
@@ -1469,6 +1536,41 @@ function DashboardContent() {
       setUploadDocModalError(err.message || "Upload failed.");
     } finally {
       setUploadingDocModal(false);
+    }
+  };
+
+  const handleDeleteDoc = async (doc: DbDocument) => {
+    if (!currentUser?.id || !doc.id) return;
+    const docName = doc.file_name || DOCUMENT_TYPE_CONFIG[doc.document_type]?.label || doc.document_type;
+    
+    if (doc.document_type === "Payment_Receipt" && (hasApprovedPayment || dashData?.hasApprovedPayment)) {
+      alert("This verified payment receipt is attached to your active application file and cannot be deleted.");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete "${docName}" from your documents vault? This will permanently remove it from your records.`)) {
+      return;
+    }
+
+    try {
+      setDeletingDocId(doc.id);
+      const res = await deleteStudentDocument(currentUser.id, doc.id, doc.file_url);
+      if (res.success) {
+        const updatedDocs = await fetchStudentDocuments(currentUser.id);
+        setStudentDocs(updatedDocs || []);
+        if (currentUser?.id) {
+          const liveData = await fetchStudentDashboardData(currentUser.id);
+          setDashData(liveData);
+        }
+        alert(`✓ Document "${docName}" deleted successfully.`);
+      } else {
+        alert(`Failed to delete document: ${res.error || "Please try again."}`);
+      }
+    } catch (err: any) {
+      console.error("Error deleting doc:", err);
+      alert(`Delete failed: ${err.message || "An unexpected error occurred."}`);
+    } finally {
+      setDeletingDocId("");
     }
   };
 
@@ -6031,7 +6133,15 @@ function DashboardContent() {
                             return (
                               <div
                                 key={app.id || idx}
-                                className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                                className={`p-5 rounded-2xl bg-white border shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
+                                  isSubmitted
+                                    ? "border-blue-200 hover:border-blue-300"
+                                    : isOffer || isVisa
+                                    ? "border-emerald-200 hover:border-emerald-300"
+                                    : isRejected
+                                    ? "border-red-200 hover:border-red-300"
+                                    : "border-slate-200 hover:border-amber-400"
+                                }`}
                               >
                                 <div className="space-y-3">
                                   {/* Top card info */}
@@ -6039,8 +6149,8 @@ function DashboardContent() {
                                     <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
                                       Application #{idx + 1}
                                     </span>
-                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border bg-amber-100 text-amber-800 border-amber-200">
-                                      Under Review
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeColor}`}>
+                                      {getApplicationStatusDisplay(app.status)}
                                     </span>
                                   </div>
 
@@ -6066,15 +6176,47 @@ function DashboardContent() {
                                   </div>
 
                                   {/* Status & Message */}
-                                  <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/70 space-y-1 text-xs">
-                                    <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                      <span>Course request under review</span>
+                                  {isSubmitted ? (
+                                    <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/70 space-y-1 text-xs">
+                                      <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                        <span>Submitted to University</span>
+                                      </div>
+                                      <p className="text-[11px] text-blue-800 leading-relaxed">
+                                        Your application for {app.preferred_course} has been approved by the Admission Officer and forwarded to partner universities.
+                                      </p>
                                     </div>
-                                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                                      Our Admission Officer is searching for suitable partner universities offering this program.
-                                    </p>
-                                  </div>
+                                  ) : isOffer ? (
+                                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/70 space-y-1 text-xs">
+                                      <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                                        <Award className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span>Offer Letter Ready</span>
+                                      </div>
+                                      <p className="text-[11px] text-emerald-800 leading-relaxed">
+                                        Congratulations! Your admission offer letter is ready.
+                                      </p>
+                                    </div>
+                                  ) : isRejected ? (
+                                    <div className="p-3 rounded-xl bg-red-50/80 border border-red-200/70 space-y-1 text-xs">
+                                      <div className="flex items-center gap-1.5 font-bold text-red-900">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                                        <span>Application Rejected</span>
+                                      </div>
+                                      <p className="text-[11px] text-red-800 leading-relaxed">
+                                        This application could not proceed. Please contact your Admission Officer for guidance.
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/70 space-y-1 text-xs">
+                                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                        <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                        <span>Course request under review</span>
+                                      </div>
+                                      <p className="text-[11px] text-amber-800 leading-relaxed">
+                                        Our Admission Officer is searching for suitable partner universities offering this program.
+                                      </p>
+                                    </div>
+                                  )}
 
                                   {/* Metadata: ID & Date */}
                                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1">
@@ -6248,7 +6390,7 @@ function DashboardContent() {
                         <div className="p-6 space-y-6 overflow-y-auto">
 
                           {/* 1. Status & Progress */}
-                          {isUnlistedCourseRequest(selectedAppDetail) ? (
+                          {isUnlistedCourseRequest(selectedAppDetail) && ((selectedAppDetail.status || "").toLowerCase() === "profile completed" || (selectedAppDetail.status || "").toLowerCase() === "under review" || !selectedAppDetail.status) ? (
                             <div className="p-4.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-extrabold text-xs text-amber-950 flex items-center gap-1.5">
@@ -7196,9 +7338,23 @@ function DashboardContent() {
                                 Official academic certificates, transcripts, and travel identification documents on file.
                               </p>
                             </div>
-                            <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200 shrink-0 self-start sm:self-auto">
-                              {uploadedAcademicDocs.length} {uploadedAcademicDocs.length === 1 ? "Document" : "Documents"} Uploaded
-                            </span>
+                            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                              <span className="text-xs font-bold px-3 py-1.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200">
+                                {uploadedAcademicDocs.length} {uploadedAcademicDocs.length === 1 ? "Document" : "Documents"} Uploaded
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUploadDocModalError("");
+                                  setUploadDocFile(null);
+                                  setShowUploadDocModal(true);
+                                }}
+                                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>+ Add Document</span>
+                              </button>
+                            </div>
                           </div>
 
                           {uploadedAcademicDocs.length > 0 ? (
@@ -7212,33 +7368,52 @@ function DashboardContent() {
                                 };
                                 const isUploading = uploadingDoc === doc.document_type;
                                 const isViewing = viewingDoc === doc.document_type;
+                                const isDocVerified = Boolean(
+                                  doc.is_verified ||
+                                  (doc.document_type === "Payment_Receipt" && (hasApprovedPayment || dashData?.hasApprovedPayment || dashData?.payments?.some((p) => (p.status || "").toLowerCase() === "approved")))
+                                );
 
                                 return (
                                   <div
                                     key={doc.id || doc.file_url}
                                     className={`p-5 rounded-2xl bg-white border transition-all flex flex-col justify-between space-y-4 ${
-                                      doc.is_verified
+                                      isDocVerified
                                         ? "border-emerald-200 shadow-xs hover:border-emerald-300"
                                         : "border-slate-200 shadow-xs hover:border-slate-300"
                                     }`}
                                   >
                                     <div className="space-y-3">
-                                      {/* Header: Category & Status Badge */}
+                                      {/* Header: Category, Status Badge & Delete 'X' Button */}
                                       <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                                         <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                                           {config.category}
                                         </span>
-                                        {doc.is_verified ? (
-                                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                            Verified ✓
-                                          </span>
-                                        ) : (
-                                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
-                                            <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
-                                            Pending Verification
-                                          </span>
-                                        )}
+                                        <div className="flex items-center gap-1.5">
+                                          {isDocVerified ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                              Verified ✓
+                                            </span>
+                                          ) : (
+                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                              <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                                              Pending Verification
+                                            </span>
+                                          )}
+                                          <button
+                                            type="button"
+                                            disabled={deletingDocId === doc.id}
+                                            onClick={() => handleDeleteDoc(doc)}
+                                            className="w-6 h-6 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer border border-transparent hover:border-red-200 disabled:opacity-50"
+                                            title={`Delete ${config.label}`}
+                                          >
+                                            {deletingDocId === doc.id ? (
+                                              <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                              <X className="w-3.5 h-3.5" />
+                                            )}
+                                          </button>
+                                        </div>
                                       </div>
 
                                       {/* Title & Description */}
@@ -7415,18 +7590,32 @@ function DashboardContent() {
                               })}
                             </div>
                           ) : (
-                            <div className="p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                                <CheckCircle2 className="w-6 h-6" />
+                            <div className="p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                  <CheckCircle2 className="w-6 h-6" />
+                                </div>
+                                <div>
+                                  <h4 className="font-extrabold text-sm text-emerald-950">
+                                    All currently required documents have been uploaded.
+                                  </h4>
+                                  <p className="text-xs text-emerald-800 mt-0.5">
+                                    Need to upload an extra certificate, recommendation letter, or document requested by admission?
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="font-extrabold text-sm text-emerald-950">
-                                  All currently required documents have been uploaded.
-                                </h4>
-                                <p className="text-xs text-emerald-800 mt-0.5">
-                                  Your academic qualification and identification profile is complete and on file in your private vault.
-                                </p>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUploadDocModalError("");
+                                  setUploadDocFile(null);
+                                  setShowUploadDocModal(true);
+                                }}
+                                className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-colors shrink-0 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>+ Add Document</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -7588,13 +7777,44 @@ function DashboardContent() {
                             <select
                               value={selectedDocTypeForUpload}
                               onChange={(e) => setSelectedDocTypeForUpload(e.target.value)}
-                              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
+                              className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white text-slate-800"
                             >
-                              {Object.entries(DOCUMENT_TYPE_CONFIG).map(([k, c]) => (
-                                <option key={k} value={k}>
-                                  {c.label} {c.required ? "(Required)" : "(Optional)"}
-                                </option>
-                              ))}
+                              <optgroup label="🎓 Academic Qualifications">
+                                {Object.entries(DOCUMENT_TYPE_CONFIG)
+                                  .filter(([_, c]) => c.category === "Academic Qualification")
+                                  .map(([k, c]) => (
+                                    <option key={k} value={k}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                              </optgroup>
+                              <optgroup label="🛂 Identity & Travel Documents">
+                                {Object.entries(DOCUMENT_TYPE_CONFIG)
+                                  .filter(([_, c]) => c.category === "Identity & Travel")
+                                  .map(([k, c]) => (
+                                    <option key={k} value={k}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                              </optgroup>
+                              <optgroup label="🗣️ Language & Tests">
+                                {Object.entries(DOCUMENT_TYPE_CONFIG)
+                                  .filter(([_, c]) => c.category === "Language & Tests")
+                                  .map(([k, c]) => (
+                                    <option key={k} value={k}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                              </optgroup>
+                              <optgroup label="📄 Supporting & Requested Documents">
+                                {Object.entries(DOCUMENT_TYPE_CONFIG)
+                                  .filter(([_, c]) => c.category === "Supporting Documents" || c.category === "Payment Proof")
+                                  .map(([k, c]) => (
+                                    <option key={k} value={k}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                              </optgroup>
                             </select>
                             <p className="text-[11px] text-slate-400">
                               {DOCUMENT_TYPE_CONFIG[selectedDocTypeForUpload]?.description || "Official supporting document"}
