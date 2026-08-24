@@ -94,7 +94,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2.5 text-white/50 text-sm">
                 <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
-                +91 9537 784873
+                +255 764 488 687
               </div>
               <div className="flex items-center gap-2.5 text-white/50 text-sm">
                 <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />

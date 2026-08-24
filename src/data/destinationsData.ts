@@ -37,12 +37,12 @@ export const DESTINATIONS: Destination[] = [
     popular: true,
     tagline: "World-Class Technical & Medical Education at Unbeatable Value",
     description:
-      "India is a premier global education hub offering NAAC A++ accredited universities, state-of-the-art research facilities, and generous 50% to 100% scholarships for African students.",
+      "India is a premier global education hub offering NAAC A++ accredited universities, state-of-the-art research facilities, and generous scholarships for African students.",
     universitiesCount: "25+ Partner Universities",
-    scholarshipMax: "Up to 50-100% Scholarship",
+    scholarshipMax: "Scholarship Guaranteed",
     avgTuition: "$1,800 - $3,500 / year",
     highlights: [
-      "50% Flat Scholarship schemes for African students",
+      "Scholarship schemes for African students",
       "Degrees fully recognized by WHO, WDOMS, UNESCO, AIU",
       "100% English medium instruction",
       "Low cost of living ($100 - $150/month)",
@@ -52,7 +52,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Parul University",
         location: "Vadodara, Gujarat, India",
         accreditation: "NAAC A++ Grade",
-        scholarship: "Flat 50% Scholarship for International Students",
+        scholarship: "Scholarship Guaranteed",
         popularCourses: [
           { name: "B.Tech Computer Science & AI", level: "Bachelor", duration: "4 Years", fee: "$2,200 / year" },
           { name: "Bachelor of Business Administration (BBA)", level: "Bachelor", duration: "3 Years", fee: "$1,800 / year" },
@@ -64,7 +64,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Jain University",
         location: "Bengaluru, Karnataka, India",
         accreditation: "NAAC A++ Grade | AACSB Accredited",
-        scholarship: "Up to 50% Merit & African Diversity Scholarship",
+        scholarship: "Merit & African Diversity Scholarship",
         popularCourses: [
           { name: "B.Tech AI & Data Science", level: "Bachelor", duration: "4 Years", fee: "$2,800 / year" },
           { name: "BCA Computer Applications", level: "Bachelor", duration: "3 Years", fee: "$2,100 / year" },
@@ -75,7 +75,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Lovely Professional University (LPU)",
         location: "Phagwara, Punjab, India",
         accreditation: "NAAC A++ Grade | NIRF Top Ranked",
-        scholarship: "50% International Scholarship",
+        scholarship: "International Scholarship",
         popularCourses: [
           { name: "B.Tech Mechanical / Civil", level: "Bachelor", duration: "4 Years", fee: "$2,500 / year" },
           { name: "B.Des Fashion & Interior Design", level: "Bachelor", duration: "4 Years", fee: "$2,600 / year" },
@@ -96,7 +96,7 @@ export const DESTINATIONS: Destination[] = [
         name: "RK University",
         location: "Rajkot, Gujarat, India",
         accreditation: "UGC & AICTE Approved",
-        scholarship: "50% Tuition Waiver Package",
+        scholarship: "Tuition Waiver Package",
         popularCourses: [
           { name: "B.Sc Agricultural Science", level: "Bachelor", duration: "4 Years", fee: "$1,900 / year" },
           { name: "Diploma in Engineering", level: "Diploma", duration: "3 Years", fee: "$1,400 / year" },
@@ -115,7 +115,7 @@ export const DESTINATIONS: Destination[] = [
     description:
       "China stands at the forefront of global technology, engineering, and medical science. African students enjoy full tuition waivers, accommodation stipends, and internship access at Fortune 500 tech hubs.",
     universitiesCount: "15+ Partner Universities",
-    scholarshipMax: "CSC & Provincial Full Scholarships",
+    scholarshipMax: "Scholarship Guaranteed",
     avgTuition: "$2,500 - $4,500 / year",
     highlights: [
       "Chinese Government Scholarship (CSC) opportunities",
@@ -128,7 +128,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Zhejiang University of Technology",
         location: "Hangzhou, China",
         accreditation: "Double First Class University",
-        scholarship: "Provincial & University Full Tuition Waiver",
+        scholarship: "Scholarship Guaranteed",
         popularCourses: [
           { name: "Software Engineering", level: "Bachelor", duration: "4 Years", fee: "$2,800 / year" },
           { name: "International Economics & Trade", level: "Bachelor", duration: "4 Years", fee: "$2,500 / year" },
@@ -139,7 +139,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Jiangsu University",
         location: "Zhenjiang, China",
         accreditation: "Top 40 National University",
-        scholarship: "JSU President Scholarship (100% Tuition Off)",
+        scholarship: "Scholarship Guaranteed",
         popularCourses: [
           { name: "MBBS Clinical Medicine", level: "Bachelor", duration: "6 Years", fee: "$3,800 / year" },
           { name: "B.Eng Civil Engineering", level: "Bachelor", duration: "4 Years", fee: "$2,900 / year" },
@@ -254,14 +254,14 @@ export const DESTINATIONS: Destination[] = [
     flag: "🇨🇾",
     image: "/videos/images/cyprus.jpg",
     popular: false,
-    tagline: "Mediterranean Climate with Guaranteed Scholarship",
+    tagline: "Mediterranean Climate with Scholarship Guaranteed",
     description:
       "Cyprus is a tropical Mediterranean paradise offering British-system university programs, high safety, and guaranteed scholarships for African applicants.",
     universitiesCount: "6+ Partner Universities",
-    scholarshipMax: "Guaranteed Scholarship",
+    scholarshipMax: "Scholarship Guaranteed",
     avgTuition: "€2,800 - €4,200 / year",
     highlights: [
-      "Guaranteed international student scholarship",
+      "Scholarship Guaranteed for international students",
       "No IELTS required for admission",
       "British curriculum framework and credit transfer",
       "Safe, sunny Mediterranean island lifestyle",
@@ -271,7 +271,7 @@ export const DESTINATIONS: Destination[] = [
         name: "European University of Lefke",
         location: "Lefke, Northern Cyprus",
         accreditation: "YOK & FIBAA Accredited",
-        scholarship: "Guaranteed Scholarship Package",
+        scholarship: "Scholarship Guaranteed",
         popularCourses: [
           { name: "B.Sc Nursing", level: "Bachelor", duration: "4 Years", fee: "€3,100 / year" },
           { name: "B.Eng Electrical Engineering", level: "Bachelor", duration: "4 Years", fee: "€3,300 / year" },
@@ -291,7 +291,7 @@ export const DESTINATIONS: Destination[] = [
     description:
       "Study in Dubai, Ras Al-Khaimah, and Sharjah. Gain direct exposure to multinational companies, tax-free career opportunities, and ultramodern campuses.",
     universitiesCount: "5+ Partner Campuses",
-    scholarshipMax: "Up to 35% Academic Bursary",
+    scholarshipMax: "Scholarship Guaranteed",
     avgTuition: "$4,500 - $7,500 / year",
     highlights: [
       "Tax-free internship and employment opportunities",

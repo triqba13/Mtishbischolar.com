@@ -22,7 +22,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     country: "India",
     city: "Vadodara, Gujarat",
     flag: "🇮🇳",
-    scholarship: "Guaranteed Scholarship",
+    scholarship: "Scholarship Guaranteed",
     courses: [
       "B.Tech Computer Science & AI",
       "B.Tech Information Technology",
@@ -81,7 +81,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     country: "Cyprus",
     city: "Lefke",
     flag: "🇨🇾",
-    scholarship: "Guaranteed Scholarship",
+    scholarship: "Scholarship Guaranteed",
     courses: [
       "B.Sc Software Engineering",
       "B.Sc Civil Engineering",

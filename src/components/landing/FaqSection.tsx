@@ -83,7 +83,7 @@ const faqCategories = [
     questions: [
       {
         q: "Does MtishbiScholars provide scholarship opportunities?",
-        a: "MtishbiScholars connects students with available scholarship opportunities from partner universities and organizations — including up to 50% tuition scholarships at several institutions.",
+        a: "MtishbiScholars connects students with available scholarship opportunities from partner universities and organizations — including tuition scholarships and fee waivers at partner institutions.",
       },
       {
         q: "What are scholarship requirements?",
@@ -95,7 +95,7 @@ const faqCategories = [
       },
       {
         q: "Are full and partial scholarships available?",
-        a: "Both full and partial scholarships are available depending on the university and scholarship program. Many of our partner universities offer 50% fee reductions.",
+        a: "Both full and partial scholarships are available depending on the university and scholarship program. Many of our partner universities offer substantial fee reductions.",
       },
       {
         q: "When should students apply?",

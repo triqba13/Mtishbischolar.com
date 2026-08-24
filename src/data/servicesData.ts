@@ -47,20 +47,20 @@ export const SERVICES_DATA: ServiceDetail[] = [
   {
     id: "scholarship-guidance",
     title: "Scholarship Guidance",
-    subtitle: "Access 50% to 100% Tuition Waivers & Financial Aid Schemes",
+    subtitle: "Access Tuition Waivers & Financial Aid Schemes",
     iconName: "Award",
     color: "from-[#D4AF37] to-[#B8960C]",
     overview:
-      "Education should be accessible to every deserving student. MtishbiScholars works with international universities and government funding bodies to secure partial (50%) and full (100%) tuition scholarships for eligible African applicants.",
+      "Education should be accessible to every deserving student. MtishbiScholars works with international universities and government funding bodies to secure partial and full tuition scholarships for eligible African applicants.",
     benefits: [
-      "Flat 50% tuition scholarship packages for African students in India & Cyprus",
+      "Guaranteed tuition scholarship packages for African students in India & Cyprus",
       "Chinese Government (CSC) & Provincial Full Scholarship support",
       "Special university merit discounts and early-bird bursaries",
       "Guidance on writing winning scholarship essays and motivation letters",
     ],
     processSteps: [
       { title: "1. Eligibility Audit", desc: "We evaluate your GPA/grades to determine highest scholarship category eligibility." },
-      { title: "2. Scholarship Scheme Matching", desc: "Select matching scholarship schemes (Flat 50% African Waiver, Merit Bursary, CSC, etc.)." },
+      { title: "2. Scholarship Scheme Matching", desc: "Select matching scholarship schemes (African Waiver, Merit Bursary, CSC, etc.)." },
       { title: "3. Essay & Dossier Preparation", desc: "Assist in preparing scholarship essays, recommendation letters, and financial declaration." },
       { title: "4. Direct Portal Submission", desc: "Submit your application through official scholarship channels and monitor review boards." },
       { title: "5. Scholarship Award Letter", desc: "Receive your official university scholarship grant letter showing fee reduction." },
@@ -72,8 +72,8 @@ export const SERVICES_DATA: ServiceDetail[] = [
       "Proof of extracurricular activities / leadership (if applicable)",
     ],
     faq: [
-      { q: "Is the 50% scholarship guaranteed?", a: "Yes! Through our partner universities in India and Cyprus, 50% tuition waivers are guaranteed for qualified African applicants." },
-      { q: "Does the scholarship cover accommodation?", a: "Some full scholarships cover accommodation and monthly stipends, while 50% tuition scholarships apply directly to academic tuition fees." },
+      { q: "Are the scholarships guaranteed?", a: "Yes! Through our partner universities in India and Cyprus, tuition waivers are guaranteed for qualified African applicants." },
+      { q: "Does the scholarship cover accommodation?", a: "Some full scholarships cover accommodation and monthly stipends, while tuition scholarships apply directly to academic tuition fees." },
     ],
   },
   {

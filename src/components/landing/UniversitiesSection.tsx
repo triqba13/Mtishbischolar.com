@@ -22,12 +22,13 @@ function cleanScholarshipLabel(label?: string | null): string {
   if (!label) return "Scholarship Available";
   const trimmed = label.trim();
   if (
-    /(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Guaranteed\s*Scholarship/i.test(trimmed) ||
-    /Guaranteed\s*(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Scholarship/i.test(trimmed) ||
-    /Flat\s*50%\s*Scholarship/i.test(trimmed) ||
-    /50%\s*Guaranteed\s*Waiver/i.test(trimmed)
+    /guaranteed/i.test(trimmed) ||
+    /(?:50%|100%|\d+%).*scholarship/i.test(trimmed) ||
+    /scholarship.*(?:50%|100%|\d+%)/i.test(trimmed) ||
+    /flat\s*50%/i.test(trimmed) ||
+    /50%.*waiver/i.test(trimmed)
   ) {
-    return "Guaranteed Scholarship";
+    return "Scholarship Guaranteed";
   }
   return trimmed;
 }
@@ -180,10 +181,10 @@ export default function UniversitiesSection() {
 
             {/* Empty State for Country */}
             {currentUniversities.length === 0 && (
-              <div className="text-center py-12 bg-white border border-slate-200 rounded-3xl p-8 max-w-md mx-auto">
-                <GraduationCap className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                <p className="text-slate-700 font-bold text-base">No universities available in this country yet.</p>
-                <p className="text-slate-500 text-xs mt-1">Please check back soon or explore other destination countries.</p>
+              <div className="text-center py-12 bg-white border border-emerald-200/80 rounded-3xl p-8 max-w-md mx-auto space-y-2">
+                <GraduationCap className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
+                <p className="text-emerald-950 font-black text-base uppercase tracking-wider">APPLICATION AVAILABLE</p>
+                <p className="text-slate-600 text-xs">Apply through the Student Dashboard to continue your application.</p>
               </div>
             )}
 

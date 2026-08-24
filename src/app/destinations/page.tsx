@@ -46,12 +46,13 @@ function cleanScholarshipLabel(label?: string | null): string {
   if (!label) return "Scholarship Available";
   const trimmed = label.trim();
   if (
-    /(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Guaranteed\s*Scholarship/i.test(trimmed) ||
-    /Guaranteed\s*(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Scholarship/i.test(trimmed) ||
-    /Flat\s*50%\s*Scholarship/i.test(trimmed) ||
-    /50%\s*Guaranteed\s*Waiver/i.test(trimmed)
+    /guaranteed/i.test(trimmed) ||
+    /(?:50%|100%|\d+%).*scholarship/i.test(trimmed) ||
+    /scholarship.*(?:50%|100%|\d+%)/i.test(trimmed) ||
+    /flat\s*50%/i.test(trimmed) ||
+    /50%.*waiver/i.test(trimmed)
   ) {
-    return "Guaranteed Scholarship";
+    return "Scholarship Guaranteed";
   }
   return trimmed;
 }
@@ -407,9 +408,10 @@ export default function DestinationsPage() {
 
                   if (countryUnis.length === 0) {
                     return (
-                      <div className="text-center py-8 bg-slate-50 border border-slate-200 rounded-2xl p-6">
-                        <Building2 className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <p className="text-slate-700 font-bold text-sm">No universities available in this country yet.</p>
+                      <div className="text-center py-8 bg-emerald-50/60 border border-emerald-200 rounded-2xl p-6 space-y-1.5">
+                        <Building2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                        <p className="text-emerald-950 font-black text-sm uppercase tracking-wider">APPLICATION AVAILABLE</p>
+                        <p className="text-slate-600 text-xs font-medium">Apply through the Student Dashboard to continue your application.</p>
                       </div>
                     );
                   }
