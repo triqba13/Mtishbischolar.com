@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Mail, Phone, MapPin, Heart, ExternalLink } from "lucide-react";
+import { Mail, Phone, MapPin, Heart, ExternalLink, Headphones } from "lucide-react";
 import Link from "next/link";
 
 const footerLinks = {
@@ -87,18 +87,46 @@ export default function Footer() {
             </p>
 
             {/* Contact mini */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5 text-white/50 text-sm">
-                <Mail className="w-3.5 h-3.5 text-[#D4AF37]" />
-                info@mtishbischolar.com
+            <div className="space-y-3">
+              <div>
+                <a
+                  href="mailto:info@mtishbischolar.com"
+                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors group"
+                >
+                  <Mail className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
+                  <span className="font-semibold">info@mtishbischolar.com</span>
+                </a>
+                <p className="text-white/40 text-[11px] ml-6">
+                  General inquiries, admissions &amp; scholarships
+                </p>
               </div>
-              <div className="flex items-center gap-2.5 text-white/50 text-sm">
-                <Phone className="w-3.5 h-3.5 text-[#D4AF37]" />
-                +255 764 488 687
+
+              <div>
+                <a
+                  href="mailto:support@mtishbischolar.com"
+                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors group"
+                >
+                  <Headphones className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="font-semibold">support@mtishbischolar.com</span>
+                </a>
+                <p className="text-white/40 text-[11px] ml-6">
+                  24/7 technical &amp; account support
+                </p>
               </div>
+
+              <div className="pt-1">
+                <a
+                  href="tel:+255764488687"
+                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors"
+                >
+                  <Phone className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
+                  <span>+255 764 488 687</span>
+                </a>
+              </div>
+
               <div className="flex items-center gap-2.5 text-white/50 text-sm">
-                <MapPin className="w-3.5 h-3.5 text-[#D4AF37]" />
-                Dar es Salaam, Tanzania
+                <MapPin className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
+                <span>Dar es Salaam, Tanzania</span>
               </div>
             </div>
           </div>

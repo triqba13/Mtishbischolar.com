@@ -8,6 +8,7 @@ import {
   Clock,
   MessageSquare,
   ArrowRight,
+  Headphones,
 } from "lucide-react";
 
 const contactChannels = [
@@ -17,19 +18,29 @@ const contactChannels = [
     value: "+255 764 488 687",
     href: "tel:+255764488687",
     sub: "Mon–Sat, 8am–6pm EAT",
-    desc: "Direct telephone line for student inquiries and urgent consultations.",
+    desc: "Direct telephone line for student inquiries, program guidance, and consultations.",
     color: "bg-blue-50 text-blue-600",
     borderHover: "hover:border-blue-200",
   },
   {
     icon: Mail,
-    label: "Email Us",
+    label: "General Inquiries",
     value: "info@mtishbischolar.com",
     href: "mailto:info@mtishbischolar.com",
-    sub: "We reply within 24 hours",
-    desc: "Official inquiries, admissions questions, and general communication.",
+    sub: "Admissions & Scholarships",
+    desc: "For general questions, study abroad information, university admissions, and scholarships.",
     color: "bg-green-50 text-green-600",
     borderHover: "hover:border-green-200",
+  },
+  {
+    icon: Headphones,
+    label: "Technical Support",
+    value: "support@mtishbischolar.com",
+    href: "mailto:support@mtishbischolar.com",
+    sub: "Available 24/7",
+    desc: "Having a technical issue with your account or the platform? Email our 24/7 technical support team.",
+    color: "bg-purple-50 text-purple-600",
+    borderHover: "hover:border-purple-200",
   },
   {
     icon: MapPin,
@@ -37,7 +48,7 @@ const contactChannels = [
     value: "Dar es Salaam, Tanzania",
     href: "#map",
     sub: "Office appointment required",
-    desc: "In-person advisory sessions and verified document consultations.",
+    desc: "In-person advisory sessions, orientation, and verified document consultations.",
     color: "bg-amber-50 text-amber-600",
     borderHover: "hover:border-amber-200",
   },
@@ -73,13 +84,13 @@ export default function ContactSection() {
             </span>
           </h2>
           <p className="text-slate-600 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-            Reach out directly for assistance. Our advisors are ready to guide you
-            step by step toward your international education goals.
+            Reach out directly for assistance. Our advisors and 24/7 technical support team are ready to assist you
+            at every step of your international education journey.
           </p>
         </motion.div>
 
-        {/* ── Top Grid: 3 Contact Channels ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* ── Top Grid: 4 Dedicated Contact Channels ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {contactChannels.map((item, idx) => {
             const Icon = item.icon;
             return (
@@ -88,24 +99,24 @@ export default function ContactSection() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.1 }}
-                className={`flex flex-col justify-between p-6 md:p-8 rounded-3xl bg-slate-50 border border-slate-100 ${item.borderHover} hover:shadow-lg transition-all duration-300 group`}
+                transition={{ duration: 0.4, delay: idx * 0.08 }}
+                className={`flex flex-col justify-between p-6 rounded-3xl bg-slate-50 border border-slate-100 ${item.borderHover} hover:shadow-lg transition-all duration-300 group`}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-4">
                     <div
-                      className={`w-12 h-12 rounded-2xl ${item.color} flex items-center justify-center shadow-xs`}
+                      className={`w-11 h-11 rounded-2xl ${item.color} flex items-center justify-center shadow-xs`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       {item.label}
                     </span>
                   </div>
 
                   <a
                     href={item.href}
-                    className="block text-lg md:text-xl font-extrabold text-[#0F172A] hover:text-[#B8960C] transition-colors mb-2 break-words"
+                    className="block text-base font-extrabold text-[#0F172A] hover:text-[#B8960C] transition-colors mb-1.5 break-all"
                   >
                     {item.value}
                   </a>
@@ -119,8 +130,8 @@ export default function ContactSection() {
                   </p>
                 </div>
 
-                <div className="pt-5 mt-5 border-t border-slate-200/60 flex items-center text-xs font-bold text-slate-700 group-hover:text-[#B8960C] transition-colors">
-                  <span>Connect with an Advisor</span>
+                <div className="pt-4 mt-4 border-t border-slate-200/60 flex items-center text-xs font-bold text-slate-700 group-hover:text-[#B8960C] transition-colors">
+                  <span>Connect with Us</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </motion.div>
@@ -168,7 +179,7 @@ export default function ContactSection() {
             </div>
 
             <p className="text-[11px] text-slate-400 text-center mt-4">
-              Appointments can be scheduled ahead for tailored one-on-one university advisory sessions.
+              Appointments can be scheduled ahead for tailored one-on-one university advisory sessions. Technical support is available 24/7 via support@mtishbischolar.com.
             </p>
           </motion.div>
 
