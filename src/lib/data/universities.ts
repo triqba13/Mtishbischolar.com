@@ -22,7 +22,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     country: "India",
     city: "Vadodara, Gujarat",
     flag: "🇮🇳",
-    scholarship: "50% Guaranteed Scholarship",
+    scholarship: "Guaranteed Scholarship",
     courses: [
       "B.Tech Computer Science & AI",
       "B.Tech Information Technology",
@@ -35,7 +35,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     tuitionFeeUSD: 2500,
     featured: true,
     image: "/videos/images/india.jpg",
-    description: "NAAC A++ Accredited University in India providing world-class tech and engineering degrees with guaranteed 50% tuition waiver for African students.",
+    description: "NAAC A++ Accredited University in India providing world-class tech and engineering degrees with guaranteed tuition waiver for African students.",
   },
   {
     id: "srm-india",
@@ -43,7 +43,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     country: "India",
     city: "Andhra Pradesh",
     flag: "🇮🇳",
-    scholarship: "50% Merit Scholarship",
+    scholarship: "Merit Scholarship",
     courses: [
       "B.Tech Computer Science Engineering",
       "B.Tech Mechanical Engineering",
@@ -81,7 +81,7 @@ export const INITIAL_UNIVERSITIES: University[] = [
     country: "Cyprus",
     city: "Lefke",
     flag: "🇨🇾",
-    scholarship: "50% Guaranteed Waiver",
+    scholarship: "Guaranteed Scholarship",
     courses: [
       "B.Sc Software Engineering",
       "B.Sc Civil Engineering",

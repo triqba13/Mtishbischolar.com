@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { DESTINATIONS, Destination } from "@/data/destinationsData";
@@ -41,14 +42,47 @@ interface LiveUniversity {
   }[];
 }
 
+function cleanScholarshipLabel(label?: string | null): string {
+  if (!label) return "Scholarship Available";
+  const trimmed = label.trim();
+  if (
+    /(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Guaranteed\s*Scholarship/i.test(trimmed) ||
+    /Guaranteed\s*(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Scholarship/i.test(trimmed) ||
+    /Flat\s*50%\s*Scholarship/i.test(trimmed) ||
+    /50%\s*Guaranteed\s*Waiver/i.test(trimmed)
+  ) {
+    return "Guaranteed Scholarship";
+  }
+  return trimmed;
+}
+
 export default function DestinationsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<Destination | null>(null);
   const [applyModalCountry, setApplyModalCountry] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [submittedApply, setSubmittedApply] = useState(false);
   const [liveUnis, setLiveUnis] = useState<LiveUniversity[]>([]);
   const [loadingUnis, setLoadingUnis] = useState(true);
   const [errorUnis, setErrorUnis] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     async function loadLiveData() {
@@ -86,7 +120,7 @@ export default function DestinationsPage() {
           name: u.name,
           country: u.country,
           city: u.city || u.location || "",
-          scholarship: u.scholarship || "Scholarship Available",
+          scholarship: cleanScholarshipLabel(u.scholarship),
           description: u.description || "",
           image: u.image || "/videos/images/india.jpg",
           courses: coursesMap[u.id] || [],
@@ -102,6 +136,14 @@ export default function DestinationsPage() {
 
     loadLiveData();
   }, []);
+
+  const handleApplyAction = (countryName: string) => {
+    if (currentUser) {
+      router.push(`/student/dashboard?country=${encodeURIComponent(countryName)}`);
+    } else {
+      setApplyModalCountry(countryName);
+    }
+  };
 
   const filteredDestinations = DESTINATIONS.filter((d) => {
     const q = searchQuery.toLowerCase();
@@ -281,8 +323,8 @@ export default function DestinationsPage() {
                           </button>
 
                           <button
-                            onClick={() => setApplyModalCountry(dest.country)}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl hover:shadow-lg transition-all text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-600/20"
+                            onClick={() => handleApplyAction(dest.country)}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl hover:shadow-lg transition-all text-xs flex items-center justify-center gap-1 shadow-md shadow-emerald-600/20 cursor-pointer"
                           >
                             <span>Apply Now &rarr;</span>
                           </button>
@@ -310,7 +352,7 @@ export default function DestinationsPage() {
               {/* Close Button */}
               <button
                 onClick={() => setSelectedCountry(null)}
-                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all z-10"
+                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all z-10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -327,7 +369,7 @@ export default function DestinationsPage() {
                       Study in {selectedCountry.country}
                     </h2>
                     <p className="text-emerald-700 text-sm font-extrabold mt-1">
-                      {selectedCountry.scholarshipMax} &bull; Live Partner Institutions
+                      {cleanScholarshipLabel(selectedCountry.scholarshipMax)} &bull; Live Partner Institutions
                     </p>
                   </div>
                 </div>
@@ -336,9 +378,9 @@ export default function DestinationsPage() {
                   onClick={() => {
                     const countryName = selectedCountry.country;
                     setSelectedCountry(null);
-                    setApplyModalCountry(countryName);
+                    handleApplyAction(countryName);
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl hover:shadow-xl transition-all text-sm shrink-0 self-start sm:self-auto shadow-md shadow-emerald-600/20"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl hover:shadow-xl transition-all text-sm shrink-0 self-start sm:self-auto shadow-md shadow-emerald-600/20 cursor-pointer"
                 >
                   Start Application for {selectedCountry.country} &rarr;
                 </button>
@@ -385,14 +427,14 @@ export default function DestinationsPage() {
                               <p className="text-xs text-slate-500 font-medium">📍 {uni.city}, {uni.country}</p>
                             </div>
                             <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-full w-fit">
-                              {uni.scholarship}
+                              {cleanScholarshipLabel(uni.scholarship)}
                             </span>
                           </div>
 
                           {/* Courses Offered */}
                           <div>
                             <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                              Offered Courses ({uni.courses.length}):
+                              {uni.courses.length > 0 ? `Offered Courses (${uni.courses.length}):` : "APPLICATION AVAILABLE"}
                             </p>
                             {uni.courses.length > 0 ? (
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -412,8 +454,8 @@ export default function DestinationsPage() {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 font-medium">
-                                No courses are currently available for this university. (Catalogue undergoing official verification).
+                              <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-3 font-medium">
+                                Apply through the Student Dashboard to continue your university application.
                               </p>
                             )}
                           </div>
@@ -433,9 +475,9 @@ export default function DestinationsPage() {
                   onClick={() => {
                     const countryName = selectedCountry.country;
                     setSelectedCountry(null);
-                    setApplyModalCountry(countryName);
+                    handleApplyAction(countryName);
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl shadow-md transition-all text-xs shrink-0"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl shadow-md transition-all text-xs shrink-0 cursor-pointer"
                 >
                   Apply to {selectedCountry.country} Now &rarr;
                 </button>
@@ -457,7 +499,7 @@ export default function DestinationsPage() {
             >
               <button
                 onClick={() => setApplyModalCountry(null)}
-                className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all"
+                className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -500,15 +542,15 @@ export default function DestinationsPage() {
 
               <div className="space-y-2 pt-2">
                 <Link
-                  href="/auth/login?redirect=/student/dashboard"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all text-xs flex items-center justify-center gap-2"
+                  href={`/auth/login?redirect=${encodeURIComponent('/student/dashboard?country=' + applyModalCountry)}`}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Log In to Student Dashboard &rarr;</span>
                 </Link>
 
                 <Link
-                  href="/auth/register"
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold py-3 rounded-xl border border-slate-200 transition-all text-xs flex items-center justify-center gap-2"
+                  href={`/auth/register?country=${encodeURIComponent(applyModalCountry)}`}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold py-3 rounded-xl border border-slate-200 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Create New Student Account</span>
                 </Link>

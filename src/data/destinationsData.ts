@@ -254,14 +254,14 @@ export const DESTINATIONS: Destination[] = [
     flag: "🇨🇾",
     image: "/videos/images/cyprus.jpg",
     popular: false,
-    tagline: "Mediterranean Climate with 50% Guaranteed Scholarship",
+    tagline: "Mediterranean Climate with Guaranteed Scholarship",
     description:
-      "Cyprus is a tropical Mediterranean paradise offering British-system university programs, high safety, and guaranteed 50% scholarships for African applicants.",
+      "Cyprus is a tropical Mediterranean paradise offering British-system university programs, high safety, and guaranteed scholarships for African applicants.",
     universitiesCount: "6+ Partner Universities",
-    scholarshipMax: "Guaranteed 50-60% Scholarship",
+    scholarshipMax: "Guaranteed Scholarship",
     avgTuition: "€2,800 - €4,200 / year",
     highlights: [
-      "Guaranteed 50% international student scholarship",
+      "Guaranteed international student scholarship",
       "No IELTS required for admission",
       "British curriculum framework and credit transfer",
       "Safe, sunny Mediterranean island lifestyle",
@@ -271,7 +271,7 @@ export const DESTINATIONS: Destination[] = [
         name: "European University of Lefke",
         location: "Lefke, Northern Cyprus",
         accreditation: "YOK & FIBAA Accredited",
-        scholarship: "50% Guaranteed Scholarship Package",
+        scholarship: "Guaranteed Scholarship Package",
         popularCourses: [
           { name: "B.Sc Nursing", level: "Bachelor", duration: "4 Years", fee: "€3,100 / year" },
           { name: "B.Eng Electrical Engineering", level: "Bachelor", duration: "4 Years", fee: "€3,300 / year" },

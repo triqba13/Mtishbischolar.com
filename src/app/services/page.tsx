@@ -105,7 +105,7 @@ export default function ServicesPage() {
           </h1>
 
           <p className="text-slate-600 text-base md:text-lg mb-8 leading-relaxed font-normal">
-            From university selection and guaranteed 50% scholarships to document verification, visa support, and career mentoring — we handle every single step.
+            From university selection and guaranteed scholarships to document verification, visa support, and career mentoring — we handle every single step.
           </p>
 
           {/* Filter Pills */}

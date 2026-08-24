@@ -18,6 +18,20 @@ interface UniversityWithCourses {
   courses: string[];
 }
 
+function cleanScholarshipLabel(label?: string | null): string {
+  if (!label) return "Scholarship Available";
+  const trimmed = label.trim();
+  if (
+    /(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Guaranteed\s*Scholarship/i.test(trimmed) ||
+    /Guaranteed\s*(?:50%|100%|\d+%)\s*(?:-|to)?\s*(?:\d+%)?\s*Scholarship/i.test(trimmed) ||
+    /Flat\s*50%\s*Scholarship/i.test(trimmed) ||
+    /50%\s*Guaranteed\s*Waiver/i.test(trimmed)
+  ) {
+    return "Guaranteed Scholarship";
+  }
+  return trimmed;
+}
+
 export default function UniversitiesSection() {
   const [dbUniversities, setDbUniversities] = useState<UniversityWithCourses[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
@@ -62,7 +76,7 @@ export default function UniversitiesSection() {
           country: u.country || "Other",
           city: u.city || u.location || "",
           flag: u.flag || "🌐",
-          scholarship: u.scholarship || "Scholarship Available",
+          scholarship: cleanScholarshipLabel(u.scholarship),
           description: u.description || "",
           image: u.image || "/videos/images/india.jpg",
           courses: coursesByUni[u.id] || [],
@@ -222,7 +236,7 @@ export default function UniversitiesSection() {
                           {/* Programs */}
                           <div className="mb-4">
                             <p className="text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
-                              Available Courses ({uni.courses.length}):
+                              {uni.courses.length > 0 ? `Available Courses (${uni.courses.length}):` : "APPLICATION AVAILABLE"}
                             </p>
                             {uni.courses.length > 0 ? (
                               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
@@ -241,8 +255,8 @@ export default function UniversitiesSection() {
                                 )}
                               </div>
                             ) : (
-                              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
-                                Catalogue currently undergoing official verification.
+                              <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 font-medium">
+                                Apply through the Student Dashboard to continue your university application.
                               </p>
                             )}
                           </div>
