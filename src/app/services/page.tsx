@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { SERVICES_DATA, ServiceDetail } from "@/data/servicesData";
+import { createClient } from "@/lib/supabase/client";
 import {
   GraduationCap,
   Award,
@@ -22,6 +24,8 @@ import {
   X,
   Sparkles,
   Layers,
+  UserCheck,
+  Lock,
 } from "lucide-react";
 
 // Map icon strings to Lucide components
@@ -36,9 +40,37 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export default function ServicesPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("all");
   const [requestServiceModal, setRequestServiceModal] = useState<string | null>(null);
+  const [accountRequiredService, setAccountRequiredService] = useState<{ id: string; title: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [submittedInquiry, setSubmittedInquiry] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleServiceAction = (service: ServiceDetail) => {
+    if (!currentUser) {
+      setAccountRequiredService({ id: service.id, title: service.title });
+    } else {
+      router.push(`/student/dashboard?service=${encodeURIComponent(service.id)}`);
+    }
+  };
 
   const displayedServices =
     activeTab === "all"
@@ -140,10 +172,10 @@ export default function ServicesPage() {
                 </div>
 
                 <button
-                  onClick={() => setRequestServiceModal(service.title)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl shadow-md shadow-emerald-600/25 transition-all text-sm shrink-0 self-start md:self-auto flex items-center gap-2"
+                  onClick={() => handleServiceAction(service)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 rounded-xl shadow-md shadow-emerald-600/25 transition-all text-sm shrink-0 self-start md:self-auto flex items-center gap-2 cursor-pointer"
                 >
-                  <span>Request {service.title}</span>
+                  <span>Apply for {service.title}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -233,8 +265,8 @@ export default function ServicesPage() {
                   Need custom assistance with <strong className="text-slate-900 font-extrabold">{service.title}</strong>? Our counselors are ready to help.
                 </p>
                 <button
-                  onClick={() => setRequestServiceModal(service.title)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-md shadow-emerald-600/20 transition-all text-xs shrink-0 flex items-center gap-2"
+                  onClick={() => handleServiceAction(service)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-md shadow-emerald-600/20 transition-all text-xs shrink-0 flex items-center gap-2 cursor-pointer"
                 >
                   <span>Get Started Now</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -244,6 +276,67 @@ export default function ServicesPage() {
           );
         })}
       </main>
+
+      {/* ── Account Required Modal ── */}
+      <AnimatePresence>
+        {accountRequiredService && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white border border-emerald-100 rounded-3xl max-w-md w-full p-6 md:p-8 text-slate-800 relative shadow-2xl"
+            >
+              <button
+                onClick={() => setAccountRequiredService(null)}
+                className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center space-y-4">
+                <div className="w-14 h-14 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto shadow-xs">
+                  <UserCheck className="w-7 h-7" />
+                </div>
+
+                <div>
+                  <span className="text-[11px] font-extrabold text-emerald-700 uppercase tracking-wider">
+                    {accountRequiredService.title}
+                  </span>
+                  <h3
+                    className="text-2xl font-black text-slate-900 mt-1 tracking-tight"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    Account Required
+                  </h3>
+                </div>
+
+                <p className="text-slate-600 text-sm leading-relaxed font-normal">
+                  Please create an account or log in to continue with this service application. Your account allows you to submit applications, upload documents, track your application status, and receive updates from MtishbiScholar.
+                </p>
+
+                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href={`/auth/register?service=${encodeURIComponent(accountRequiredService.id)}`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-5 rounded-xl shadow-md shadow-emerald-600/25 hover:shadow-lg transition-all text-sm text-center cursor-pointer"
+                  >
+                    <span>Create Account</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+
+                  <Link
+                    href={`/auth/login?redirect=${encodeURIComponent('/services#' + accountRequiredService.id)}`}
+                    className="inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3.5 px-6 rounded-xl border border-slate-200 transition-all text-sm text-center cursor-pointer"
+                  >
+                    <span>Login</span>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Service Inquiry Modal (Light Green & White Theme) ── */}
       <AnimatePresence>
