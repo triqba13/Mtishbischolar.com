@@ -115,6 +115,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link
+          rel="preload"
+          as="image"
+          href="/videos/hero_poster.webp"
+          fetchPriority="high"
+          type="image/webp"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

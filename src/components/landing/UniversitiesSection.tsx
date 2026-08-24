@@ -167,6 +167,8 @@ export default function UniversitiesSection() {
               {countries.map((country) => (
                 <button
                   key={country}
+                  type="button"
+                  aria-label={`Filter universities by ${country}`}
                   onClick={() => setActiveCountry(country)}
                   className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border ${
                     activeCountry.toLowerCase() === country.toLowerCase()

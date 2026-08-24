@@ -178,10 +178,12 @@ export default function Footer() {
               <input
                 type="email"
                 placeholder="Enter your email"
+                aria-label="Enter your email address"
                 className="flex-1 md:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#D4AF37]/50 outline-none text-white text-sm placeholder-white/20 transition-all"
               />
               <button
                 type="submit"
+                aria-label="Subscribe to newsletter"
                 className="px-5 py-2.5 bg-[#D4AF37] text-[#0F172A] font-bold rounded-xl text-sm hover:bg-[#E8C84A] transition-all shrink-0"
               >
                 Subscribe

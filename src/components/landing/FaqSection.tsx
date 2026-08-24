@@ -239,7 +239,10 @@ function FAQItem({ q, a, index }: { q: string; a: string; index: number }) {
       className="border border-slate-200 rounded-xl overflow-hidden"
     >
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={q}
         className="w-full flex items-center justify-between p-5 text-left bg-white hover:bg-slate-50 transition-colors"
       >
         <span className="text-[#0F172A] font-semibold text-sm pr-4">{q}</span>
@@ -312,6 +315,8 @@ export default function FaqSection() {
             return (
               <motion.button
                 key={cat.id}
+                type="button"
+                aria-label={`View ${cat.title} FAQs`}
                 whileHover={{ y: -3, scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setActiveId(cat.id)}

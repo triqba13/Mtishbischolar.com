@@ -186,7 +186,9 @@ export default function DestinationsSection() {
             className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 text-white relative shadow-2xl space-y-6"
           >
             <button
+              type="button"
               onClick={() => setSelectedDestination(null)}
+              aria-label="Close details modal"
               className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-all"
             >
               <X className="w-5 h-5" />

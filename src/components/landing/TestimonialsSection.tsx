@@ -161,6 +161,7 @@ function VideoCard({ src, caption, description, index }: {
         muted={muted}
         loop
         playsInline
+        preload="none"
         className="absolute inset-0 w-full h-full object-cover"
         onEnded={() => setPlaying(false)}
       />
@@ -169,7 +170,10 @@ function VideoCard({ src, caption, description, index }: {
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
 
       {/* Play/Pause button */}
-      <div className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-200 ${playing ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}>
+      <div
+        className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-200 ${playing ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
+        aria-hidden="true"
+      >
         <div className="w-12 h-12 rounded-full bg-[#D4AF37]/90 backdrop-blur-sm flex items-center justify-center shadow-xl">
           {playing
             ? <Pause className="w-5 h-5 text-[#0F172A] fill-[#0F172A]" />
@@ -180,7 +184,9 @@ function VideoCard({ src, caption, description, index }: {
 
       {/* Mute button */}
       <button
+        type="button"
         onClick={toggleMute}
+        aria-label={muted ? "Unmute video" : "Mute video"}
         className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
       >
         {muted
@@ -199,23 +205,19 @@ function VideoCard({ src, caption, description, index }: {
 }
 
 export default function TestimonialsSection() {
-  const [activeGroup, setActiveGroup] = useState("student");
-  const group = videoGroups.find((g) => g.id === activeGroup)!;
+  const [activeGroup, setActiveGroup] = useState(videoGroups[0].id);
+  const group = videoGroups.find((g) => g.id === activeGroup) || videoGroups[0];
 
   return (
-    <section id="testimonials" className="py-16 bg-[#0F172A] relative overflow-hidden">
-      {/* Top divider */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
-      <div className="absolute top-32 left-10 w-48 h-48 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-32 right-10 w-48 h-48 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-[1440px] mx-auto px-4 md:px-6 lg:px-10 xl:px-16 relative z-10">
-        {/* Header row */}
+    <section id="testimonials" className="py-14 md:py-18 bg-[#080E1A] relative overflow-hidden">
+      <div className="container-wide section-padding">
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
           >
             <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-4">
               <Quote className="w-3.5 h-3.5 text-[#D4AF37]" />
@@ -233,15 +235,19 @@ export default function TestimonialsSection() {
               </span>
             </h2>
             <p className="text-white/40 text-sm mt-1">
-              Real moments captured — students, parents & campuses.
+              Real moments captured — students, parents &amp; campuses.
             </p>
           </motion.div>
 
           {/* Category tabs */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="tablist">
             {videoGroups.map((g) => (
               <button
                 key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={activeGroup === g.id}
+                aria-label={`View ${g.label}`}
                 onClick={() => setActiveGroup(g.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200
                   ${activeGroup === g.id

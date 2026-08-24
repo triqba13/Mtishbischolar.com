@@ -36,17 +36,12 @@ const testimonials = [
   },
 ];
 
-/* ── Bounce left→right keyframe (defined via inline style) ── */
-const bounceVariants = (delay: number) => ({
-  animate: {
-    x: [0, 18, 0, -18, 0],
-    transition: {
-      duration: 4,
-      ease: "easeInOut" as const,
-      repeat: Infinity,
-      delay,
-    },
-  },
+/* ── Card animation variants ── */
+const cardVariants = (delay: number) => ({
+  initial: { opacity: 0, y: 16 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true },
+  transition: { duration: 0.4, delay },
 });
 
 export default function TeamSection() {
@@ -170,14 +165,14 @@ export default function TeamSection() {
           </h3>
         </motion.div>
 
-        {/* ── Bouncing Horizontal Testimonial Cards ── */}
+        {/* ── Testimonial Cards ── */}
         <div className="flex flex-col md:flex-row gap-5">
           {testimonials.map((t) => (
             <motion.div
               key={t.name}
-              variants={bounceVariants(t.delay)}
-              animate="animate"
-              className="flex-1 bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+              {...cardVariants(t.delay)}
+              whileHover={{ y: -4 }}
+              className="flex-1 bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200"
             >
               {/* Quote icon */}
               <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center mb-4`}>

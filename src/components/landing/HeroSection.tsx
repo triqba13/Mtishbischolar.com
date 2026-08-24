@@ -42,10 +42,14 @@ export default function HeroSection() {
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
+          poster="/videos/hero_poster.webp"
           aria-hidden="true"
-          src="/videos/hero_bg.mp4"
-        />
+        >
+          <source media="(max-width: 768px)" src="/videos/hero_bg_mobile.mp4" type="video/mp4" />
+          <source media="(max-width: 1280px)" src="/videos/hero_bg_720p.mp4" type="video/mp4" />
+          <source src="/videos/hero_bg.mp4" type="video/mp4" />
+        </video>
 
         {/* Overlay — light gradient so text stays readable */}
         <div className="absolute inset-0 hero-gradient" />

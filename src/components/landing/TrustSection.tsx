@@ -179,6 +179,8 @@ export default function TrustSection() {
             {/* Country dropdown */}
             <div className="relative flex-1 min-w-0 max-w-none md:max-w-[220px]">
               <button
+                type="button"
+                aria-label="Select Country"
                 onClick={() => { setCountryOpen(!countryOpen); setCourseOpen(false); }}
                 className="w-full flex items-center justify-between bg-white/8 hover:bg-white/12 border border-white/15 hover:border-[#D4AF37]/40 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left transition-all duration-200"
               >
@@ -200,6 +202,7 @@ export default function TrustSection() {
                     {allCountries.map((c) => (
                       <button
                         key={c}
+                        type="button"
                         onClick={() => handleCountrySelect(c)}
                         className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#D4AF37]/15 hover:text-[#D4AF37]
                           ${selectedCountry === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-white/75"}`}
@@ -215,6 +218,8 @@ export default function TrustSection() {
             {/* Course dropdown */}
             <div className="relative flex-1 min-w-0 max-w-none md:max-w-[280px]">
               <button
+                type="button"
+                aria-label="Select Course"
                 onClick={() => { if (selectedCountry) { setCourseOpen(!courseOpen); setCountryOpen(false); } }}
                 disabled={!selectedCountry}
                 className={`w-full flex items-center justify-between border rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left transition-all duration-200
@@ -241,6 +246,7 @@ export default function TrustSection() {
                     {courses.map((c) => (
                       <button
                         key={c}
+                        type="button"
                         onClick={() => handleCourseSelect(c)}
                         className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#D4AF37]/15 hover:text-[#D4AF37]
                           ${selectedCourse === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-white/75"}`}
@@ -255,6 +261,8 @@ export default function TrustSection() {
 
             {/* Go button */}
             <button
+              type="button"
+              aria-label="Search Programs"
               onClick={handleGo}
               disabled={!selectedCountry || !selectedCourse}
               className={`shrink-0 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all duration-200

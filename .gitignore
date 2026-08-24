@@ -56,4 +56,8 @@ node_modules/
 scratch/
 
 # Large media
-public/videos/
+public/videos/new video/
+!public/videos/hero_poster.webp
+!public/videos/hero_bg_mobile.mp4
+!public/videos/hero_bg_720p.mp4
+!public/videos/hero_bg.mp4
