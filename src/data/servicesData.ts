@@ -201,7 +201,7 @@ export const SERVICES_DATA: ServiceDetail[] = [
     iconName: "Users",
     color: "from-emerald-500 to-teal-700",
     overview:
-      "Exclusive peer-to-peer network inside the MtishbiScholar Student Portal. Logged-in students can view profiles and connect directly via WhatsApp with Tanzanian and African scholars currently studying at partner universities in India, China, UK, Germany, Italy, Malaysia, and UAE.",
+      "Exclusive peer-to-peer network inside the MtishbiScholars Student Portal. Logged-in students can view profiles and connect directly via WhatsApp with Tanzanian and African scholars currently studying at partner universities in India, China, UK, Germany, Italy, Malaysia, and UAE.",
     benefits: [
       "Direct WhatsApp contact with verified senior students on campus",
       "First-hand advice on accommodation, food, weather, and campus environment",
@@ -209,17 +209,17 @@ export const SERVICES_DATA: ServiceDetail[] = [
       "Safe and private student directory accessible via Student Portal",
     ],
     processSteps: [
-      { title: "1. Login to Student Portal", desc: "Access your verified MtishbiScholar student dashboard account." },
+      { title: "1. Login to Student Portal", desc: "Access your verified MtishbiScholars student dashboard account." },
       { title: "2. Open Campus Connect Directory", desc: "Filter scholars by country (India, China, UK, Germany, Italy), course, or university." },
       { title: "3. View Student Profile", desc: "Read bio, campus activities, and specific topics the scholar can help you with." },
       { title: "4. Direct WhatsApp Connection", desc: "Click 'Connect on WhatsApp' to open instant chat with the scholar abroad." },
     ],
     requirements: [
-      "Registered MtishbiScholar Student Portal Account",
+      "Registered MtishbiScholars Student Portal Account",
       "Active WhatsApp Messenger Application",
     ],
     faq: [
-      { q: "Is Student Connect free for registered students?", a: "Yes! All verified students on MtishbiScholar have 100% free access to connect with current scholars abroad." },
+      { q: "Is Student Connect free for registered students?", a: "Yes! All verified students on MtishbiScholars have 100% free access to connect with current scholars abroad." },
       { q: "Can I connect with students before traveling?", a: "Yes! You can speak with senior students at your target university before applying or before booking your flight." },
     ],
   },

@@ -2,8 +2,8 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MtishbiScholar — Study Abroad & University Admissions",
-    short_name: "MtishbiScholar",
+    name: "MtishbiScholars — Study Abroad & University Admissions",
+    short_name: "MtishbiScholars",
     description:
       "Platform helping Tanzanian students discover international universities, scholarships, and university admission opportunities.",
     start_url: "/",
@@ -17,9 +17,9 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/x-icon",
       },
       {
-        src: "/logo.jpeg",
+        src: "/logo.png",
         sizes: "512x512",
-        type: "image/jpeg",
+        type: "image/png",
         purpose: "maskable",
       },
     ],

@@ -3,29 +3,29 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "International Universities for Tanzanian Students",
   description:
-    "Explore international study destinations and university opportunities for Tanzanian students with MtishbiScholar.",
+    "Explore international study destinations and university opportunities for Tanzanian students with MtishbiScholars.",
   alternates: {
     canonical: "/destinations",
   },
   openGraph: {
-    title: "International Universities for Tanzanian Students | MtishbiScholar",
+    title: "International Universities for Tanzanian Students | MtishbiScholars",
     description:
-      "Explore international study destinations and university opportunities for Tanzanian students with MtishbiScholar.",
+      "Explore international study destinations and university opportunities for Tanzanian students with MtishbiScholars.",
     url: "/destinations",
     type: "website",
     images: [
       {
-        url: "/logo.jpeg",
+        url: "/logo.png",
         alt: "Mtishbi Scholars official logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "International Universities for Tanzanian Students | MtishbiScholar",
+    title: "International Universities for Tanzanian Students | MtishbiScholars",
     description:
       "Explore international universities and study destinations tailored for Tanzanian students.",
-    images: ["/logo.jpeg"],
+    images: ["/logo.png"],
   },
 };
 

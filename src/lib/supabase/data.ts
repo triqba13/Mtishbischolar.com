@@ -189,7 +189,7 @@ export async function submitApplicationToSupabase(payload: {
       return {
         success: false,
         paymentRequired: true,
-        error: "To apply to partner universities, your one-time MtishbiScholar Application File Opening Fee (TSh 50,000) must be approved first.",
+        error: "To apply to partner universities, your one-time MtishbiScholars Application File Opening Fee (TSh 50,000) must be approved first.",
       };
     }
 
@@ -254,7 +254,7 @@ export async function requestUnlistedCourseApplication(payload: {
       return {
         success: false,
         paymentRequired: true,
-        error: "To apply to partner universities, your one-time MtishbiScholar Application File Opening Fee (TSh 50,000) must be approved first.",
+        error: "To apply to partner universities, your one-time MtishbiScholars Application File Opening Fee (TSh 50,000) must be approved first.",
       };
     }
 
@@ -1465,7 +1465,7 @@ export function calculateStudentProgress(
         badge: "READY TO APPLY",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
         title: "Choose Your University & Program",
-        description: "Your MtishbiScholar file is active! Select your preferred partner university, program of study, and intake to start your application.",
+        description: "Your MtishbiScholars file is active! Select your preferred partner university, program of study, and intake to start your application.",
         estimatedTimeline: "Immediate",
         appliedToSummary: "Select from 15+ Partner Universities",
         actionLabel: "Start University Application →",

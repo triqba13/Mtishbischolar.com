@@ -25,15 +25,15 @@ const baseUrl = (
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
-    template: "%s | MtishbiScholar",
+    default: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
+    template: "%s | MtishbiScholars",
   },
   description:
-    "MtishbiScholar helps Tanzanian students discover international universities, explore scholarships, submit university applications, manage admission documents, and receive support throughout their study abroad journey.",
+    "MtishbiScholars helps Tanzanian students discover international universities, explore scholarships, submit university applications, manage admission documents, and receive support throughout their study abroad journey.",
   keywords: [
-    "MtishbiScholar",
-    "Mtishbi Scholar",
-    "MtishbiScholar Tanzania",
+    "MtishbiScholars",
+    "Mtishbi Scholars",
+    "MtishbiScholars Tanzania",
     "study abroad Tanzania",
     "study abroad for Tanzanian students",
     "universities abroad for Tanzanian students",
@@ -48,10 +48,10 @@ export const metadata: Metadata = {
     "scholarships abroad Tanzania",
     "international education Tanzania",
   ],
-  authors: [{ name: "MtishbiScholar", url: baseUrl }],
-  creator: "MtishbiScholar",
-  publisher: "MtishbiScholar",
-  applicationName: "MtishbiScholar",
+  authors: [{ name: "MtishbiScholars", url: baseUrl }],
+  creator: "MtishbiScholars",
+  publisher: "MtishbiScholars",
+  applicationName: "MtishbiScholars",
   alternates: {
     canonical: "/",
   },
@@ -59,23 +59,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_TZ",
     url: "/",
-    siteName: "MtishbiScholar",
-    title: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
+    siteName: "MtishbiScholars",
+    title: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
     description:
-      "Discover international universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
+      "Discover international universities, scholarships, and application support for Tanzanian students with MtishbiScholars.",
     images: [
       {
-        url: "/logo.jpeg",
-        alt: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
+        url: "/logo.png",
+        alt: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MtishbiScholar — Study Abroad & University Admissions",
+    title: "MtishbiScholars — Study Abroad & University Admissions",
     description:
-      "Discover universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
-    images: ["/logo.jpeg"],
+      "Discover universities, scholarships, and application support for Tanzanian students with MtishbiScholars.",
+    images: ["/logo.png"],
   },
   robots: {
     index: true,
@@ -90,8 +90,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/logo.jpeg",
-    shortcut: "/logo.jpeg",
+    apple: "/logo.png",
+    shortcut: "/logo.png",
   },
   verification: {
     google: "google89835c77cb77f8f8",

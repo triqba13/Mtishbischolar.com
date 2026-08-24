@@ -38,7 +38,7 @@ const scholarships = [
     badgeColor: "bg-orange-100 text-orange-700",
   },
   {
-    name: "MtishbiScholar Merit Award",
+    name: "MtishbiScholars Merit Award",
     country: "Tanzania 🇹🇿",
     type: "Partial Scholarship",
     coverage: ["Application Fees", "Visa Support", "Counseling"],

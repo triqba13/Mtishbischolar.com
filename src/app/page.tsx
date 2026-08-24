@@ -22,11 +22,11 @@ const jsonLd = {
     {
       "@type": "EducationalOrganization",
       "@id": `${baseUrl}/#organization`,
-      name: "MtishbiScholar",
-      alternateName: "Mtishbi Scholar",
+      name: "MtishbiScholars",
+      alternateName: "Mtishbi Scholars",
       url: baseUrl,
-      logo: `${baseUrl}/logo.jpeg`,
-      image: `${baseUrl}/logo.jpeg`,
+      logo: `${baseUrl}/logo.png`,
+      image: `${baseUrl}/logo.png`,
       description:
         "Platform helping Tanzanian students discover international universities, scholarships, and university admission opportunities.",
       address: {
@@ -44,7 +44,7 @@ const jsonLd = {
       "@type": "WebSite",
       "@id": `${baseUrl}/#website`,
       url: baseUrl,
-      name: "MtishbiScholar",
+      name: "MtishbiScholars",
       description:
         "Study Abroad & University Admissions for Tanzanian Students",
       publisher: {

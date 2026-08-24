@@ -56,7 +56,7 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-3 mb-3 inline-flex" aria-label="Mtishbi Scholars Home">
               <div className="relative h-12 w-16 overflow-hidden rounded-xl">
                 <Image
-                  src="/logo.jpeg"
+                  src="/logo.png"
                   alt="Mtishbi Scholars official logo"
                   fill
                   className="object-contain"
@@ -68,7 +68,7 @@ export default function Footer() {
                   className="text-white font-extrabold text-lg leading-none"
                   style={{ fontFamily: "var(--font-heading)" }}
                 >
-                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                  Mtishbi<span className="text-[#D4AF37]">Scholars</span>
                 </span>
                 <div className="text-white/30 text-[10px] tracking-widest uppercase mt-1">
                   Your Pathway to Global Education
@@ -165,7 +165,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="py-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/30 text-xs">
-            © {year} MtishbiScholar. All rights reserved. Made with{" "}
+            © {year} MtishbiScholars. All rights reserved. Made with{" "}
             <Heart className="w-3 h-3 text-[#D4AF37] inline" /> in Tanzania.
           </p>
           <div className="flex items-center gap-4">

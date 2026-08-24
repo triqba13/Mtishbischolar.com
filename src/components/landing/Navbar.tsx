@@ -52,7 +52,7 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-2.5 group shrink-0" aria-label="Mtishbi Scholars Home">
               <div className="relative h-10 w-12 overflow-hidden rounded-lg">
                 <Image
-                  src="/logo.jpeg"
+                  src="/logo.png"
                   alt="Mtishbi Scholars official logo"
                   fill
                   className="object-contain"
@@ -65,7 +65,7 @@ export default function Navbar() {
                   className="text-white font-extrabold text-base leading-none tracking-tight"
                   style={{ fontFamily: "var(--font-heading)" }}
                 >
-                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                  Mtishbi<span className="text-[#D4AF37]">Scholars</span>
                 </span>
               </div>
             </Link>
@@ -130,7 +130,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-2.5">
                   <div className="relative h-10 w-12 overflow-hidden rounded-lg">
                     <Image
-                      src="/logo.jpeg"
+                      src="/logo.png"
                       alt="Mtishbi Scholars official logo"
                       fill
                       className="object-contain"
@@ -141,7 +141,7 @@ export default function Navbar() {
                     className="text-white font-extrabold text-lg leading-none"
                     style={{ fontFamily: "var(--font-heading)" }}
                   >
-                    Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                    Mtishbi<span className="text-[#D4AF37]">Scholars</span>
                   </span>
                 </div>
                 <button

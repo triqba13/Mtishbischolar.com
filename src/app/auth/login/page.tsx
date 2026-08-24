@@ -237,7 +237,7 @@ function LoginContent() {
         <div className="flex justify-center mb-4">
           <div className="relative h-12 w-16 overflow-hidden rounded-xl">
             <Image
-              src="/logo.jpeg"
+              src="/logo.png"
               alt="Mtishbi Scholars official logo"
               fill
               className="object-contain"

@@ -39,7 +39,7 @@ export default function FinanceSidebar() {
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-800">
         <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
           <Image
-            src="/logo.jpeg"
+            src="/logo.png"
             alt="Mtishbi Scholars official logo"
             fill
             className="object-contain"
@@ -48,7 +48,7 @@ export default function FinanceSidebar() {
         </div>
         <div>
           <p className="text-white font-extrabold text-sm leading-none">
-            Mtishbi<span className="text-emerald-400">Scholar</span>
+            Mtishbi<span className="text-emerald-400">Scholars</span>
           </p>
           <p className="text-slate-400 text-[10px] font-semibold mt-1 tracking-wider uppercase">
             Finance Panel
