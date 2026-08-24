@@ -53,15 +53,26 @@ export default function Footer() {
         <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-block mb-3" aria-label="Mtishbi Scholars Home">
-              <div className="relative h-16 w-20 overflow-hidden rounded-xl">
+            <Link href="/" className="flex items-center gap-3 mb-3 inline-flex" aria-label="Mtishbi Scholars Home">
+              <div className="relative h-12 w-16 overflow-hidden rounded-xl">
                 <Image
                   src="/logo.jpeg"
                   alt="Mtishbi Scholars official logo"
                   fill
                   className="object-contain"
-                  sizes="80px"
+                  sizes="64px"
                 />
+              </div>
+              <div>
+                <span
+                  className="text-white font-extrabold text-lg leading-none"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                </span>
+                <div className="text-white/30 text-[10px] tracking-widest uppercase mt-1">
+                  Your Pathway to Global Education
+                </div>
               </div>
             </Link>
             {/* Tagline from VVX */}

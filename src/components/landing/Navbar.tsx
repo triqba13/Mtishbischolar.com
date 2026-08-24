@@ -50,15 +50,23 @@ export default function Navbar() {
 
             {/* Logo — kushoto kabisa */}
             <Link href="/" className="flex items-center gap-2.5 group shrink-0" aria-label="Mtishbi Scholars Home">
-              <div className="relative h-11 w-14 overflow-hidden rounded-xl">
+              <div className="relative h-10 w-12 overflow-hidden rounded-lg">
                 <Image
                   src="/logo.jpeg"
                   alt="Mtishbi Scholars official logo"
                   fill
                   className="object-contain"
-                  sizes="56px"
+                  sizes="48px"
                   priority
                 />
+              </div>
+              <div className="flex flex-col">
+                <span
+                  className="text-white font-extrabold text-base leading-none tracking-tight"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                </span>
               </div>
             </Link>
 
@@ -119,14 +127,22 @@ export default function Navbar() {
             />
             <div className="absolute right-0 top-0 bottom-0 w-80 bg-[#0F172A] shadow-2xl p-6 flex flex-col">
               <div className="flex items-center justify-between mb-8 mt-2">
-                <div className="relative h-11 w-14 overflow-hidden rounded-xl">
-                  <Image
-                    src="/logo.jpeg"
-                    alt="Mtishbi Scholars official logo"
-                    fill
-                    className="object-contain"
-                    sizes="56px"
-                  />
+                <div className="flex items-center gap-2.5">
+                  <div className="relative h-10 w-12 overflow-hidden rounded-lg">
+                    <Image
+                      src="/logo.jpeg"
+                      alt="Mtishbi Scholars official logo"
+                      fill
+                      className="object-contain"
+                      sizes="48px"
+                    />
+                  </div>
+                  <span
+                    className="text-white font-extrabold text-lg leading-none"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    Mtishbi<span className="text-[#D4AF37]">Scholar</span>
+                  </span>
                 </div>
                 <button
                   onClick={() => setMobileOpen(false)}
