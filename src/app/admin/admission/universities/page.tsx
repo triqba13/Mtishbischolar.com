@@ -94,18 +94,18 @@ export default function UniversitiesPage() {
           <ChevronRight className="w-3 h-3" />
           <span className="text-slate-600 font-medium">Universities</span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Universities</h1>
-            <p className="text-slate-500 text-sm mt-1">Active university partnerships and real application counts.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Universities</h1>
+            <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Active university partnerships and real application counts.</p>
           </div>
           <button
             onClick={loadUniversities}
             disabled={loading}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+            className="self-start sm:self-auto flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-50 shadow-sm transition-all cursor-pointer disabled:opacity-60"
             title="Refresh universities"
           >
-            <RefreshCw className={`w-4 h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
             <span className="text-xs font-semibold">Refresh</span>
           </button>
         </div>
@@ -127,21 +127,21 @@ export default function UniversitiesPage() {
       )}
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search university or country..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
         <select
           value={selectedCountry}
           onChange={(e) => setSelectedCountry(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
         >
           {countries.map((c) => (
             <option key={c}>{c}</option>
@@ -160,7 +160,7 @@ export default function UniversitiesPage() {
           <p className="text-sm">No partner universities found matching criteria.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {filtered.map((u) => (
             <div
               key={u.id}

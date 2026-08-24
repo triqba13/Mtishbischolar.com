@@ -101,8 +101,8 @@ export default function HeroSection() {
 
 
       {/* ── Content ──────────────────────────── */}
-      <div className="relative z-10 container-wide section-padding w-full pt-32 pb-20">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <div className="relative z-10 container-wide section-padding w-full pt-24 sm:pt-28 md:pt-32 pb-14 sm:pb-20">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left — Text */}
           <motion.div style={{ y: textY }}>
             {/* Badge */}
@@ -110,11 +110,11 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 bg-[#D4AF37]/15 border border-[#D4AF37]/30 rounded-full px-4 py-1.5 mb-8"
+              className="inline-flex items-center gap-2 bg-[#D4AF37]/15 border border-[#D4AF37]/30 rounded-full px-3.5 sm:px-4 py-1 sm:py-1.5 mb-6 sm:mb-8"
             >
               <Globe className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span className="text-[#D4AF37] text-xs font-semibold tracking-wider uppercase">
-                Tanzania's #1 Study Abroad Platform
+              <span className="text-[#D4AF37] text-[11px] sm:text-xs font-semibold tracking-wider uppercase">
+                Tanzania&apos;s #1 Study Abroad Platform
               </span>
             </motion.div>
 
@@ -123,11 +123,11 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.05] tracking-tight mb-6"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.08] tracking-tight mb-5 sm:mb-6"
               style={{ fontFamily: "var(--font-heading)" }}
             >
               Your Pathway to{" "}
-              <span className="relative">
+              <span className="relative inline-block">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#E8C84A] to-[#D4AF37]">
                   Global Education
                 </span>
@@ -145,7 +145,7 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="text-white/70 text-lg md:text-xl leading-relaxed mb-10 max-w-xl"
+              className="text-white/75 text-base sm:text-lg md:text-xl leading-relaxed mb-8 sm:mb-10 max-w-xl"
             >
               From university applications to offer letters, we manage your
               entire international admission journey on one secure platform.
@@ -156,18 +156,18 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="flex flex-wrap gap-4"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4"
             >
               <Link
                 href="/auth/register"
-                className="group inline-flex items-center gap-2 bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] text-[#0F172A] font-bold px-8 py-4 rounded-2xl hover:shadow-2xl hover:shadow-[#D4AF37]/30 transition-all duration-300 hover:-translate-y-1 text-base"
+                className="group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4AF37] to-[#E8C84A] text-[#0F172A] font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl hover:shadow-2xl hover:shadow-[#D4AF37]/30 transition-all duration-300 hover:-translate-y-0.5 text-sm sm:text-base text-center"
               >
                 Start Your Journey
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
                 href="#universities"
-                className="inline-flex items-center gap-2 border border-white/20 text-white font-semibold px-8 py-4 rounded-2xl hover:border-[#D4AF37]/50 hover:bg-white/5 transition-all duration-300 text-base"
+                className="inline-flex items-center justify-center gap-2 border border-white/20 text-white font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl hover:border-[#D4AF37]/50 hover:bg-white/5 transition-all duration-300 text-sm sm:text-base text-center"
               >
                 Explore Universities
               </a>

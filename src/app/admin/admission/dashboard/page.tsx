@@ -198,47 +198,47 @@ export default function AdmissionDashboardPage() {
       )}
 
       {/* Page Header */}
-      <motion.div variants={item} className="flex items-start justify-between">
+      <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
             {getGreeting(officerName)}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
             Here&apos;s what&apos;s happening with admissions today.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={loadDashboardData}
             disabled={loading}
-            className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm cursor-pointer disabled:opacity-60"
+            className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm cursor-pointer disabled:opacity-60"
             title="Refresh dashboard data"
           >
-            <RefreshCw className={`w-4 h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
             <span className="font-medium text-xs">Refresh</span>
           </button>
-          <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-            <CalendarRange className="w-4 h-4 text-slate-400" />
-            <span className="font-medium">{formatted} – {weekEnd}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+            <CalendarRange className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+            <span className="font-medium text-xs sm:text-sm">{formatted} – {weekEnd}</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
         </div>
       </motion.div>
 
       {/* KPI Cards */}
-      <motion.div variants={item} className="grid grid-cols-5 gap-4">
+      <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {kpiCards.map((card) => (
           <KpiCard key={card.title} {...card} />
         ))}
       </motion.div>
 
       {/* Recent Applications (Full Width) */}
-      <motion.div variants={item}>
+      <motion.div variants={item} className="w-full overflow-hidden">
         <RecentApplicationsTable applications={dashboardData?.recentApplications} />
       </motion.div>
 
       {/* Bottom Row */}
-      <motion.div variants={item} className="grid grid-cols-4 gap-4">
+      <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <PendingTasks tasks={dashboardData?.pendingTasks} />
         <NotificationsWidget
           notifications={dashboardData?.notifications}
@@ -249,9 +249,9 @@ export default function AdmissionDashboardPage() {
       </motion.div>
 
       {/* System Status Footer */}
-      <motion.div variants={item} className="flex items-center justify-between bg-white rounded-xl border border-slate-200 px-5 py-3">
+      <motion.div variants={item} className="flex flex-col sm:flex-row items-center justify-between bg-white rounded-xl border border-slate-200 px-4 sm:px-5 py-3 gap-2 text-center sm:text-left">
         <span className="text-xs text-slate-500">
-          MtishbiScholar Admission System
+          MtishbiScholars Admission System
         </span>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

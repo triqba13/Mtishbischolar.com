@@ -33,6 +33,18 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
   return (
     <>
       <motion.nav
@@ -114,18 +126,22 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: "100%" }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-0 z-40 lg:hidden"
-          >
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          <div className="fixed inset-0 z-[100] lg:hidden flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md"
               onClick={() => setMobileOpen(false)}
             />
-            <div className="absolute right-0 top-0 bottom-0 w-80 bg-[#0F172A] shadow-2xl p-6 flex flex-col">
+            <motion.div
+              initial={{ opacity: 0, x: "100%" }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-[320px] sm:max-w-sm h-full bg-[#0B192C] border-l border-slate-800 shadow-2xl p-6 flex flex-col z-10 overflow-y-auto"
+            >
               <div className="flex items-center justify-between mb-8 mt-2">
                 <div className="flex items-center gap-2.5">
                   <div className="relative h-10 w-12 overflow-hidden rounded-lg">
@@ -146,7 +162,7 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={() => setMobileOpen(false)}
-                  className="text-white/70 hover:text-white p-2"
+                  className="text-white/70 hover:text-white p-2 rounded-lg hover:bg-white/10"
                   aria-label="Close menu"
                 >
                   <X size={20} />
@@ -162,7 +178,7 @@ export default function Navbar() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setMobileOpen(false)}
-                    className="text-white/80 hover:text-[#D4AF37] hover:bg-white/5 px-4 py-3 rounded-xl text-base font-medium transition-all"
+                    className="text-white/85 hover:text-[#D4AF37] hover:bg-white/5 px-4 py-3 rounded-xl text-base font-medium transition-all"
                   >
                     {link.label}
                   </motion.a>
@@ -185,8 +201,8 @@ export default function Navbar() {
                   Start Your Journey
                 </Link>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>

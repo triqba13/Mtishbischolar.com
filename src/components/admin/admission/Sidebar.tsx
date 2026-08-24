@@ -40,7 +40,12 @@ const navItems = [
   { href: "/admin/admission/settings", icon: Settings, label: "Settings" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { logout, role, roleLabel } = useAdminAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -68,27 +73,38 @@ export default function Sidebar() {
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
-  return (
-    <aside className="fixed top-0 left-0 h-screen w-[220px] bg-[#0B132B] flex flex-col z-50 border-r border-slate-800">
+  const renderSidebarContent = (isMobile = false) => (
+    <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-800">
-        <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
-          <Image
-            src="/logo.png"
-            alt="Mtishbi Scholars official logo"
-            fill
-            className="object-contain"
-            sizes="44px"
-          />
+      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
+            <Image
+              src="/logo.png"
+              alt="Mtishbi Scholars official logo"
+              fill
+              className="object-contain"
+              sizes="44px"
+            />
+          </div>
+          <div>
+            <p className="text-white font-extrabold text-sm leading-none">
+              Mtishbi<span className="text-blue-400">Scholars</span>
+            </p>
+            <p className="text-slate-400 text-[10px] font-semibold mt-1 tracking-wider uppercase">
+              {role === "super_admin" ? "Super Admin" : "Admission Panel"}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-white font-extrabold text-sm leading-none">
-            Mtishbi<span className="text-blue-400">Scholars</span>
-          </p>
-          <p className="text-slate-400 text-[10px] font-semibold mt-1 tracking-wider uppercase">
-            {role === "super_admin" ? "Super Admin" : "Admission Panel"}
-          </p>
-        </div>
+        {isMobile && onClose && (
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -98,45 +114,53 @@ export default function Sidebar() {
             return (
               <div key={item.label}>
                 <button
+                  type="button"
                   onClick={() => setPassportOpen(!passportOpen)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group cursor-pointer
-                    ${
-                      passportOpen || item.children.some((c) => isActive(c.href))
-                        ? "text-white bg-slate-800/80"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                    }`}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    pathname.includes("/passport") || pathname.includes("/visa")
+                      ? "text-white bg-slate-800/80"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                  }`}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    <item.icon className="w-4 h-4 text-blue-400" />
+                    <span>{item.label}</span>
+                  </div>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform ${passportOpen ? "rotate-180" : ""}`}
+                    className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                      passportOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
+
+                <AnimatePresence>
                   {passportOpen && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+                      className="overflow-hidden pl-7 pr-1 py-1 space-y-1"
                     >
-                      <div className="pl-9 py-1 space-y-1">
-                        {item.children.map((child) => (
+                      {item.children.map((sub) => {
+                        const active = isActive(sub.href);
+                        return (
                           <Link
-                            key={child.href}
-                            href={child.href}
-                            className={`block px-3 py-2 rounded-lg text-xs font-semibold transition-all
-                              ${
-                                isActive(child.href)
-                                  ? "text-white bg-blue-600 shadow-sm shadow-blue-600/30"
-                                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                              }`}
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={() => {
+                              if (isMobile && onClose) onClose();
+                            }}
+                            className={`block px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                              active
+                                ? "text-blue-400 bg-blue-500/10 font-bold"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/40"
+                            }`}
                           >
-                            {child.label}
+                            {sub.label}
                           </Link>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -144,18 +168,23 @@ export default function Sidebar() {
             );
           }
 
+          const active = isActive(item.href);
+          const Icon = item.icon;
+
           return (
             <Link
               key={item.href}
               href={item.href!}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative group
-                ${
-                  isActive(item.href!)
-                    ? "text-white bg-blue-600 shadow-md shadow-blue-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                }`}
+              onClick={() => {
+                if (isMobile && onClose) onClose();
+              }}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative group ${
+                active
+                  ? "text-white bg-blue-600 shadow-md shadow-blue-600/30"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+              }`}
             >
-              <item.icon className="w-4 h-4 shrink-0" />
+              <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.href === "/admin/admission/notifications" && unreadCount > 0 && (
                 <span className="min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -174,6 +203,9 @@ export default function Sidebar() {
             </p>
             <Link
               href="/admin/finance/dashboard"
+              onClick={() => {
+                if (isMobile && onClose) onClose();
+              }}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all"
             >
               <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -181,6 +213,9 @@ export default function Sidebar() {
             </Link>
             <Link
               href="/admin/super/dashboard"
+              onClick={() => {
+                if (isMobile && onClose) onClose();
+              }}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all"
             >
               <ShieldAlert className="w-4 h-4 text-indigo-400" />
@@ -200,7 +235,40 @@ export default function Sidebar() {
           <span>Logout</span>
         </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop static sidebar */}
+      <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-[220px] bg-[#0B132B] flex-col z-40 border-r border-slate-800">
+        {renderSidebarContent(false)}
+      </aside>
+
+      {/* Mobile off-canvas drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={onClose}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-[250px] max-w-[80vw] h-full bg-[#0B132B] flex flex-col z-10 shadow-2xl border-r border-slate-800"
+            >
+              {renderSidebarContent(true)}
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
-

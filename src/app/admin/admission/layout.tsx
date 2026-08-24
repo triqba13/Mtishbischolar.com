@@ -1,5 +1,5 @@
 import Sidebar from "@/components/admin/admission/Sidebar";
-import Header from "@/components/admin/admission/Header";
+import AdminLayoutShell from "@/components/admin/AdminLayoutShell";
 import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 
 export default function AdmissionLayout({
@@ -9,13 +9,12 @@ export default function AdmissionLayout({
 }) {
   return (
     <AdminAuthProvider>
-      <div className="min-h-screen admin-root-layout bg-[#F8FAFC] transition-colors duration-200">
-        <Sidebar />
-        <Header />
-        <main className="ml-[220px] pt-16 min-h-screen">
-          <div className="p-6">{children}</div>
-        </main>
-      </div>
+      <AdminLayoutShell
+        headerTitle="Admission Management"
+        sidebar={<Sidebar />}
+      >
+        {children}
+      </AdminLayoutShell>
     </AdminAuthProvider>
   );
 }
