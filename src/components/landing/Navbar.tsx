@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 
 const navLinks = [
-  { label: "Home", href: "/#home" },
+  { label: "Home", href: "/" },
   { label: "Services", href: "/services" },
   { label: "Universities", href: "/#universities" },
   { label: "Destinations", href: "/destinations" },
@@ -88,6 +88,12 @@ export default function Navbar() {
                 <a
                   key={link.href}
                   href={link.href}
+                  onClick={(e) => {
+                    if (link.href === "/" && typeof window !== "undefined" && window.location.pathname === "/") {
+                      e.preventDefault();
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
                   className="text-white/80 hover:text-[#D4AF37] px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/5 whitespace-nowrap"
                 >
                   {link.label}
@@ -177,7 +183,13 @@ export default function Navbar() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    onClick={() => setMobileOpen(false)}
+                    onClick={(e) => {
+                      setMobileOpen(false);
+                      if (link.href === "/" && typeof window !== "undefined" && window.location.pathname === "/") {
+                        e.preventDefault();
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }}
                     className="text-white/85 hover:text-[#D4AF37] hover:bg-white/5 px-4 py-3 rounded-xl text-base font-medium transition-all"
                   >
                     {link.label}
