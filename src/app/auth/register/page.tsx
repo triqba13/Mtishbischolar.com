@@ -357,16 +357,15 @@ export default function RegisterPage() {
       >
         {/* Brand Badge */}
         <div className="flex justify-center mb-4">
-          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-3.5 py-1.5 rounded-xl">
-            <div className="w-5 h-5 rounded-md bg-[#D4AF37] flex items-center justify-center">
-              <GraduationCap className="w-3.5 h-3.5 text-[#0F172A]" />
-            </div>
-            <span
-              className="text-white font-extrabold text-sm tracking-wide"
-              style={{ fontFamily: "var(--font-heading)" }}
-            >
-              Mtishbi<span className="text-[#D4AF37]">Scholar</span>
-            </span>
+          <div className="relative h-12 w-16 overflow-hidden rounded-xl">
+            <Image
+              src="/logo.jpeg"
+              alt="Mtishbi Scholars official logo"
+              fill
+              className="object-contain"
+              sizes="64px"
+              priority
+            />
           </div>
         </div>
 

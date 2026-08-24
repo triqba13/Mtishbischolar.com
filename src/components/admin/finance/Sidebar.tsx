@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -35,9 +36,15 @@ export default function FinanceSidebar() {
   return (
     <aside className="fixed top-0 left-0 h-screen w-[220px] bg-[#0B132B] flex flex-col z-50 border-r border-slate-800">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-800">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
-          <DollarSign className="w-4.5 h-4.5 text-white" />
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-800">
+        <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
+          <Image
+            src="/logo.jpeg"
+            alt="Mtishbi Scholars official logo"
+            fill
+            className="object-contain"
+            sizes="44px"
+          />
         </div>
         <div>
           <p className="text-white font-extrabold text-sm leading-none">

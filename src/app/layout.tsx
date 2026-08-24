@@ -65,9 +65,7 @@ export const metadata: Metadata = {
       "Discover international universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "/logo.jpeg",
         alt: "MtishbiScholar — Study Abroad & University Admissions for Tanzanian Students",
       },
     ],
@@ -77,7 +75,7 @@ export const metadata: Metadata = {
     title: "MtishbiScholar — Study Abroad & University Admissions",
     description:
       "Discover universities, scholarships, and application support for Tanzanian students with MtishbiScholar.",
-    images: ["/og-image.png"],
+    images: ["/logo.jpeg"],
   },
   robots: {
     index: true,

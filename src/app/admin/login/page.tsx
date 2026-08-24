@@ -202,18 +202,19 @@ export default function AdminLoginPage() {
       >
         {/* Top Brand Badge */}
         <div className="flex justify-center mb-4">
-          <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-400/40 px-3.5 py-1.5 rounded-xl">
-            <div className="w-5 h-5 rounded-md bg-blue-600 flex items-center justify-center shadow-md">
-              <GraduationCap className="w-3.5 h-3.5 text-white" />
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative h-12 w-16 overflow-hidden rounded-xl">
+              <Image
+                src="/logo.jpeg"
+                alt="Mtishbi Scholars official logo"
+                fill
+                className="object-contain"
+                sizes="64px"
+                priority
+              />
             </div>
-            <span
-              className="text-white font-extrabold text-sm tracking-wide"
-              style={{ fontFamily: "var(--font-heading)" }}
-            >
-              Mtishbi<span className="text-blue-400">Scholar</span>
-            </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-md border border-blue-400/30">
-              Admin
+            <span className="text-[10px] uppercase font-bold tracking-wider bg-blue-500/30 text-blue-200 px-2.5 py-0.5 rounded-full border border-blue-400/30">
+              Admin Portal
             </span>
           </div>
         </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { GraduationCap, Mail, Phone, MapPin, Heart, ExternalLink } from "lucide-react";
+import Image from "next/image";
+import { Mail, Phone, MapPin, Heart, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 const footerLinks = {
@@ -52,24 +53,19 @@ export default function Footer() {
         <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8960C] flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-[#0F172A]" />
-              </div>
-              <div>
-                <span
-                  className="text-white font-extrabold text-lg leading-none"
-                  style={{ fontFamily: "var(--font-heading)" }}
-                >
-                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
-                </span>
-                <div className="text-white/30 text-[10px] tracking-widest uppercase">
-                  Your Pathway to Global Education
-                </div>
+            <Link href="/" className="inline-block mb-3" aria-label="Mtishbi Scholars Home">
+              <div className="relative h-16 w-20 overflow-hidden rounded-xl">
+                <Image
+                  src="/logo.jpeg"
+                  alt="Mtishbi Scholars official logo"
+                  fill
+                  className="object-contain"
+                  sizes="80px"
+                />
               </div>
             </Link>
             {/* Tagline from VVX */}
-            <p className="text-[#D4AF37]/80 text-xs italic mb-4 pl-[52px] tracking-wide">
+            <p className="text-[#D4AF37]/80 text-xs italic mb-4 tracking-wide">
               &lsquo;Springboard to your education&rsquo;
             </p>
             {/* Mission Statement from VVX */}

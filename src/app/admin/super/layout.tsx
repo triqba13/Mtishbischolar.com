@@ -1,6 +1,7 @@
 import { AdminAuthProvider } from '@/components/admin/AdminAuthProvider';
 import Link from 'next/link';
-import { ShieldAlert, GraduationCap, Users, DollarSign, FileText } from 'lucide-react';
+import Image from 'next/image';
+import { ShieldAlert, Users, DollarSign, FileText } from 'lucide-react';
 import Header from '@/components/admin/admission/Header';
 
 export default function SuperLayout({
@@ -13,9 +14,15 @@ export default function SuperLayout({
       <div className="min-h-screen bg-[#F8FAFC]">
         {/* Super Admin Sidebar */}
         <aside className="fixed top-0 left-0 h-screen w-[220px] bg-[#0B132B] flex flex-col z-50 border-r border-slate-800">
-          <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-800">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/30">
-              <ShieldAlert className="w-4.5 h-4.5 text-white" />
+          <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-800">
+            <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
+              <Image
+                src="/logo.jpeg"
+                alt="Mtishbi Scholars official logo"
+                fill
+                className="object-contain"
+                sizes="44px"
+              />
             </div>
             <div>
               <p className="text-white font-extrabold text-sm leading-none">

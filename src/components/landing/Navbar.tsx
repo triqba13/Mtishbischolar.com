@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
-  GraduationCap,
   Menu,
   X,
   ChevronDown,
@@ -49,20 +49,16 @@ export default function Navbar() {
           <div className="relative flex items-center h-16">
 
             {/* Logo — kushoto kabisa */}
-            <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-              <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8960C] flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-4.5 h-4.5 text-[#0F172A]" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#D4AF37] animate-pulse" />
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className="text-white font-extrabold text-base leading-none tracking-tight"
-                  style={{ fontFamily: "var(--font-heading)" }}
-                >
-                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
-                </span>
+            <Link href="/" className="flex items-center gap-2.5 group shrink-0" aria-label="Mtishbi Scholars Home">
+              <div className="relative h-11 w-14 overflow-hidden rounded-xl">
+                <Image
+                  src="/logo.jpeg"
+                  alt="Mtishbi Scholars official logo"
+                  fill
+                  className="object-contain"
+                  sizes="56px"
+                  priority
+                />
               </div>
             </Link>
 
@@ -122,16 +118,20 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
             />
             <div className="absolute right-0 top-0 bottom-0 w-80 bg-[#0F172A] shadow-2xl p-6 flex flex-col">
-              <div className="flex items-center justify-between mb-10 mt-4">
-                <span
-                  className="text-white font-extrabold text-xl"
-                  style={{ fontFamily: "var(--font-heading)" }}
-                >
-                  Mtishbi<span className="text-[#D4AF37]">Scholar</span>
-                </span>
+              <div className="flex items-center justify-between mb-8 mt-2">
+                <div className="relative h-11 w-14 overflow-hidden rounded-xl">
+                  <Image
+                    src="/logo.jpeg"
+                    alt="Mtishbi Scholars official logo"
+                    fill
+                    className="object-contain"
+                    sizes="56px"
+                  />
+                </div>
                 <button
                   onClick={() => setMobileOpen(false)}
                   className="text-white/70 hover:text-white p-2"
+                  aria-label="Close menu"
                 >
                   <X size={20} />
                 </button>
