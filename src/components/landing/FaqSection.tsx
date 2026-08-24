@@ -274,7 +274,7 @@ export default function FaqSection() {
   const active = faqCategories.find((c) => c.id === activeId)!;
 
   return (
-    <section id="faq" className="py-14 bg-slate-50 relative overflow-hidden">
+    <section id="faq" className="py-14 bg-slate-50 relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-20 left-10 w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-64 h-64 bg-[#0F172A]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -288,8 +288,8 @@ export default function FaqSection() {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-5">
-            <HelpCircle className="w-3.5 h-3.5 text-[#B8960C]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">
+            <HelpCircle className="w-3.5 h-3.5 text-[#996515]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">
               FAQs
             </span>
           </div>

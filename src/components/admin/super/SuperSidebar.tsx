@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ShieldAlert, FileText, DollarSign, LogOut } from "lucide-react";
+import { ShieldAlert, FileText, DollarSign, LogOut, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 
@@ -41,11 +41,12 @@ export default function SuperSidebar({ mobileOpen, onClose }: SuperSidebarProps)
         </div>
         {isMobile && onClose && (
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
             aria-label="Close menu"
           >
-            ✕
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>

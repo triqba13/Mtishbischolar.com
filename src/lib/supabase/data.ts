@@ -1489,7 +1489,7 @@ export function calculateStudentProgress(
       isOnboardingCompleted: true,
       journeyStep: {
         stageKey: "ready_to_fly",
-        badge: "JOURNEY READY 🎓",
+        badge: "JOURNEY READY",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
         title: "Pre-Departure & Campus Arrival",
         description: `All admission and immigration milestones are complete for ${appTarget}. Welcome to your international university journey!`,
@@ -1511,7 +1511,7 @@ export function calculateStudentProgress(
       isOnboardingCompleted: true,
       journeyStep: {
         stageKey: "visa_approved",
-        badge: "VISA APPROVED! ✈️",
+        badge: "VISA APPROVED!",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
         title: "Student Visa Approved & Issued!",
         description: `Your visa for ${primaryApp.target_country || "abroad"} has been approved! Prepare your flight tickets, accommodation, and travel checklist.`,
@@ -1555,7 +1555,7 @@ export function calculateStudentProgress(
       isOnboardingCompleted: true,
       journeyStep: {
         stageKey: "offer_issued",
-        badge: "CONGRATULATIONS! 🎉",
+        badge: "CONGRATULATIONS!",
         badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
         title: "Official University Offer Letter Issued!",
         description: `Congratulations! ${appTarget} has issued your official letter of acceptance / scholarship offer for ${primaryApp.courses?.title || primaryApp.preferred_course || "your degree"}.`,

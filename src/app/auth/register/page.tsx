@@ -719,7 +719,6 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <span className="text-3xl">🎉</span>
               <h2
                 className="text-2xl font-bold text-white tracking-tight"
                 style={{ fontFamily: "var(--font-heading)" }}

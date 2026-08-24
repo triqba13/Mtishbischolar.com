@@ -42,7 +42,7 @@ function getGreeting(name?: string): string {
   } else if (hour >= 17) {
     timeGreeting = "Good Evening";
   }
-  return `${timeGreeting}, ${name || "Officer"}! 👋`;
+  return `${timeGreeting}, ${name || "Officer"}!`;
 }
 
 const container = {

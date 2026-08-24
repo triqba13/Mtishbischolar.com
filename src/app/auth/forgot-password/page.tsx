@@ -601,7 +601,7 @@ export default function ForgotPasswordPage() {
                 className="text-2xl font-bold text-white tracking-tight"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
-                Password Updated Successfully ✅
+                Password Updated Successfully
               </h2>
               <p className="text-slate-300 text-xs max-w-xs mx-auto">
                 Your password has been reset. You can now log in using your new credentials.

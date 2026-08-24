@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Award, Clock, DollarSign, BookOpen, ArrowRight } from "lucide-react";
+import { Award, Clock, DollarSign, BookOpen, ArrowRight, Check } from "lucide-react";
 
 const scholarships = [
   {
     name: "CSC Full Scholarship",
-    country: "China 🇨🇳",
+    country: "China",
     type: "Full Scholarship",
     coverage: ["Tuition", "Accommodation", "Monthly Stipend", "Insurance"],
     deadline: "March 2025",
@@ -17,7 +17,7 @@ const scholarships = [
   },
   {
     name: "Commonwealth Scholarship",
-    country: "United Kingdom 🇬🇧",
+    country: "United Kingdom",
     type: "Full Scholarship",
     coverage: ["Tuition", "Flights", "Living Allowance", "Thesis Support"],
     deadline: "December 2024",
@@ -28,7 +28,7 @@ const scholarships = [
   },
   {
     name: "ICCR Scholarship",
-    country: "India 🇮🇳",
+    country: "India",
     type: "Full Scholarship",
     coverage: ["Tuition", "Accommodation", "Monthly Stipend"],
     deadline: "April 2025",
@@ -39,7 +39,7 @@ const scholarships = [
   },
   {
     name: "MtishbiScholars Merit Award",
-    country: "Tanzania 🇹🇿",
+    country: "Tanzania",
     type: "Partial Scholarship",
     coverage: ["Application Fees", "Visa Support", "Counseling"],
     deadline: "Rolling Basis",
@@ -50,7 +50,7 @@ const scholarships = [
   },
   {
     name: "Egyptian Government Scholarship",
-    country: "Egypt 🇪🇬",
+    country: "Egypt",
     type: "Full Scholarship",
     coverage: ["Tuition", "Accommodation", "Arabic Courses"],
     deadline: "February 2025",
@@ -61,7 +61,7 @@ const scholarships = [
   },
   {
     name: "Malaysian Government Scholarship",
-    country: "Malaysia 🇲🇾",
+    country: "Malaysia",
     type: "Partial Scholarship",
     coverage: ["Tuition Subsidy", "Health Insurance"],
     deadline: "May 2025",
@@ -74,7 +74,7 @@ const scholarships = [
 
 export default function ScholarshipsSection() {
   return (
-    <section id="scholarships" className="py-24 bg-white relative overflow-hidden">
+    <section id="scholarships" className="py-24 bg-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
 
@@ -88,8 +88,8 @@ export default function ScholarshipsSection() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-5">
-            <Award className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">
+            <Award className="w-3.5 h-3.5 text-[#D4AF37]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">
               Scholarships
             </span>
           </div>
@@ -150,9 +150,10 @@ export default function ScholarshipsSection() {
                     {s.coverage.map((c) => (
                       <span
                         key={c}
-                        className="text-[10px] font-medium bg-slate-50 border border-slate-100 text-slate-600 px-2 py-0.5 rounded-full"
+                        className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-50 border border-slate-100 text-slate-600 px-2 py-0.5 rounded-full"
                       >
-                        ✓ {c}
+                        <Check className="w-2.5 h-2.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                        <span>{c}</span>
                       </span>
                     ))}
                   </div>
@@ -163,7 +164,7 @@ export default function ScholarshipsSection() {
                   {s.level.map((l) => (
                     <span
                       key={l}
-                      className="text-[10px] font-semibold bg-[#D4AF37]/10 text-[#B8960C] px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-semibold bg-[#D4AF37]/10 text-[#996515] px-2 py-0.5 rounded-full"
                     >
                       {l}
                     </span>
@@ -173,10 +174,10 @@ export default function ScholarshipsSection() {
                 {/* Deadline */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                   <div className="flex items-center gap-1.5 text-slate-500 text-xs">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3 h-3" aria-hidden="true" />
                     <span>Deadline: <strong className="text-slate-700">{s.deadline}</strong></span>
                   </div>
-                  <button className="text-[#D4AF37] text-xs font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button" className="text-[#996515] text-xs font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     Apply <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>

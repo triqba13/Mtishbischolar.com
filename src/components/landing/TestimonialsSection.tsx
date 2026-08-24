@@ -2,14 +2,26 @@
 
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Quote, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import {
+  Quote,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  GraduationCap,
+  Users,
+  Building2,
+  Handshake,
+  Plane,
+  School,
+} from "lucide-react";
 
 // ── Video categories from public/videos ──
 const videoGroups = [
   {
     id: "student",
     label: "Student Stories",
-    icon: "🎓",
+    icon: GraduationCap,
     videos: [
       {
         src: "/videos/student testimony/WhatsApp Video 2026-08-04 at 18.00.0.mp4",
@@ -31,7 +43,7 @@ const videoGroups = [
   {
     id: "parent",
     label: "Parent Testimonials",
-    icon: "👨‍👩‍👧",
+    icon: Users,
     videos: [
       {
         src: "/videos/parent testimony/parent testimony (1).mp4",
@@ -43,7 +55,7 @@ const videoGroups = [
   {
     id: "campus",
     label: "Campus Arrivals",
-    icon: "🏛️",
+    icon: Building2,
     videos: [
       {
         src: "/videos/campus arrivals/WhatsApp Video 2026-08-04 at 18.00.05.mp4",
@@ -55,7 +67,7 @@ const videoGroups = [
   {
     id: "office",
     label: "Consultations",
-    icon: "🤝",
+    icon: Handshake,
     videos: [
       {
         src: "/videos/office- consulations/WhatsApp Video 2026-08-04 at 18.00.05.mp4",
@@ -72,7 +84,7 @@ const videoGroups = [
   {
     id: "airport",
     label: "Airport Send-offs",
-    icon: "✈️",
+    icon: Plane,
     videos: [
       {
         src: "/videos/airport testimony/WhatsApp Video 2026-08-04 at 18.17.5.mp4",
@@ -94,7 +106,7 @@ const videoGroups = [
   {
     id: "school",
     label: "School Visits",
-    icon: "🏫",
+    icon: School,
     videos: [
       {
         src: "/videos/school visits/WhatsApp Video 2026-08-04 at 18.00..mp4",
@@ -209,7 +221,7 @@ export default function TestimonialsSection() {
   const group = videoGroups.find((g) => g.id === activeGroup) || videoGroups[0];
 
   return (
-    <section id="testimonials" className="py-14 md:py-18 bg-[#080E1A] relative overflow-hidden">
+    <section id="testimonials" className="py-14 md:py-18 bg-[#080E1A] relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="container-wide section-padding">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -220,7 +232,7 @@ export default function TestimonialsSection() {
             transition={{ duration: 0.4 }}
           >
             <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-4">
-              <Quote className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <Quote className="w-3.5 h-3.5 text-[#D4AF37]" aria-hidden="true" />
               <span className="text-[#D4AF37] text-xs font-semibold tracking-wider uppercase">
                 Real Stories
               </span>
@@ -241,23 +253,27 @@ export default function TestimonialsSection() {
 
           {/* Category tabs */}
           <div className="flex flex-wrap gap-2" role="tablist">
-            {videoGroups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                role="tab"
-                aria-selected={activeGroup === g.id}
-                aria-label={`View ${g.label}`}
-                onClick={() => setActiveGroup(g.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200
-                  ${activeGroup === g.id
-                    ? "bg-[#D4AF37] text-[#0F172A] border-[#D4AF37]"
-                    : "bg-white/5 text-white/60 border-white/10 hover:border-[#D4AF37]/40 hover:text-white"
-                  }`}
-              >
-                <span>{g.icon}</span> {g.label}
-              </button>
-            ))}
+            {videoGroups.map((g) => {
+              const Icon = g.icon;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeGroup === g.id}
+                  aria-label={`View ${g.label}`}
+                  onClick={() => setActiveGroup(g.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200
+                    ${activeGroup === g.id
+                      ? "bg-[#D4AF37] text-[#0F172A] border-[#D4AF37]"
+                      : "bg-white/5 text-white/60 border-white/10 hover:border-[#D4AF37]/40 hover:text-white"
+                    }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span>{g.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

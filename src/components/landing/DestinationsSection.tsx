@@ -33,7 +33,7 @@ export default function DestinationsSection() {
   };
 
   return (
-    <section id="destinations" className="py-16 bg-slate-900 text-white relative overflow-hidden">
+    <section id="destinations" className="py-16 bg-slate-900 text-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       {/* Glow decorations */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -48,7 +48,7 @@ export default function DestinationsSection() {
             viewport={{ once: true }}
           >
             <div className="inline-flex items-center gap-2 bg-[#D4AF37]/15 border border-[#D4AF37]/30 rounded-full px-4 py-1.5 mb-3">
-              <Globe className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <Globe className="w-3.5 h-3.5 text-[#D4AF37]" aria-hidden="true" />
               <span className="text-[#D4AF37] text-xs font-semibold tracking-wider uppercase">
                 Study Destinations
               </span>
@@ -71,6 +71,7 @@ export default function DestinationsSection() {
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => scroll("left")}
                 aria-label="Previous destination"
                 className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 hover:border-[#D4AF37] flex items-center justify-center text-slate-300 hover:text-white transition-all"
@@ -78,6 +79,7 @@ export default function DestinationsSection() {
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
+                type="button"
                 onClick={() => scroll("right")}
                 aria-label="Next destination"
                 className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 hover:border-[#D4AF37] flex items-center justify-center text-slate-300 hover:text-white transition-all"

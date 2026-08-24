@@ -2,17 +2,44 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ArrowRight } from "lucide-react";
+import {
+  ChevronDown,
+  ArrowRight,
+  GraduationCap,
+  Megaphone,
+  Award,
+  Plane,
+  Globe,
+  FileCheck,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 /* ── Ticker updates ── */
 const updates = [
-  "🎓 MtishbiScholars now partners with 50+ universities across 10 countries",
-  "📢 New intakes open for China, India & Malaysia — Apply before deadline",
-  "🏆 98% of our students receive their visa successfully",
-  "✈️ Over 100 students successfully placed in universities abroad",
-  "🌍 Study destinations: China · India · UK · Poland · Malaysia · UAE · Canada · Spain · Cyprus · Mauritius",
-  "📋 Scholarship opportunities available for qualifying students — enquire today",
+  {
+    icon: GraduationCap,
+    text: "MtishbiScholars now partners with 50+ universities across 10 countries",
+  },
+  {
+    icon: Megaphone,
+    text: "New intakes open for China, India & Malaysia — Apply before deadline",
+  },
+  {
+    icon: Award,
+    text: "98% of our students receive their visa successfully",
+  },
+  {
+    icon: Plane,
+    text: "Over 100 students successfully placed in universities abroad",
+  },
+  {
+    icon: Globe,
+    text: "Study destinations: China · India · UK · Poland · Malaysia · UAE · Canada · Spain · Cyprus · Mauritius",
+  },
+  {
+    icon: FileCheck,
+    text: "Scholarship opportunities available for qualifying students — enquire today",
+  },
 ];
 
 /* ── Countries & Courses ── */
@@ -144,12 +171,16 @@ export default function TrustSection() {
           {/* Ticker */}
           <div className="flex items-center overflow-hidden flex-1 md:w-[min(55vw,680px)]">
             <div className="flex animate-marquee whitespace-nowrap">
-              {[...updates, ...updates].map((u, i) => (
-                <span key={i} className="inline-flex items-center gap-3 px-4 sm:px-6 text-white/80 text-xs">
-                  {u}
-                  <span className="text-[#D4AF37]/40 text-base leading-none">·</span>
-                </span>
-              ))}
+              {[...updates, ...updates].map((u, i) => {
+                const Icon = u.icon;
+                return (
+                  <span key={i} className="inline-flex items-center gap-2 px-4 sm:px-6 text-white/80 text-xs">
+                    <Icon className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" aria-hidden="true" />
+                    <span>{u.text}</span>
+                    <span className="text-[#D4AF37]/40 text-base leading-none ml-1">·</span>
+                  </span>
+                );
+              })}
             </div>
           </div>
 

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Mail, Phone, MapPin, Heart, ExternalLink, Headphones } from "lucide-react";
+import { Mail, Phone, MapPin, Heart, ExternalLink, Headphones, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 const footerLinks = {
@@ -207,9 +207,10 @@ export default function Footer() {
             </a>
             <Link
               href="/admin/login"
-              className="text-[#D4AF37] text-xs font-semibold hover:text-[#E8C84A] transition-colors"
+              className="text-[#D4AF37] text-xs font-semibold hover:text-[#E8C84A] transition-colors inline-flex items-center gap-1"
             >
-              Admin Login →
+              <span>Admin Login</span>
+              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
           </div>
         </div>

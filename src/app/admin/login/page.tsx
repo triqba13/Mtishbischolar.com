@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Shield,
   CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -104,7 +105,7 @@ export default function AdminLoginPage() {
       if (role === "student") {
         // Immediate sign out if student attempts to log in to admin portal
         await supabase.auth.signOut();
-        setError("🔒 Access Denied: Student accounts are not authorized to access the Admin Portal.");
+        setError("Access Denied: Student accounts are not authorized to access the Admin Portal.");
         setLoading(false);
         return;
       }
@@ -330,7 +331,10 @@ export default function AdminLoginPage() {
                 <span>Authenticating...</span>
               </>
             ) : (
-              <span>Sign In to Admin Portal &rarr;</span>
+              <span className="flex items-center gap-1.5">
+                <span>Sign In to Admin Portal</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </span>
             )}
           </button>
         </form>

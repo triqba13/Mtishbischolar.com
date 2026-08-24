@@ -22,6 +22,8 @@ import {
   Send,
   Loader2,
   AlertCircle,
+  MapPin,
+  Sparkles,
 } from "lucide-react";
 
 interface LiveUniversity {
@@ -426,7 +428,10 @@ export default function DestinationsPage() {
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/60 pb-4">
                             <div>
                               <h4 className="text-lg font-bold text-slate-900">{uni.name}</h4>
-                              <p className="text-xs text-slate-500 font-medium">📍 {uni.city}, {uni.country}</p>
+                              <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                                <span>{uni.city}, {uni.country}</span>
+                              </p>
                             </div>
                             <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-full w-fit">
                               {cleanScholarshipLabel(uni.scholarship)}
@@ -523,8 +528,9 @@ export default function DestinationsPage() {
               </div>
 
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-left space-y-2 text-xs">
-                <p className="font-bold text-slate-800 flex items-center gap-2">
-                  <span>✨ Student Dashboard Features:</span>
+                <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                  <span>Student Dashboard Features:</span>
                 </p>
                 <ul className="space-y-1.5 text-slate-600 text-[11px]">
                   <li className="flex items-center gap-2">

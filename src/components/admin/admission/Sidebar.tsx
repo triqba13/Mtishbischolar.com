@@ -17,6 +17,7 @@ import {
   ChevronDown,
   DollarSign,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
@@ -98,11 +99,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
         {isMobile && onClose && (
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
             aria-label="Close menu"
           >
-            ✕
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>

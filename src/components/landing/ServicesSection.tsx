@@ -91,7 +91,7 @@ const cardVariants = {
 
 export default function ServicesSection() {
   return (
-    <section id="services" className="py-14 bg-white relative overflow-hidden">
+    <section id="services" className="py-14 bg-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#0F172A]/3 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -106,8 +106,8 @@ export default function ServicesSection() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">
               What We Offer
             </span>
           </div>

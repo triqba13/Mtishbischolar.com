@@ -46,7 +46,7 @@ const cardVariants = (delay: number) => ({
 
 export default function TeamSection() {
   return (
-    <section id="team" className="py-14 bg-white relative overflow-hidden">
+    <section id="team" className="py-14 bg-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-6 lg:px-10 xl:px-16 relative z-10">
@@ -59,8 +59,8 @@ export default function TeamSection() {
           className="mb-8"
         >
           <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-3">
-            <Users className="w-3.5 h-3.5 text-[#B8960C]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">Meet the Team</span>
+            <Users className="w-3.5 h-3.5 text-[#996515]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">Meet the Team</span>
           </div>
           <h2
             className="text-2xl md:text-3xl font-black text-[#0F172A] leading-tight"

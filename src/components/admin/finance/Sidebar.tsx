@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
@@ -42,9 +43,9 @@ export default function FinanceSidebar({ mobileOpen, onClose }: SidebarProps) {
   const renderSidebarContent = (isMobile = false) => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
+      <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="relative h-9 w-11 shrink-0 overflow-hidden rounded-lg">
+          <div className="relative h-8 w-11 shrink-0 overflow-hidden rounded-lg">
             <Image
               src="/logo.png"
               alt="Mtishbi Scholars official logo"
@@ -64,11 +65,12 @@ export default function FinanceSidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
         {isMobile && onClose && (
           <button
+            type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
             aria-label="Close menu"
           >
-            ✕
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>

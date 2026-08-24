@@ -14,6 +14,7 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 
 // Google Icon SVG
@@ -48,16 +49,16 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
     authError === "unauthorized"
-      ? "🔒 Authentication required. Please sign in to access your Student Dashboard."
+      ? "Authentication required. Please sign in to access your Student Dashboard."
       : authError
       ? authError
       : null
   );
   const [successMessage, setSuccessMessage] = useState<string | null>(
     verified === "true"
-      ? "🎉 Congratulations! Your account has been verified successfully. You can now sign in below."
+      ? "Congratulations! Your account has been verified successfully. You can now sign in below."
       : passwordReset === "true"
-      ? "✅ Password updated successfully! Please sign in with your new password."
+      ? "Password updated successfully! Please sign in with your new password."
       : null
   );
 
@@ -274,7 +275,7 @@ function LoginContent() {
                   className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 bg-red-900/60 hover:bg-red-800/80 border border-red-400/40 text-white font-bold rounded-xl transition-all shadow-xs text-xs"
                 >
                   <span>Go to Officer Portal</span>
-                  <span>&rarr;</span>
+                  <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </Link>
               </div>
             )}
@@ -387,7 +388,8 @@ function LoginContent() {
               <span className="animate-pulse">Authenticating...</span>
             ) : (
               <>
-                Sign In to Student Portal &rarr;
+                <span>Sign In to Student Portal</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </>
             )}
           </button>

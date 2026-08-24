@@ -218,7 +218,7 @@ export async function getUniversitiesFromDB(): Promise<University[]> {
       name: u.name,
       country: u.country,
       city: u.city || u.location || "",
-      flag: u.flag || "🌐",
+      flag: u.flag || "",
       scholarship: u.scholarship || "Scholarship Available",
       courses: coursesByUni[u.id] && coursesByUni[u.id].length > 0 ? coursesByUni[u.id] : (u.courses || []),
       intakes: u.intakes || ["September Intake", "January Intake"],

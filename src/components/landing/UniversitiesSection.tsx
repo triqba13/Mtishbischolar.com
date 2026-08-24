@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, Loader2, AlertCircle, Lock, ArrowRight } from "lucide-react";
+import { GraduationCap, Loader2, AlertCircle, Lock, ArrowRight, MapPin, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -76,7 +76,7 @@ export default function UniversitiesSection() {
           name: u.name,
           country: u.country || "Other",
           city: u.city || u.location || "",
-          flag: u.flag || "🌐",
+          flag: u.flag || "",
           scholarship: cleanScholarshipLabel(u.scholarship),
           description: u.description || "",
           image: u.image || "/videos/images/india.jpg",
@@ -110,7 +110,7 @@ export default function UniversitiesSection() {
   const remainingCount = currentUniversities.length - displayedUniversities.length;
 
   return (
-    <section id="universities" className="py-12 bg-slate-50 relative overflow-hidden">
+    <section id="universities" className="py-12 bg-slate-50 relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-20 left-10 w-72 h-72 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-72 h-72 bg-[#0F172A]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -120,12 +120,11 @@ export default function UniversitiesSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-5">
-            <GraduationCap className="w-3.5 h-3.5 text-[#B8960C]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">
+          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">
               Featured University Partners
             </span>
           </div>
@@ -228,12 +227,14 @@ export default function UniversitiesSection() {
                             {uni.name}
                           </h3>
 
-                          <p className="text-slate-500 text-xs mb-3 flex items-center gap-1 font-medium">
-                            📍 {uni.city}, {uni.country}
+                          <p className="text-slate-500 text-xs mb-3 flex items-center gap-1.5 font-medium">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                            <span>{uni.city}, {uni.country}</span>
                           </p>
 
-                          <p className="text-[#D4AF37] text-xs font-semibold mb-4">
-                            ✦ {uni.scholarship}
+                          <p className="text-[#996515] text-xs font-semibold mb-4 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#B8960C] shrink-0" aria-hidden="true" />
+                            <span>{uni.scholarship}</span>
                           </p>
 
                           {/* Programs */}

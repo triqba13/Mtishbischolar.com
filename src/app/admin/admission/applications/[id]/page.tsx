@@ -670,7 +670,7 @@ export default function ViewApplicationPage({
                 </button>
               </div>
               <p className="text-[11px] text-slate-400 mt-2">
-                ⚠ MtishbiScholar does not auto-submit to universities. This is a status record only.
+                MtishbiScholar does not auto-submit to universities. This is a status record only.
               </p>
             </SectionCard>
 
@@ -783,7 +783,7 @@ export default function ViewApplicationPage({
                   }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  {isApproved ? "Application Approved ✓" : "Approve Application"}
+                  {isApproved ? "Application Approved" : "Approve Application"}
                 </button>
 
                 <button

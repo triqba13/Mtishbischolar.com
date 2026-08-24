@@ -17,7 +17,7 @@ const contactChannels = [
     label: "Call Us",
     value: "+255 764 488 687",
     href: "tel:+255764488687",
-    sub: "Mon–Sat, 8am–6pm EAT",
+    sub: "Mon–Fri: 8:00 AM – 5:00 PM, Sat: 8:00 AM – 1:00 PM EAT",
     desc: "Direct telephone line for student inquiries, program guidance, and consultations.",
     color: "bg-blue-50 text-blue-600",
     borderHover: "hover:border-blue-200",
@@ -56,7 +56,7 @@ const contactChannels = [
 
 export default function ContactSection() {
   return (
-    <section id="contact" className="py-16 md:py-20 bg-white relative overflow-hidden">
+    <section id="contact" className="py-16 md:py-20 bg-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
       <div className="absolute top-20 right-20 w-80 h-80 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -69,8 +69,8 @@ export default function ContactSection() {
           className="text-center mb-12 md:mb-16"
         >
           <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/25 rounded-full px-4 py-1.5 mb-4">
-            <MessageSquare className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span className="text-[#B8960C] text-xs font-semibold tracking-wider uppercase">
+            <MessageSquare className="w-3.5 h-3.5 text-[#D4AF37]" aria-hidden="true" />
+            <span className="text-[#996515] text-xs font-semibold tracking-wider uppercase">
               Contact Us
             </span>
           </div>
@@ -193,7 +193,9 @@ export default function ContactSection() {
           >
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-2xl">💬</span>
+                <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-5 h-5" aria-hidden="true" />
+                </div>
                 <div>
                   <h3
                     className="text-lg font-bold text-slate-900"
@@ -214,9 +216,10 @@ export default function ContactSection() {
               href="https://wa.me/255764488687"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2.5 bg-[#25D366] text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-[#20b95a] hover:shadow-lg hover:shadow-[#25D366]/25 transition-all duration-200"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#25D366] text-white text-sm font-bold px-6 py-3.5 rounded-2xl hover:bg-[#20b95a] hover:shadow-lg hover:shadow-[#25D366]/25 transition-all duration-200"
             >
-              <span>Open WhatsApp &rarr;</span>
+              <span>Open WhatsApp</span>
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </a>
           </motion.div>
         </div>

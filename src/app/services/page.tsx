@@ -363,7 +363,7 @@ export default function ServicesPage() {
                   <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900">Inquiry Received! 🎉</h3>
+                  <h3 className="text-2xl font-black text-slate-900">Inquiry Received!</h3>
                   <p className="text-slate-600 text-sm leading-relaxed">
                     Thank you! Our advisor for <strong className="text-emerald-700 font-bold">{requestServiceModal}</strong> will contact you via WhatsApp / Phone within 24 hours.
                   </p>
