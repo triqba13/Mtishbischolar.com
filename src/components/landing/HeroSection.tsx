@@ -213,17 +213,22 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
-          className="lg:hidden mt-12 grid grid-cols-2 gap-3"
+          className="lg:hidden mt-8 sm:mt-10 grid grid-cols-2 gap-2.5 sm:gap-3"
         >
           {stats.map((stat, i) => (
             <div
               key={stat.label}
-              className="glass rounded-xl p-4 text-center border border-white/10"
+              className="glass rounded-xl px-3 py-2.5 sm:py-3 text-center border border-white/10 flex flex-col justify-center min-h-[80px] sm:min-h-[88px]"
             >
-              <div className="text-2xl font-black text-white" style={{ fontFamily: "var(--font-heading)" }}>
+              <div
+                className="text-2xl sm:text-[26px] font-black text-white leading-tight"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
                 <AnimatedCounter end={stat.value} suffix={stat.suffix} delay={1 + i * 0.1} />
               </div>
-              <div className="text-white/60 text-xs mt-1">{stat.label}</div>
+              <div className="text-white/65 text-[11px] sm:text-xs font-medium mt-1 leading-snug">
+                {stat.label}
+              </div>
             </div>
           ))}
         </motion.div>
