@@ -100,9 +100,14 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   verification: {
-    google: "google89835c77cb77f8f8",
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+      "google89835c77cb77f8f8",
   },
 };
+
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
+import CookieConsentBanner from "@/components/analytics/CookieConsentBanner";
 
 export default function RootLayout({
   children,
@@ -142,7 +147,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-white text-slate-900 font-sans">
+        <GoogleAnalytics />
         {children}
+        <CookieConsentBanner />
       </body>
     </html>
   );

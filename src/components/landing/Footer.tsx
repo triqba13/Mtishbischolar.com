@@ -199,12 +199,15 @@ export default function Footer() {
             <Heart className="w-3 h-3 text-[#D4AF37] inline" /> in Tanzania.
           </p>
           <div className="flex items-center gap-4">
-            <a href="#" className="text-white/30 hover:text-white/60 text-xs transition-colors">
+            <Link href="/privacy-policy" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
               Privacy Policy
-            </a>
-            <a href="#" className="text-white/30 hover:text-white/60 text-xs transition-colors">
+            </Link>
+            <Link href="/terms-of-service" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
               Terms of Service
-            </a>
+            </Link>
+            <Link href="/cookie-policy" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
+              Cookie Policy
+            </Link>
             <Link
               href="/admin/login"
               className="text-[#D4AF37] text-xs font-semibold hover:text-[#E8C84A] transition-colors inline-flex items-center gap-1"
