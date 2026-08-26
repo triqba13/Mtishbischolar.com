@@ -33,17 +33,17 @@ const socialLinks = [
   {
     name: "Facebook",
     href: "#",
-    image: "/videos/facebook logo.jpg",
+    image: "/images/facebook-logo.jpg",
   },
   {
     name: "TikTok",
     href: "#",
-    image: "/videos/tiktok logo.png",
+    image: "/images/tiktok-logo.png",
   },
   {
     name: "Instagram",
     href: "#",
-    image: "/videos/instagram logo.jpg",
+    image: "/images/instagram-logo.jpg",
   },
 ];
 
@@ -146,13 +146,13 @@ export default function Footer() {
               <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2.5">
                 Follow Us
               </p>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 {socialLinks.map((social) => (
                   <a
                     key={social.name}
                     href={social.href}
                     aria-label={social.name}
-                    className="relative w-9 h-9 rounded-xl overflow-hidden bg-white/5 hover:bg-[#D4AF37]/20 border border-white/10 hover:border-[#D4AF37]/40 flex items-center justify-center transition-all cursor-pointer hover:scale-105 shadow-xs"
+                    className="relative w-9 h-9 rounded-xl overflow-hidden shadow-md hover:opacity-90 transition-all cursor-pointer hover:scale-110 shrink-0 border border-white/10"
                   >
                     <Image
                       src={social.image}
@@ -160,6 +160,7 @@ export default function Footer() {
                       fill
                       className="object-cover"
                       sizes="36px"
+                      unoptimized
                     />
                   </a>
                 ))}
