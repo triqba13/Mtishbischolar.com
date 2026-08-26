@@ -257,7 +257,7 @@ export default function DestinationsPage() {
                     id={dest.id}
                     className="bg-white border border-emerald-100 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-xl shadow-emerald-950/5 hover:shadow-2xl transition-all duration-300 flex flex-col group"
                   >
-                    {/* Image Header — Country Flag as main background */}
+                    {/* Image Header: Country Flag as main background */}
                     <div className="relative h-56 w-full overflow-hidden">
                       <Image
                         src={getCountryFlag(dest.country)}

@@ -36,7 +36,7 @@ const videoGroups = [
       {
         src: "/videos/student testimony/WhatsApp Video 2026-08-04 at 18.00.9.mp4",
         caption: "My Experience",
-        description: "From application to arrival — a student's full story.",
+        description: "From application to arrival: a student's full story.",
       },
     ],
   },
@@ -247,7 +247,7 @@ export default function TestimonialsSection() {
               </span>
             </h2>
             <p className="text-white/40 text-sm mt-1">
-              Real moments captured — students, parents &amp; campuses.
+              Real moments captured: students, parents &amp; campuses.
             </p>
           </motion.div>
 

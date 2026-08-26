@@ -60,7 +60,7 @@ export default function Navbar() {
         <div className="container-wide section-padding">
           <div className="relative flex items-center h-16">
 
-            {/* Logo — kushoto kabisa */}
+            {/* Logo: kushoto kabisa */}
             <Link href="/" className="flex items-center gap-2.5 group shrink-0" aria-label="Mtishbi Scholars Home">
               <div className="relative h-10 w-12 overflow-hidden rounded-lg">
                 <Image
@@ -82,7 +82,7 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Nav links — katikati kabisa */}
+            {/* Nav links: katikati kabisa */}
             <div className="hidden lg:flex items-center gap-0.5 absolute left-1/2 -translate-x-1/2">
               {navLinks.map((link) => (
                 <a
@@ -101,7 +101,7 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* CTA Buttons — kulia kabisa */}
+            {/* CTA Buttons: kulia kabisa */}
             <div className="hidden lg:flex items-center gap-2 ml-auto shrink-0">
               <Link
                 href="/auth/login"

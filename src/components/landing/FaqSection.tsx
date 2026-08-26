@@ -83,7 +83,7 @@ const faqCategories = [
     questions: [
       {
         q: "Does MtishbiScholars provide scholarship opportunities?",
-        a: "MtishbiScholars connects students with available scholarship opportunities from partner universities and organizations — including tuition scholarships and fee waivers at partner institutions.",
+        a: "MtishbiScholars connects students with available scholarship opportunities from partner universities and organizations, including tuition scholarships and fee waivers at partner institutions.",
       },
       {
         q: "What are scholarship requirements?",
@@ -118,7 +118,7 @@ const faqCategories = [
       },
       {
         q: "Will students receive travel guidance?",
-        a: "Yes. Students receive full preparation guidance before leaving for their destination — including packing advice, airport procedures and arrival support.",
+        a: "Yes. Students receive full preparation guidance before leaving for their destination, including packing advice, airport procedures and arrival support.",
       },
       {
         q: "Can family members participate in preparation sessions?",
@@ -303,7 +303,7 @@ export default function FaqSection() {
             </span>
           </h2>
           <p className="text-slate-500 text-base max-w-xl mx-auto">
-            Everything you need to know — click a category to explore answers.
+            Everything you need to know: click a category to explore answers.
           </p>
         </motion.div>
 

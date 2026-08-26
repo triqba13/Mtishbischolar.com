@@ -1003,7 +1003,7 @@ export async function uploadStudentDocument(
     const filePath = `${studentId}/${documentType}_${Date.now()}.${fileExt}`;
     const bucketName = "student-documents";
 
-    // Upload to Supabase Storage — private bucket, requires authenticated session
+    // Upload to Supabase Storage: private bucket, requires authenticated session
     const { error: uploadError } = await supabase.storage
       .from(bucketName)
       .upload(filePath, file, { upsert: true });

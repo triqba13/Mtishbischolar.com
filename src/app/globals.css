@@ -423,7 +423,7 @@
   width: max-content;
 }
 
-/* Pause on hover — triggered by parent group hover */
+/* Pause on hover: triggered by parent group hover */
 .group\/track:hover .animate-marquee-left,
 .group\/track2:hover .animate-marquee-right {
   animation-play-state: paused;

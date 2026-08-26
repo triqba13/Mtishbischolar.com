@@ -81,7 +81,7 @@ export default function TeamSection() {
           transition={{ duration: 0.5 }}
           className="flex flex-col md:flex-row gap-8 items-center bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-3xl p-6 md:p-8 mb-10 shadow-sm"
         >
-          {/* LEFT — Company info */}
+          {/* LEFT: Company info */}
           <div className="flex-1 min-w-0">
             <p className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest mb-2">
               President&apos;s Message
@@ -117,7 +117,7 @@ export default function TeamSection() {
             </div>
           </div>
 
-          {/* RIGHT — President photo */}
+          {/* RIGHT: President photo */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}

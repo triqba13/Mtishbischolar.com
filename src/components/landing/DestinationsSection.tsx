@@ -127,7 +127,7 @@ export default function DestinationsSection() {
             </p>
           </motion.div>
 
-          {/* Right — Action & Scroll buttons */}
+          {/* Right: Action & Scroll buttons */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2">
               <button
@@ -174,7 +174,7 @@ export default function DestinationsSection() {
               className="w-[300px] sm:w-[340px] md:w-[380px] shrink-0 snap-start group bg-slate-800/80 border border-slate-700/80 hover:border-[#D4AF37]/50 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl hover:shadow-[#D4AF37]/10 transition-all duration-300 flex flex-col cursor-pointer"
               onClick={() => setSelectedDestination(dest)}
             >
-              {/* Image banner — Country Flag as main background */}
+              {/* Image banner: Country Flag as main background */}
               <div className="relative h-48 sm:h-52 w-full overflow-hidden">
                 <Image
                   src={getCountryFlag(dest.country)}

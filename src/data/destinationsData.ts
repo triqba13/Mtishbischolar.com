@@ -201,6 +201,17 @@ export const DESTINATIONS: Destination[] = [
     ],
     universities: [
       {
+        name: "City University Malaysia",
+        location: "Petaling Jaya, Selangor, Malaysia",
+        accreditation: "MQA & Ministry of Higher Education Accredited",
+        scholarship: "Special Promo Fee 2026",
+        popularCourses: [
+          { name: "Bachelor of Computer Science (AI) (Hons)", level: "Bachelor", duration: "3 Years", fee: "RM 12,667 / year" },
+          { name: "Bachelor of Information Technology (Hons)", level: "Bachelor", duration: "3 Years", fee: "RM 11,667 / year" },
+          { name: "Master of Business Administration (MBA)", level: "Master", duration: "1 - 2 Years", fee: "RM 22,000 total" },
+        ],
+      },
+      {
         name: "Asia Pacific University (APU)",
         location: "Kuala Lumpur, Malaysia",
         accreditation: "SETARA 5-Star University",
@@ -219,14 +230,14 @@ export const DESTINATIONS: Destination[] = [
     flag: "🇵🇱",
     image: "/videos/images/poland.jpg",
     popular: true,
-    tagline: "Schengen European Union Degrees at Low Costs",
+    tagline: "Gateway to the European Schengen Zone",
     description:
-      "Study in the heart of Europe! Polish universities offer EU-standard degrees, full English medium instruction, free movement across 27 Schengen nations, and low tuition fees.",
-    universitiesCount: "8+ Partner Universities",
-    scholarshipMax: "EU Student Subsidy Packages",
-    avgTuition: "€3,000 - €4,500 / year",
+      "Study in Warsaw, Poland. Degrees are fully recognized across the European Union with 27-nation Schengen visa mobility for African graduates.",
+    universitiesCount: "Partner University",
+    scholarshipMax: "Schengen Subsidized Tuition",
+    avgTuition: "€3,200 - €4,500 / year",
     highlights: [
-      "Schengen Visa allows travel across 27 EU nations",
+      "Full Schengen Visa access across 27 EU countries",
       "Degrees valid across all European Union countries",
       "Part-time work allowed for international students",
       "High quality living standards at affordable European cost",
@@ -236,7 +247,7 @@ export const DESTINATIONS: Destination[] = [
         name: "Vistula University",
         location: "Warsaw, Poland",
         accreditation: "CEEMAN IQA & Perspektywy #1 Private University",
-        scholarship: "Early Bird Discount & Merit Waiver",
+        scholarship: "Schengen EU Subsidized Tuition",
         popularCourses: [
           { name: "BA Architecture", level: "Bachelor", duration: "4 Years", fee: "€3,800 / year" },
           { name: "BA Economics", level: "Bachelor", duration: "3 Years", fee: "€3,800 / year" },
@@ -289,26 +300,37 @@ export const DESTINATIONS: Destination[] = [
     popular: false,
     tagline: "Study in Dubai - Global Commerce & Tech Capital",
     description:
-      "Study in Dubai, Ras Al-Khaimah, and Sharjah. Gain direct exposure to multinational companies, tax-free career opportunities, and ultramodern campuses.",
-    universitiesCount: "5+ Partner Campuses",
-    scholarshipMax: "Scholarship Guaranteed",
-    avgTuition: "$4,500 - $7,500 / year",
+      "Study in Dubai and Ras Al-Khaimah. Gain direct exposure to multinational companies, tax-free career opportunities, and ultramodern campuses.",
+    universitiesCount: "2 Partner Institutions",
+    scholarshipMax: "USD 7,000 Scholarship Available",
+    avgTuition: "$6,000 - $7,500 / year",
     highlights: [
+      "Starting tuition from USD 6,000/year",
       "Tax-free internship and employment opportunities",
       "100% English environment in global business capital",
       "Fast student visa processing within 2-3 weeks",
-      "Transfer options to UK/US main campuses",
     ],
     universities: [
       {
-        name: "BIG Education Campuses",
+        name: "Nest Academy of Management Education",
         location: "Dubai & Ras Al-Khaimah, UAE",
-        accreditation: "KHDA & UAE Ministry Approved",
-        scholarship: "Mtishbi Scholars Partner Bursary",
+        accreditation: "KHDA & UK ATHE/CTH Approved",
+        scholarship: "Scholarship Guaranteed",
         popularCourses: [
-          { name: "BBA International Business", level: "Bachelor", duration: "3 Years", fee: "$4,800 / year" },
-          { name: "BSc Information Technology", level: "Bachelor", duration: "3 Years", fee: "$5,200 / year" },
-          { name: "MBA Executive Management", level: "Master", duration: "1 Year", fee: "$6,500 / year" },
+          { name: "Diploma in Business Management", level: "Diploma", duration: "1 - 2 Years", fee: "$6,000 / year" },
+          { name: "Diploma in Computing IT", level: "Diploma", duration: "1 - 2 Years", fee: "$6,000 / year" },
+          { name: "Certificate in General English", level: "Certificate", duration: "6 - 12 Months", fee: "$3,000" },
+        ],
+      },
+      {
+        name: "Royal Roads University - Ras Al Khaimah Campus",
+        location: "Ras Al-Khaimah, UAE",
+        accreditation: "International / Canadian Curriculum",
+        scholarship: "USD 7,000 Bachelor / USD 5,000 Master Scholarship",
+        popularCourses: [
+          { name: "Bachelor of Business Administration (BBA)", level: "Bachelor", duration: "3 Years", fee: "$6,000 / year" },
+          { name: "Bachelor of Hospitality & Tourism Management (BHTM)", level: "Bachelor", duration: "3 Years", fee: "$6,000 / year" },
+          { name: "Master of Business Administration (MBA)", level: "Master", duration: "2 Years", fee: "$6,000 / year" },
         ],
       },
     ],
@@ -323,7 +345,7 @@ export const DESTINATIONS: Destination[] = [
     tagline: "World-Class Quality & Permanent Residency Pathways",
     description:
       "Canada is globally renowned for top education standards, multi-cultural diversity, and 3-year Post-Graduation Work Permits (PGWP) leading to PR pathways.",
-    universitiesCount: "8+ Partner Institutions",
+    universitiesCount: "Partner Institutions",
     scholarshipMax: "Entrance Bursaries $2,000 - $5,000",
     avgTuition: "CAD $13,000 - $18,000 / year",
     highlights: [
@@ -331,18 +353,7 @@ export const DESTINATIONS: Destination[] = [
       "Direct pathway to Permanent Residency (PR)",
       "Part-time work permitted during semester",
     ],
-    universities: [
-      {
-        name: "Seneca College / Partner Institutions",
-        location: "Toronto, Ontario, Canada",
-        accreditation: "Ontario College Quality Assurance",
-        scholarship: "International Entrance Award",
-        popularCourses: [
-          { name: "Diploma Computer Programming", level: "Diploma", duration: "2 Years", fee: "CAD $15,000 / yr" },
-          { name: "Post-Graduate Certificate Global Business", level: "PG Diploma", duration: "1 Year", fee: "CAD $16,500 / yr" },
-        ],
-      },
-    ],
+    universities: [],
   },
   {
     id: "spain",
@@ -353,24 +364,25 @@ export const DESTINATIONS: Destination[] = [
     popular: false,
     tagline: "Vibrant European Culture & Quality Degrees",
     description:
-      "Experience Spain's rich heritage, warm climate, and innovative business programs taught fully in English in Barcelona and Madrid.",
-    universitiesCount: "4+ Partner Universities",
-    scholarshipMax: "Merit Discounts 25-40%",
-    avgTuition: "€4,000 - €6,500 / year",
+      "Experience Spain's rich heritage, warm climate, and innovative business programs taught fully in English in Barcelona with dual UK degree pathways.",
+    universitiesCount: "Partner Business School",
+    scholarshipMax: "Subsidized EU Tuition & UK Pathway",
+    avgTuition: "€7,000 - €11,000 / year",
     highlights: [
       "Full English taught bachelor and master programs",
-      "Schengen visa travel across Europe",
-      "Internship placement support in top EU firms",
+      "Schengen visa travel across 27 EU nations",
+      "Optional additional UK degree pathway (+EUR 1,500)",
     ],
     universities: [
       {
-        name: "EU Business School",
+        name: "C3S Business School",
         location: "Barcelona, Spain",
-        accreditation: "ACBSP & IACBE Accredited",
-        scholarship: "Diversity Excellence Scholarship",
+        accreditation: "Accredited Spanish Higher Education & UK Pathways",
+        scholarship: "European Subsidized Tuition",
         popularCourses: [
-          { name: "BBA Digital Business", level: "Bachelor", duration: "3 Years", fee: "€6,200 / year" },
-          { name: "Master in Tourism & Hospitality", level: "Master", duration: "1 Year", fee: "€5,800 / year" },
+          { name: "BA Hons in Business Management", level: "Bachelor", duration: "36 Months", fee: "€8,500 / year" },
+          { name: "Global MBA", level: "Master", duration: "12 Months", fee: "€11,000" },
+          { name: "BSc (Hons) Business Computing and Information Systems", level: "Bachelor", duration: "36 Months", fee: "€7,000 / year" },
         ],
       },
     ],

@@ -259,7 +259,7 @@ export default function ContactSection() {
                 className="text-base md:text-lg font-bold text-[#0F172A]"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
-                Find Our Office — Dar es Salaam, Tanzania
+                Find Our Office: Dar es Salaam, Tanzania
               </h3>
             </div>
             <span className="text-xs text-slate-500 font-medium">Visiting hours by confirmed appointment</span>

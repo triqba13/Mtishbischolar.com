@@ -202,7 +202,7 @@ export default function ScholarshipsSection() {
           </h3>
           <p className="text-white/60 max-w-lg mx-auto mb-6">
             Our scholarship advisors analyze your profile and match you with the best
-            opportunities — completely free of charge.
+            opportunities, completely free of charge.
           </p>
           <a
             href="#contact"

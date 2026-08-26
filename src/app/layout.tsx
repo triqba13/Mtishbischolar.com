@@ -25,7 +25,7 @@ const baseUrl = (
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
+    default: "MtishbiScholars: Study Abroad & University Admissions for Tanzanian Students",
     template: "%s | MtishbiScholars",
   },
   description:
@@ -60,19 +60,19 @@ export const metadata: Metadata = {
     locale: "en_TZ",
     url: "/",
     siteName: "MtishbiScholars",
-    title: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
+    title: "MtishbiScholars: Study Abroad & University Admissions for Tanzanian Students",
     description:
       "Discover international universities, scholarships, and application support for Tanzanian students with MtishbiScholars.",
     images: [
       {
         url: "/logo.png",
-        alt: "MtishbiScholars — Study Abroad & University Admissions for Tanzanian Students",
+        alt: "MtishbiScholars: Study Abroad & University Admissions for Tanzanian Students",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MtishbiScholars — Study Abroad & University Admissions",
+    title: "MtishbiScholars: Study Abroad & University Admissions",
     description:
       "Discover universities, scholarships, and application support for Tanzanian students with MtishbiScholars.",
     images: ["/logo.png"],

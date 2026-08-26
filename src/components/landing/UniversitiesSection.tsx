@@ -91,11 +91,30 @@ export default function UniversitiesSection() {
 
         setDbUniversities(formatted);
 
-        // Group unique countries
-        const uniqueCountries = Array.from(new Set(formatted.map((u) => u.country))).filter(Boolean);
-        setCountries(uniqueCountries);
-        if (uniqueCountries.length > 0) {
-          setActiveCountry(uniqueCountries[0]);
+        // Group unique countries with standard ordered list
+        const DEFAULT_COUNTRIES = [
+          "UK",
+          "India",
+          "Malaysia",
+          "Spain",
+          "Cyprus",
+          "Poland",
+          "China",
+          "UAE",
+          "Canada",
+        ];
+
+        const dbCountries = Array.from(new Set(formatted.map((u) => u.country))).filter(Boolean);
+        const ordered = [...DEFAULT_COUNTRIES];
+        dbCountries.forEach((dbc) => {
+          if (!ordered.some((c) => c.toLowerCase() === dbc.toLowerCase())) {
+            ordered.push(dbc);
+          }
+        });
+
+        setCountries(ordered);
+        if (ordered.length > 0) {
+          setActiveCountry((prev) => (prev && ordered.includes(prev) ? prev : ordered[0]));
         }
       } catch (err: any) {
         setError(err.message || "Failed to load universities from database.");
@@ -110,7 +129,8 @@ export default function UniversitiesSection() {
   const currentUniversities = dbUniversities
     .filter((u) => u.country.toLowerCase() === activeCountry.toLowerCase())
     .sort((a, b) => {
-      if (activeCountry.toLowerCase() === "india") {
+      const activeLower = activeCountry.toLowerCase();
+      if (activeLower === "india") {
         const getIndiaRank = (u: UniversityWithCourses) => {
           const name = u.name.toLowerCase();
           if (u.id === "marwadi-india" || name.includes("marwadi")) return 1;
@@ -120,10 +140,55 @@ export default function UniversitiesSection() {
         };
         const rankA = getIndiaRank(a);
         const rankB = getIndiaRank(b);
-        if (rankA !== rankB) {
-          return rankA - rankB;
-        }
+        if (rankA !== rankB) return rankA - rankB;
       }
+
+      if (activeLower === "uae") {
+        const getUaeRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "nest-academy-uae" || name.includes("nest")) return 1;
+          if (u.id === "royal-roads-uae" || name.includes("royal roads")) return 2;
+          return 99;
+        };
+        const rankA = getUaeRank(a);
+        const rankB = getUaeRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeLower === "malaysia") {
+        const getMalaysiaRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "city-university-malaysia" || name.includes("city university")) return 1;
+          if (u.id === "apu-malaysia" || name.includes("asia pacific") || name.includes("apu")) return 2;
+          return 99;
+        };
+        const rankA = getMalaysiaRank(a);
+        const rankB = getMalaysiaRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeLower === "spain") {
+        const getSpainRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "c3s-business-school-spain" || name.includes("c3s")) return 1;
+          return 99;
+        };
+        const rankA = getSpainRank(a);
+        const rankB = getSpainRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeLower === "poland") {
+        const getPolandRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "vistula-poland" || name.includes("vistula")) return 1;
+          return 99;
+        };
+        const rankA = getPolandRank(a);
+        const rankB = getPolandRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
       return a.name.localeCompare(b.name);
     });
 

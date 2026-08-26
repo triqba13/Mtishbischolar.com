@@ -22,7 +22,7 @@ const updates = [
   },
   {
     icon: Megaphone,
-    text: "New intakes open for China, India & Malaysia — Apply before deadline",
+    text: "New intakes open for China, India & Malaysia: Apply before deadline",
   },
   {
     icon: Award,
@@ -38,7 +38,7 @@ const updates = [
   },
   {
     icon: FileCheck,
-    text: "Scholarship opportunities available for qualifying students — enquire today",
+    text: "Scholarship opportunities available for qualifying students, enquire today",
   },
 ];
 
@@ -62,7 +62,7 @@ const countryCourses: Record<string, string[]> = {
     "Bachelor of Business Administration",
     "Bachelor of Computer Applications",
     "Master of Technology (M.Tech)",
-    "MBA — Indian Business Schools",
+    "MBA (Indian Business Schools)",
     "Bachelor of Science",
     "PhD Programs",
     "Diploma in Hotel Management",
@@ -71,7 +71,7 @@ const countryCourses: Record<string, string[]> = {
     "BSc Computer Science",
     "LLB Law",
     "Bachelor of Engineering",
-    "MBA — UK Business Schools",
+    "MBA (UK Business Schools)",
     "MSc Data Science",
     "Bachelor of Medicine (MBBS)",
     "MSc Artificial Intelligence",
@@ -109,7 +109,7 @@ const countryCourses: Record<string, string[]> = {
   UAE: [
     "Bachelor of Business Administration",
     "Bachelor of Engineering",
-    "MBA — Dubai Schools",
+    "MBA (Dubai Schools)",
     "Master of Finance",
     "Bachelor of Architecture",
   ],

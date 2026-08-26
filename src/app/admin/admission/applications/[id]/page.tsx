@@ -189,7 +189,7 @@ function CommentModal({
           </button>
         </div>
         <p className="text-xs text-slate-500 mb-4">
-          Application: <span className="font-mono font-semibold text-slate-700">{appDisplayId}</span> — {studentName}
+          Application: <span className="font-mono font-semibold text-slate-700">{appDisplayId}</span>: {studentName}
         </p>
         <div className="space-y-4">
           <div>

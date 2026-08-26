@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     const targetUserId = authenticatedUserId;
     console.log(`[DeleteProfile] Initiating verified deletion for user ID: ${targetUserId}`);
 
-    // 3. Create privileged admin client (Service Role Key ONLY — never anon key)
+    // 3. Create privileged admin client (Service Role Key ONLY, never anon key)
     const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,

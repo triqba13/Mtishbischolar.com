@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MtishbiScholars — Study Abroad & University Admissions",
+    name: "MtishbiScholars: Study Abroad & University Admissions",
     short_name: "MtishbiScholars",
     description:
       "Platform helping Tanzanian students discover international universities, scholarships, and university admission opportunities.",

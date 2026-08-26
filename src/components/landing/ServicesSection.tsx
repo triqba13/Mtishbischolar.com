@@ -19,7 +19,7 @@ const services = [
     icon: GraduationCap,
     title: "University Admission Support",
     description:
-      "Expert guidance through every step — from choosing the right university to receiving your offer letter.",
+      "Expert guidance through every step, from choosing the right university to receiving your offer letter.",
     color: "from-blue-500 to-blue-700",
     bg: "bg-blue-50",
   },
@@ -122,7 +122,7 @@ export default function ServicesSection() {
           </h2>
           <p className="text-slate-600 text-lg max-w-2xl mx-auto">
             We provide end-to-end support for your international education
-            journey — from the first application to graduation.
+            journey, from the first application to graduation.
           </p>
         </motion.div>
 

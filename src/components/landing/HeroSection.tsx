@@ -51,7 +51,7 @@ export default function HeroSection() {
           <source src="/videos/hero_bg.mp4" type="video/mp4" />
         </video>
 
-        {/* Overlay — light gradient so text stays readable */}
+        {/* Overlay: light gradient so text stays readable */}
         <div className="absolute inset-0 hero-gradient" />
       </motion.div>
 
@@ -107,7 +107,7 @@ export default function HeroSection() {
       {/* ── Content ──────────────────────────── */}
       <div className="relative z-10 container-wide section-padding w-full pt-24 sm:pt-28 md:pt-32 pb-14 sm:pb-20">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          {/* Left — Text */}
+          {/* Left: Text */}
           <motion.div style={{ y: textY }}>
             {/* Badge */}
             <motion.div
@@ -178,7 +178,7 @@ export default function HeroSection() {
             </motion.div>
           </motion.div>
 
-          {/* Right — Stats Cards */}
+          {/* Right: Stats Cards */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}

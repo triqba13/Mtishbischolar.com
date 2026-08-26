@@ -105,7 +105,7 @@ export default function ServicesPage() {
           </h1>
 
           <p className="text-slate-600 text-base md:text-lg mb-8 leading-relaxed font-normal">
-            From university selection and guaranteed scholarships to document verification, visa support, and career mentoring — we handle every single step.
+            From university selection and guaranteed scholarships to document verification, visa support, and career mentoring, we handle every single step.
           </p>
 
           {/* Filter Pills */}
@@ -182,7 +182,7 @@ export default function ServicesPage() {
 
               {/* Grid Content */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Left Column — Overview & Key Benefits */}
+                {/* Left Column: Overview & Key Benefits */}
                 <div className="lg:col-span-6 space-y-6">
                   <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-2">
                     <h3 className="text-xs font-black text-emerald-800 uppercase tracking-wider">
@@ -219,7 +219,7 @@ export default function ServicesPage() {
                   </div>
                 </div>
 
-                {/* Right Column — Process Flow & FAQ */}
+                {/* Right Column: Process Flow & FAQ */}
                 <div className="lg:col-span-6 space-y-6">
                   {/* Step-by-Step Timeline */}
                   <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-2xs">

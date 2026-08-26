@@ -348,7 +348,7 @@ function DashboardContent() {
               dob: p.dob || "",
               gender: p.gender || "",
               nationality: p.nationality || "",
-              // Restore full E.164 phone — PhoneInput will parse it into code + local
+              // Restore full E.164 phone: PhoneInput will parse it into code + local
               phone: p.phone || "+255",
               highestEducation: p.highest_education || "",
               oLevelSchool: p.o_level_school || "",
@@ -3526,7 +3526,7 @@ function DashboardContent() {
                           </div>
                         </div>
 
-                        {/* Section 8: Danger Zone — Delete Profile & Start Over */}
+                        {/* Section 8: Danger Zone: Delete Profile & Start Over */}
                         <div className="md:col-span-2 p-5 rounded-2xl bg-red-50/60 border-2 border-red-200 shadow-sm shadow-red-100/50 space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="space-y-1">
@@ -5444,7 +5444,7 @@ function DashboardContent() {
                               </span>
                             </div>
                             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                              MtishbiScholar Application File Fee — TSh 50,000
+                              MtishbiScholar Application File Fee: TSh 50,000
                             </h2>
                             <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
                               One-time fee to open and activate your application file with MtishbiScholar.
@@ -6991,7 +6991,7 @@ function DashboardContent() {
                                               : "border-slate-200 bg-white text-slate-700"
                                           }`}
                                         >
-                                          {opt === "Yes" ? "Yes — Apply for Scholarship" : "No — Standard Admission"}
+                                          {opt === "Yes" ? "Yes: Apply for Scholarship" : "No: Standard Admission"}
                                         </button>
                                       ))}
                                     </div>

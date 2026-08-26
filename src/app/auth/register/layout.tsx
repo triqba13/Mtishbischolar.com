@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Student Registration — Start Your Study Abroad Journey",
+  title: "Student Registration: Start Your Study Abroad Journey",
   description:
     "Create your MtishbiScholar student account to discover international universities, explore scholarships, and apply for admissions.",
   alternates: {

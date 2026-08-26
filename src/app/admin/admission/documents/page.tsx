@@ -66,7 +66,7 @@ function DocumentReviewModal({
           <div>
             <h3 className="font-bold text-slate-800 text-lg">Document Review</h3>
             <p className="text-xs text-slate-500 mt-0.5 font-mono">
-              {doc.appId} — {doc.document}
+              {doc.appId}: {doc.document}
             </p>
           </div>
           <button
