@@ -174,44 +174,25 @@ export default function DestinationsSection() {
               className="w-[300px] sm:w-[340px] md:w-[380px] shrink-0 snap-start group bg-slate-800/80 border border-slate-700/80 hover:border-[#D4AF37]/50 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl hover:shadow-[#D4AF37]/10 transition-all duration-300 flex flex-col cursor-pointer"
               onClick={() => setSelectedDestination(dest)}
             >
-              {/* Image banner */}
+              {/* Image banner — Country Flag as main background */}
               <div className="relative h-48 sm:h-52 w-full overflow-hidden">
                 <Image
-                  src={dest.image}
-                  alt={dest.country}
+                  src={getCountryFlag(dest.country)}
+                  alt={`${dest.country} flag`}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                   sizes="(max-width: 640px) 300px, 380px"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-slate-950/20" />
 
-                {/* Country Flag Overlay — smooth transition on top of university image */}
-                <div className="absolute top-3 right-3 w-9 h-6 rounded-md overflow-hidden border border-white/30 shadow-lg z-10">
-                  <Image
-                    src={prefersReducedMotion ? getCountryFlag(dest.country) : ROTATING_FLAGS[activeFlagIdx].flag}
-                    alt={prefersReducedMotion ? `${dest.country} flag` : `${ROTATING_FLAGS[activeFlagIdx].country} flag`}
-                    fill
-                    className="object-cover transition-opacity duration-700 ease-in-out"
-                    sizes="36px"
-                  />
-                </div>
-
-                {/* Flag & Name Badge */}
-                <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-2.5 py-1.5 rounded-full flex items-center gap-2 z-10 shadow-md">
-                  <div className="relative w-5 h-3.5 rounded-xs overflow-hidden border border-white/20 shrink-0">
-                    <Image
-                      src={getCountryFlag(dest.country)}
-                      alt={`${dest.country} flag`}
-                      fill
-                      className="object-cover"
-                      sizes="20px"
-                    />
-                  </div>
-                  <span className="text-white font-bold text-xs sm:text-sm">{dest.country}</span>
+                {/* Country Name Badge */}
+                <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-full flex items-center gap-2 z-10 shadow-md">
+                  <span className="w-2 h-2 rounded-full bg-[#D4AF37]" aria-hidden="true" />
+                  <span className="text-white font-extrabold text-xs sm:text-sm">{dest.country}</span>
                 </div>
 
                 {/* Scholarship Badge */}
-                <div className="absolute bottom-3 right-4 bg-[#D4AF37] text-[#0F172A] text-xs font-black px-3 py-1 rounded-md shadow-md">
+                <div className="absolute bottom-3 right-4 bg-[#D4AF37] text-[#0F172A] text-xs font-black px-3 py-1 rounded-md shadow-md z-10">
                   {dest.scholarshipMax}
                 </div>
               </div>

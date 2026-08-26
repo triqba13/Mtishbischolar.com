@@ -257,33 +257,25 @@ export default function DestinationsPage() {
                     id={dest.id}
                     className="bg-white border border-emerald-100 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-xl shadow-emerald-950/5 hover:shadow-2xl transition-all duration-300 flex flex-col group"
                   >
-                    {/* Image Header */}
+                    {/* Image Header — Country Flag as main background */}
                     <div className="relative h-56 w-full overflow-hidden">
                       <Image
-                        src={dest.image}
-                        alt={dest.country}
+                        src={getCountryFlag(dest.country)}
+                        alt={`${dest.country} flag`}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                         sizes="(max-width: 768px) 100vw, 33vw"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-950/20" />
 
                       {/* Country Badge */}
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md border border-emerald-100 px-3.5 py-1.5 rounded-full flex items-center gap-2.5 shadow-sm">
-                        <div className="relative w-6 h-4 rounded-xs overflow-hidden border border-slate-200 shrink-0">
-                          <Image
-                            src={getCountryFlag(dest.country)}
-                            alt={`${dest.country} flag`}
-                            fill
-                            className="object-cover"
-                            sizes="24px"
-                          />
-                        </div>
-                        <span className="text-slate-900 font-extrabold text-base">{dest.country}</span>
+                      <div className="absolute top-4 left-4 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                        <span className="text-white font-extrabold text-base">{dest.country}</span>
                       </div>
 
                       {/* Scholarship Tag */}
-                      <div className="absolute bottom-4 right-4 bg-emerald-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg shadow-lg">
+                      <div className="absolute bottom-4 right-4 bg-emerald-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg shadow-lg z-10">
                         {dest.scholarshipMax}
                       </div>
                     </div>
