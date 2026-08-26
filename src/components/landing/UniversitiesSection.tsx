@@ -71,17 +71,23 @@ export default function UniversitiesSection() {
           });
         }
 
-        const formatted: UniversityWithCourses[] = (unisData || []).map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          country: u.country || "Other",
-          city: u.city || u.location || "",
-          flag: u.flag || "",
-          scholarship: cleanScholarshipLabel(u.scholarship),
-          description: u.description || "",
-          image: u.image || "/videos/images/india.jpg",
-          courses: coursesByUni[u.id] || [],
-        }));
+        const formatted: UniversityWithCourses[] = (unisData || []).map((u: any) => {
+          const relCourses = coursesByUni[u.id] || [];
+          const dbCourses = Array.isArray(u.courses) ? u.courses : [];
+          const allCourses = Array.from(new Set([...relCourses, ...dbCourses])).filter(Boolean);
+
+          return {
+            id: u.id,
+            name: u.name,
+            country: u.country || "Other",
+            city: u.city || u.location || "",
+            flag: u.flag || "",
+            scholarship: cleanScholarshipLabel(u.scholarship),
+            description: u.description || "",
+            image: u.image || "/videos/images/india.jpg",
+            courses: allCourses,
+          };
+        });
 
         setDbUniversities(formatted);
 
@@ -101,9 +107,25 @@ export default function UniversitiesSection() {
     loadData();
   }, []);
 
-  const currentUniversities = dbUniversities.filter(
-    (u) => u.country.toLowerCase() === activeCountry.toLowerCase()
-  );
+  const currentUniversities = dbUniversities
+    .filter((u) => u.country.toLowerCase() === activeCountry.toLowerCase())
+    .sort((a, b) => {
+      if (activeCountry.toLowerCase() === "india") {
+        const getIndiaRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "marwadi-india" || name.includes("marwadi")) return 1;
+          if (u.id === "parul-india" || name.includes("parul")) return 2;
+          if (u.id === "lpu-india" || name.includes("lovely") || name.includes("lpu")) return 3;
+          return 99;
+        };
+        const rankA = getIndiaRank(a);
+        const rankB = getIndiaRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+      }
+      return a.name.localeCompare(b.name);
+    });
 
   // Maximum 3 universities displayed per country on the landing page
   const displayedUniversities = currentUniversities.slice(0, 3);
