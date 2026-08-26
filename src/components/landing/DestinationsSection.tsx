@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -18,12 +18,72 @@ import {
 } from "lucide-react";
 import { DESTINATIONS, Destination } from "@/data/destinationsData";
 
+const COUNTRY_FLAGS: Record<string, string> = {
+  india: "/videos/images/india flag.jpg",
+  "united kingdom": "/videos/images/uk flag.jpg",
+  uk: "/videos/images/uk flag.jpg",
+  china: "/videos/images/china flag.jpg",
+  malaysia: "/videos/images/malaysia flag.jpg",
+  cyprus: "/videos/images/cyprus flag.jpg",
+  uae: "/videos/images/UAE flag.jpg",
+  "united arab emirates": "/videos/images/UAE flag.jpg",
+  poland: "/videos/images/poland flag.jpg",
+  spain: "/videos/images/spain flag.jpg",
+  mauritius: "/videos/images/mauritius flag.jpg",
+};
+
+const ROTATING_FLAGS = [
+  { country: "India", flag: "/videos/images/india flag.jpg" },
+  { country: "United Kingdom", flag: "/videos/images/uk flag.jpg" },
+  { country: "China", flag: "/videos/images/china flag.jpg" },
+  { country: "Malaysia", flag: "/videos/images/malaysia flag.jpg" },
+  { country: "Cyprus", flag: "/videos/images/cyprus flag.jpg" },
+  { country: "UAE", flag: "/videos/images/UAE flag.jpg" },
+  { country: "Poland", flag: "/videos/images/poland flag.jpg" },
+  { country: "Spain", flag: "/videos/images/spain flag.jpg" },
+  { country: "Mauritius", flag: "/videos/images/mauritius flag.jpg" },
+];
+
+export function getCountryFlag(country: string): string {
+  const key = country.toLowerCase().trim();
+  return COUNTRY_FLAGS[key] || "/videos/images/india flag.jpg";
+}
+
 export default function DestinationsSection() {
   // Only 5 popular countries on the landing page
   const popularDestinations = DESTINATIONS.filter((d) => d.popular).slice(0, 5);
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [activeFlagIdx, setActiveFlagIdx] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 2-second flag rotation interval respecting prefers-reduced-motion
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleMotionChange);
+
+    if (mediaQuery.matches) {
+      return () => mediaQuery.removeEventListener("change", handleMotionChange);
+    }
+
+    const interval = setInterval(() => {
+      setActiveFlagIdx((prev) => (prev + 1) % ROTATING_FLAGS.length);
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      mediaQuery.removeEventListener("change", handleMotionChange);
+    };
+  }, []);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -125,10 +185,29 @@ export default function DestinationsSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
 
+                {/* Country Flag Overlay — smooth transition on top of university image */}
+                <div className="absolute top-3 right-3 w-9 h-6 rounded-md overflow-hidden border border-white/30 shadow-lg z-10">
+                  <Image
+                    src={prefersReducedMotion ? getCountryFlag(dest.country) : ROTATING_FLAGS[activeFlagIdx].flag}
+                    alt={prefersReducedMotion ? `${dest.country} flag` : `${ROTATING_FLAGS[activeFlagIdx].country} flag`}
+                    fill
+                    className="object-cover transition-opacity duration-700 ease-in-out"
+                    sizes="36px"
+                  />
+                </div>
+
                 {/* Flag & Name Badge */}
-                <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-full flex items-center gap-2">
-                  <span className="text-xl">{dest.flag}</span>
-                  <span className="text-white font-bold text-sm">{dest.country}</span>
+                <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-2.5 py-1.5 rounded-full flex items-center gap-2 z-10 shadow-md">
+                  <div className="relative w-5 h-3.5 rounded-xs overflow-hidden border border-white/20 shrink-0">
+                    <Image
+                      src={getCountryFlag(dest.country)}
+                      alt={`${dest.country} flag`}
+                      fill
+                      className="object-cover"
+                      sizes="20px"
+                    />
+                  </div>
+                  <span className="text-white font-bold text-xs sm:text-sm">{dest.country}</span>
                 </div>
 
                 {/* Scholarship Badge */}
@@ -197,7 +276,15 @@ export default function DestinationsSection() {
             </button>
 
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-4xl">{selectedDestination.flag}</span>
+              <div className="relative w-12 h-8 rounded-lg overflow-hidden border border-white/20 shadow-md shrink-0">
+                <Image
+                  src={getCountryFlag(selectedDestination.country)}
+                  alt={`${selectedDestination.country} flag`}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
+              </div>
               <div>
                 <h3 className="text-2xl font-black text-white">{selectedDestination.country}</h3>
                 <p className="text-xs text-[#D4AF37] font-bold">{selectedDestination.scholarshipMax}</p>

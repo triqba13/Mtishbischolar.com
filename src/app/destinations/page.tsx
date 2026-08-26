@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { DESTINATIONS, Destination } from "@/data/destinationsData";
+import { getCountryFlag } from "@/components/landing/DestinationsSection";
 import { createClient } from "@/lib/supabase/client";
 import {
   Globe,
@@ -268,8 +269,16 @@ export default function DestinationsPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
                       {/* Country Badge */}
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md border border-emerald-100 px-4 py-2 rounded-full flex items-center gap-2.5 shadow-sm">
-                        <span className="text-2xl">{dest.flag}</span>
+                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md border border-emerald-100 px-3.5 py-1.5 rounded-full flex items-center gap-2.5 shadow-sm">
+                        <div className="relative w-6 h-4 rounded-xs overflow-hidden border border-slate-200 shrink-0">
+                          <Image
+                            src={getCountryFlag(dest.country)}
+                            alt={`${dest.country} flag`}
+                            fill
+                            className="object-cover"
+                            sizes="24px"
+                          />
+                        </div>
                         <span className="text-slate-900 font-extrabold text-base">{dest.country}</span>
                       </div>
 
@@ -363,7 +372,15 @@ export default function DestinationsPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
                 <div className="flex items-center gap-4">
-                  <span className="text-5xl">{selectedCountry.flag}</span>
+                  <div className="relative w-12 h-8 rounded-lg overflow-hidden border border-slate-200 shadow-md shrink-0">
+                    <Image
+                      src={getCountryFlag(selectedCountry.country)}
+                      alt={`${selectedCountry.country} flag`}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </div>
                   <div>
                     <h2
                       className="text-3xl font-black text-slate-900"

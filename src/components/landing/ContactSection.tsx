@@ -17,8 +17,13 @@ const contactChannels = [
     label: "Call Us",
     value: "+255 764 488 687",
     href: "tel:+255764488687",
+    phones: [
+      { display: "+255 764 488 687", href: "tel:+255764488687" },
+      { display: "+255 688 869 499", href: "tel:+255688869499" },
+      { display: "+255 766 696 954", href: "tel:+255766696954" },
+    ],
     sub: "Mon–Fri: 8:00 AM – 5:00 PM, Sat: 8:00 AM – 1:00 PM EAT",
-    desc: "Direct telephone line for student inquiries, program guidance, and consultations.",
+    desc: "Direct telephone lines for student inquiries, program guidance, and consultations.",
     color: "bg-blue-50 text-blue-600",
     borderHover: "hover:border-blue-200",
   },
@@ -114,12 +119,26 @@ export default function ContactSection() {
                     </span>
                   </div>
 
-                  <a
-                    href={item.href}
-                    className="block text-base font-extrabold text-[#0F172A] hover:text-[#B8960C] transition-colors mb-1.5 break-all"
-                  >
-                    {item.value}
-                  </a>
+                  {item.phones ? (
+                    <div className="space-y-1 mb-2">
+                      {item.phones.map((phone, pIdx) => (
+                        <a
+                          key={pIdx}
+                          href={phone.href}
+                          className="block text-sm sm:text-base font-extrabold text-[#0F172A] hover:text-[#B8960C] transition-colors break-all"
+                        >
+                          {phone.display}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className="block text-base font-extrabold text-[#0F172A] hover:text-[#B8960C] transition-colors mb-1.5 break-all"
+                    >
+                      {item.value}
+                    </a>
+                  )}
 
                   <p className="text-xs font-semibold text-emerald-700 mb-2">
                     {item.sub}

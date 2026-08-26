@@ -127,8 +127,8 @@ export default function TeamSection() {
           >
             <div className="relative w-52 h-64 md:w-56 md:h-72 rounded-2xl overflow-hidden border-4 border-[#D4AF37]/20 shadow-xl shadow-[#D4AF37]/10">
               <Image
-                src="/videos/images/mtishbischolar president.jpg"
-                alt="MtishbiScholars President"
+                src="/videos/images/mtishbischolar president.jpeg"
+                alt="President of MtishbiScholars"
                 fill
                 className="object-cover object-top"
                 sizes="224px"
