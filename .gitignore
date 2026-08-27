@@ -54,6 +54,7 @@ node_modules/
 
 # Temporary testing files
 scratch/
+supabase/.temp/
 
 # Large media
 public/videos/new video/

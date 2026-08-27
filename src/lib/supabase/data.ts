@@ -1287,6 +1287,67 @@ export interface StudentJourneyStep {
   primaryApp?: DbApplication | null;
 }
 
+export interface DbPassportAssistance {
+  id?: string;
+  student_id: string;
+  // Section 1: Applicant Information
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  date_of_birth?: string | null;
+  birth_country?: string | null;
+  birth_region?: string | null;
+  birth_district?: string | null;
+  birth_ward?: string | null;
+  birth_village_street?: string | null;
+  sex?: string | null;
+  marital_status?: string | null;
+  student_postal_address?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+
+  // Section 2: Current Residence
+  residence_country?: string | null;
+  residence_region?: string | null;
+  residence_district?: string | null;
+  residence_ward?: string | null;
+  residence_street_village?: string | null;
+  residence_house_number?: string | null;
+
+  // Section 3: Father's Information
+  father_full_name?: string | null;
+  father_occupation?: string | null;
+  father_dob?: string | null;
+  father_birth_country?: string | null;
+  father_birth_region?: string | null;
+  father_birth_district?: string | null;
+  father_birth_ward_shehia?: string | null;
+  father_birth_street_village?: string | null;
+
+  // Section 4: Mother's Information
+  mother_full_name?: string | null;
+  mother_occupation?: string | null;
+  mother_dob?: string | null;
+  mother_birth_country?: string | null;
+  mother_birth_region?: string | null;
+  mother_birth_district?: string | null;
+  mother_birth_ward_shehia?: string | null;
+  mother_birth_street_village?: string | null;
+
+  // Workflow & Status
+  assistance_status?: string; // 'form_pending', 'form_completed', 'documents_pending', 'in_progress', 'ready_for_submission', 'submitted_to_immigration', 'passport_issued'
+  status?: string;
+  payment_status?: string; // 'unpaid', 'pending_verification', 'paid'
+  payment_amount?: number;
+  payment_currency?: string;
+  payment_method?: string | null;
+  payment_ref?: string | null;
+  payment_proof_url?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface StudentDashboardData {
   profile: DbProfile | null;
   applications: DbApplication[];
@@ -1295,6 +1356,7 @@ export interface StudentDashboardData {
   contacts?: DbStudentContact[];
   primaryContact?: DbStudentContact | null;
   assignedOfficer?: DbProfile | null;
+  passportAssistance?: DbPassportAssistance | null;
   hasApprovedPayment: boolean;
   isOnboardingCompleted: boolean;
   progressPercentage: number;
@@ -1671,12 +1733,13 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
   const supabase = createClient();
 
   // Safe parallel queries scoped strictly to userId
-  const [profileRes, appRes, payRes, notifRes, contactRes] = await Promise.allSettled([
+  const [profileRes, appRes, payRes, notifRes, contactRes, passportRes] = await Promise.allSettled([
     supabase.from("profiles").select("*").eq("id", userId).single(),
     supabase.from("applications").select("*, universities(*), courses(*)").eq("student_id", userId).order("created_at", { ascending: false }),
     supabase.from("payments").select("*").eq("student_id", userId).order("created_at", { ascending: false }),
     supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(5),
     supabase.from("student_contacts").select("*").eq("student_id", userId).order("is_primary", { ascending: false }),
+    supabase.from("passport_assistance").select("*").eq("student_id", userId).maybeSingle(),
   ]);
 
   const profile: DbProfile | null = profileRes.status === "fulfilled" && !profileRes.value.error ? (profileRes.value.data as DbProfile) : null;
@@ -1685,6 +1748,7 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
   const notifications: DbNotification[] = notifRes.status === "fulfilled" && !notifRes.value.error ? ((notifRes.value.data as DbNotification[]) || []) : [];
   const contacts: DbStudentContact[] = contactRes.status === "fulfilled" && !contactRes.value.error ? ((contactRes.value.data as DbStudentContact[]) || []) : [];
   const primaryContact: DbStudentContact | null = contacts.find((c) => c.is_primary) || contacts[0] || null;
+  const passportAssistance: DbPassportAssistance | null = passportRes.status === "fulfilled" && !passportRes.value.error ? (passportRes.value.data as DbPassportAssistance) : null;
 
   // Fetch assigned admission officers for applications
   const officerIds = Array.from(
@@ -1730,12 +1794,191 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
     contacts,
     primaryContact,
     assignedOfficer,
+    passportAssistance,
     hasApprovedPayment,
     isOnboardingCompleted,
     progressPercentage,
     currentMilestoneStage,
     journeyStep,
   };
+}
+
+/**
+ * Fetch passport assistance record for a student
+ */
+export async function fetchPassportAssistance(studentId: string): Promise<DbPassportAssistance | null> {
+  try {
+    if (!studentId) return null;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("passport_assistance")
+      .select("*")
+      .eq("student_id", studentId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching passport assistance:", error);
+      return null;
+    }
+    return (data as DbPassportAssistance) || null;
+  } catch (err) {
+    console.error("Failed to fetch passport assistance:", err);
+    return null;
+  }
+}
+
+/**
+ * Save or update passport assistance details (upsert by student_id)
+ */
+export async function savePassportAssistance(
+  studentId: string,
+  payload: Partial<DbPassportAssistance>
+): Promise<{ success: boolean; data?: DbPassportAssistance; error?: string }> {
+  try {
+    if (!studentId) return { success: false, error: "Missing student ID" };
+    const supabase = createClient();
+
+    const updatePayload = {
+      ...payload,
+      student_id: studentId,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existing } = await supabase
+      .from("passport_assistance")
+      .select("id")
+      .eq("student_id", studentId)
+      .maybeSingle();
+
+    let resData: any = null;
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from("passport_assistance")
+        .update(updatePayload)
+        .eq("id", existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating passport assistance:", error);
+        return { success: false, error: error.message };
+      }
+      resData = data;
+    } else {
+      const { data, error } = await supabase
+        .from("passport_assistance")
+        .insert([updatePayload])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error inserting passport assistance:", error);
+        return { success: false, error: error.message };
+      }
+      resData = data;
+    }
+
+    return { success: true, data: resData as DbPassportAssistance };
+  } catch (err: any) {
+    console.error("Failed to save passport assistance:", err);
+    return { success: false, error: err.message || "Failed to save passport information" };
+  }
+}
+
+/**
+ * Submit passport assistance fee payment proof (receipt or transaction reference)
+ */
+export async function submitPassportPaymentProof(
+  studentId: string,
+  payload: {
+    paymentMethod: string;
+    transactionRef?: string | null;
+    receiptFile?: File | null;
+    amount?: number;
+  }
+): Promise<{ success: boolean; data?: DbPassportAssistance; error?: string }> {
+  try {
+    if (!studentId) return { success: false, error: "Missing student ID" };
+    const supabase = createClient();
+    let fileUrl: string | null = null;
+
+    if (payload.receiptFile) {
+      const docRes = await uploadStudentDocument(
+        studentId,
+        payload.receiptFile,
+        "Passport_Payment_Receipt"
+      );
+      if (docRes.success && docRes.fileUrl) {
+        fileUrl = docRes.fileUrl;
+      }
+    }
+
+    const cleanRef = payload.transactionRef ? payload.transactionRef.trim() : null;
+
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from("passport_assistance")
+      .select("id")
+      .eq("student_id", studentId)
+      .maybeSingle();
+
+    const paymentUpdateData: Partial<DbPassportAssistance> = {
+      payment_status: "pending_verification",
+      payment_method: payload.paymentMethod,
+      payment_ref: cleanRef,
+      payment_amount: payload.amount || 300000,
+      payment_currency: "TZS",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (fileUrl) {
+      paymentUpdateData.payment_proof_url = fileUrl;
+    }
+
+    let updatedRecord: DbPassportAssistance | null = null;
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from("passport_assistance")
+        .update(paymentUpdateData)
+        .eq("id", existing.id)
+        .select()
+        .single();
+
+      if (error) return { success: false, error: error.message };
+      updatedRecord = data as DbPassportAssistance;
+    } else {
+      const { data, error } = await supabase
+        .from("passport_assistance")
+        .insert([{ ...paymentUpdateData, student_id: studentId }])
+        .select()
+        .single();
+
+      if (error) return { success: false, error: error.message };
+      updatedRecord = data as DbPassportAssistance;
+    }
+
+    // Also record in public.payments table for finance desk visibility
+    try {
+      await supabase.from("payments").insert([
+        {
+          student_id: studentId,
+          amount: payload.amount || 300000,
+          currency: "TZS",
+          payment_method: payload.paymentMethod,
+          transaction_ref: cleanRef || `PP-${Date.now()}`,
+          payment_proof_url: fileUrl || null,
+          status: "Pending",
+        },
+      ]);
+    } catch (payErr) {
+      console.warn("Could not mirror passport payment to payments table:", payErr);
+    }
+
+    return { success: true, data: updatedRecord || undefined };
+  } catch (err: any) {
+    console.error("Failed to submit passport payment:", err);
+    return { success: false, error: err.message || "Failed to submit payment proof" };
+  }
 }
 
 /**

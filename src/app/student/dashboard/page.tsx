@@ -43,6 +43,10 @@ import {
   DbProfile,
   DbDocument,
   DbStudentContact,
+  DbPassportAssistance,
+  fetchPassportAssistance,
+  savePassportAssistance,
+  submitPassportPaymentProof,
 } from "@/lib/supabase/data";
 import { NationalitySelect } from "@/components/NationalitySelect";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -109,6 +113,9 @@ import {
   ShieldAlert,
   Send,
   Compass,
+  Plane,
+  Edit3,
+  FileCheck2,
 } from "lucide-react";
 
 type Stage =
@@ -754,6 +761,359 @@ function DashboardContent() {
     }
   };
 
+  // ── PASSPORT ASSISTANCE MODULE STATE & HANDLERS ──
+  const [isEditingPassport, setIsEditingPassport] = useState<boolean>(false);
+  const [savingPassport, setSavingPassport] = useState<boolean>(false);
+  const [passportSaveSuccess, setPassportSaveSuccess] = useState<boolean>(false);
+  const [passportMissingDocsWarning, setPassportMissingDocsWarning] = useState<string[]>([]);
+  const [passportFormError, setPassportFormError] = useState<string>("");
+  const [passportMissingFields, setPassportMissingFields] = useState<string[]>([]);
+
+  const [passportData, setPassportData] = useState({
+    // Section 1: Taarifa za Mwombaji / Applicant Information (Q1 - Q14)
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    dob: "",
+    birthCountry: "Tanzania",
+    birthRegion: "",
+    birthDistrict: "",
+    birthWard: "",
+    birthVillageStreet: "",
+    sex: "",
+    maritalStatus: "Single",
+    postalAddress: "",
+    email: "",
+    phone: "",
+
+    // Section 2: Anapoishi/Makazi / Current Residence (Q15 - Q20)
+    residenceCountry: "Tanzania",
+    residenceRegion: "",
+    residenceDistrict: "",
+    residenceWard: "",
+    residenceStreetVillage: "",
+    residenceHouseNumber: "",
+
+    // Section 3: Taarifa za Baba / Father's Information (Q21 - Q28)
+    fatherFullName: "",
+    fatherOccupation: "",
+    fatherDob: "",
+    fatherBirthCountry: "Tanzania",
+    fatherBirthRegion: "",
+    fatherBirthDistrict: "",
+    fatherBirthWardShehia: "",
+    fatherBirthStreetVillage: "",
+
+    // Section 4: Taarifa za Mama / Mother's Information (Q29 - Q36)
+    motherFullName: "",
+    motherOccupation: "",
+    motherDob: "",
+    motherBirthCountry: "Tanzania",
+    motherBirthRegion: "",
+    motherBirthDistrict: "",
+    motherBirthWardShehia: "",
+    motherBirthStreetVillage: "",
+  });
+
+  // Passport Assistance Payment State
+  const [passportPayMethod, setPassportPayMethod] = useState<string>("Lipa Namba / M-Pesa");
+  const [passportPayRef, setPassportPayRef] = useState<string>("");
+  const [passportReceiptFile, setPassportReceiptFile] = useState<File | null>(null);
+  const [submittingPassportPay, setSubmittingPassportPay] = useState<boolean>(false);
+  const [passportPaySuccessMsg, setPassportPaySuccessMsg] = useState<string>("");
+  const [passportPayErrorMsg, setPassportPayErrorMsg] = useState<string>("");
+
+  // Sync / Prefill Passport Data
+  useEffect(() => {
+    if (dashData?.passportAssistance) {
+      const pa = dashData.passportAssistance;
+      setPassportData({
+        firstName: pa.first_name || "",
+        middleName: pa.middle_name || "",
+        lastName: pa.last_name || "",
+        dob: pa.date_of_birth || "",
+        birthCountry: pa.birth_country || "Tanzania",
+        birthRegion: pa.birth_region || "",
+        birthDistrict: pa.birth_district || "",
+        birthWard: pa.birth_ward || "",
+        birthVillageStreet: pa.birth_village_street || "",
+        sex: pa.sex || "",
+        maritalStatus: pa.marital_status || "Single",
+        postalAddress: pa.student_postal_address || "",
+        email: pa.email || "",
+        phone: pa.phone_number || "",
+
+        residenceCountry: pa.residence_country || "Tanzania",
+        residenceRegion: pa.residence_region || "",
+        residenceDistrict: pa.residence_district || "",
+        residenceWard: pa.residence_ward || "",
+        residenceStreetVillage: pa.residence_street_village || "",
+        residenceHouseNumber: pa.residence_house_number || "",
+
+        fatherFullName: pa.father_full_name || "",
+        fatherOccupation: pa.father_occupation || "",
+        fatherDob: pa.father_dob || "",
+        fatherBirthCountry: pa.father_birth_country || "Tanzania",
+        fatherBirthRegion: pa.father_birth_region || "",
+        fatherBirthDistrict: pa.father_birth_district || "",
+        fatherBirthWardShehia: pa.father_birth_ward_shehia || "",
+        fatherBirthStreetVillage: pa.father_birth_street_village || "",
+
+        motherFullName: pa.mother_full_name || "",
+        motherOccupation: pa.mother_occupation || "",
+        motherDob: pa.mother_dob || "",
+        motherBirthCountry: pa.mother_birth_country || "Tanzania",
+        motherBirthRegion: pa.mother_birth_region || "",
+        motherBirthDistrict: pa.mother_birth_district || "",
+        motherBirthWardShehia: pa.mother_birth_ward_shehia || "",
+        motherBirthStreetVillage: pa.mother_birth_street_village || "",
+      });
+      setIsEditingPassport(false);
+    } else if (dashData?.profile || currentUser) {
+      const prof = dashData?.profile;
+      const fatherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Father");
+      const motherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Mother");
+
+      setPassportData((prev) => ({
+        ...prev,
+        firstName: prof?.first_name || currentUser?.user_metadata?.first_name || prev.firstName,
+        middleName: prof?.middle_name || prev.middleName,
+        lastName: prof?.last_name || currentUser?.user_metadata?.last_name || prev.lastName,
+        dob: prof?.dob || prev.dob,
+        birthCountry: prof?.nationality || prev.birthCountry,
+        sex: prof?.gender || prev.sex,
+        email: prof?.email || currentUser?.email || prev.email,
+        phone: prof?.phone || prev.phone,
+        residenceCountry: prof?.nationality || prev.residenceCountry,
+        fatherFullName: fatherFromContact
+          ? `${fatherFromContact.first_name} ${fatherFromContact.middle_name || ""} ${fatherFromContact.last_name}`.trim()
+          : prev.fatherFullName,
+        motherFullName: motherFromContact
+          ? `${motherFromContact.first_name} ${motherFromContact.middle_name || ""} ${motherFromContact.last_name}`.trim()
+          : prev.motherFullName,
+      }));
+      setIsEditingPassport(true);
+    }
+  }, [dashData?.passportAssistance, dashData?.profile, dashData?.contacts, currentUser]);
+
+  const PASSPORT_REQUIRED_DOC_LIST = [
+    {
+      type: "applicant_birth_certificate",
+      title: "Applicant Birth Certificate",
+      description: "Official birth certificate of the applicant issued by RITA or designated government authority.",
+    },
+    {
+      type: "parent_birth_certificate_or_affidavit",
+      title: "Parent's Birth Certificate or Affidavit",
+      description: "Birth certificate of either father or mother, or an official sworn affidavit if birth certificate is unavailable.",
+    },
+    {
+      type: "local_government_introduction_letter",
+      title: "Local Government Introduction Letter",
+      description: "Official letter of introduction from the local government (Ward / Mtaa Executive Officer) to the Tanzania Immigration Services Department.",
+    },
+    {
+      type: "passport_photo",
+      title: "Recent Passport Size Photo",
+      description: "Recent 2x2 inch passport-sized photograph with a clear white background.",
+    },
+  ];
+
+  const updatePassportField = (key: keyof typeof passportData, val: string) => {
+    setPassportData((prev) => ({ ...prev, [key]: val }));
+    if (passportMissingFields.includes(key)) {
+      setPassportMissingFields((prev) => prev.filter((k) => k !== key));
+    }
+  };
+
+  const getPassportInputClass = (key: string) => {
+    const isMissing = passportMissingFields.includes(key);
+    return `w-full p-2.5 rounded-xl border text-xs outline-none transition-all ${
+      isMissing
+        ? "border-red-500 bg-red-50/60 ring-2 ring-red-300 text-red-950 font-medium placeholder:text-red-300"
+        : "border-slate-200 bg-slate-50 focus:border-blue-600"
+    }`;
+  };
+
+  const handleSavePassport = async () => {
+    if (!currentUser?.id) return;
+    setSavingPassport(true);
+    setPassportFormError("");
+    setPassportSaveSuccess(false);
+    setPassportMissingDocsWarning([]);
+
+    // ── STRICT VALIDATION: ALL 36 PASSPORT FORM FIELDS ARE MANDATORY ──
+    const REQUIRED_PASSPORT_FIELDS: { key: keyof typeof passportData; label: string }[] = [
+      { key: "firstName", label: "1. Jina la kwanza / First Name" },
+      { key: "middleName", label: "2. Jina la kati / Middle Name" },
+      { key: "lastName", label: "3. Jina la ukoo / Last Name" },
+      { key: "sex", label: "4. Jinsia / Gender" },
+      { key: "dob", label: "5. Tarehe ya kuzaliwa / Date of Birth" },
+      { key: "birthCountry", label: "6. Nchi uliyozaliwa / Country of Birth" },
+      { key: "birthRegion", label: "7. Mkoa uliozaliwa / Region of Birth" },
+      { key: "birthDistrict", label: "8. Wilaya uliyozaliwa / District of Birth" },
+      { key: "birthWard", label: "9. Kata uliyozaliwa / Ward of Birth" },
+      { key: "birthVillageStreet", label: "10. Kijiji au Mtaa uliozaliwa / Village or Street" },
+      { key: "maritalStatus", label: "11. Hali ya ndoa / Marital Status" },
+      { key: "phone", label: "12. Namba ya simu ya mwombaji / Applicant Phone" },
+      { key: "email", label: "13. Barua pepe ya mwombaji / Applicant Email" },
+      { key: "postalAddress", label: "14. Sanduku la Posta / Postal Address" },
+
+      { key: "residenceCountry", label: "15. Nchi unayoishi sasa / Current Country of Residence" },
+      { key: "residenceRegion", label: "16. Mkoa unaoishi sasa / Current Region" },
+      { key: "residenceDistrict", label: "17. Wilaya unayoishi sasa / Current District" },
+      { key: "residenceWard", label: "18. Kata unayoishi sasa / Current Ward" },
+      { key: "residenceStreetVillage", label: "19. Kijiji au Mtaa unaoishi sasa / Current Street or Village" },
+      { key: "residenceHouseNumber", label: "20. Namba ya nyumba / House Number" },
+
+      { key: "fatherFullName", label: "21. Jina kamili la baba / Father's Full Name" },
+      { key: "fatherOccupation", label: "22. Kazi ya baba / Father's Occupation" },
+      { key: "fatherDob", label: "23. Tarehe ya kuzaliwa ya baba / Father's Date of Birth" },
+      { key: "fatherBirthCountry", label: "24. Nchi aliyozaliwa baba / Father's Country of Birth" },
+      { key: "fatherBirthRegion", label: "25. Mkoa aliozaliwa baba / Father's Region of Birth" },
+      { key: "fatherBirthDistrict", label: "26. Wilaya aliyozaliwa baba / Father's District of Birth" },
+      { key: "fatherBirthWardShehia", label: "27. Kata/Shehia aliyozaliwa baba / Father's Birth Ward/Shehia" },
+      { key: "fatherBirthStreetVillage", label: "28. Kijiji au Mtaa aliozaliwa baba / Father's Birth Street/Village" },
+
+      { key: "motherFullName", label: "29. Jina kamili la mama / Mother's Full Name" },
+      { key: "motherOccupation", label: "30. Kazi ya mama / Mother's Occupation" },
+      { key: "motherDob", label: "31. Tarehe ya kuzaliwa ya mama / Mother's Date of Birth" },
+      { key: "motherBirthCountry", label: "32. Nchi aliyozaliwa mama / Mother's Country of Birth" },
+      { key: "motherBirthRegion", label: "33. Mkoa aliozaliwa mama / Mother's Region of Birth" },
+      { key: "motherBirthDistrict", label: "34. Wilaya aliyozaliwa mama / Mother's District of Birth" },
+      { key: "motherBirthWardShehia", label: "35. Kata/Shehia aliyozaliwa mama / Mother's Birth Ward/Shehia" },
+      { key: "motherBirthStreetVillage", label: "36. Kijiji au Mtaa aliozaliwa mama / Mother's Birth Street/Village" },
+    ];
+
+    const missingKeys = REQUIRED_PASSPORT_FIELDS.filter(
+      (f) => !passportData[f.key] || !String(passportData[f.key]).trim()
+    );
+
+    if (missingKeys.length > 0) {
+      setPassportMissingFields(missingKeys.map((f) => f.key));
+      setPassportFormError(
+        `Please complete all 36 required fields before saving (${missingKeys.length} field${missingKeys.length > 1 ? "s" : ""} missing).`
+      );
+      setSavingPassport(false);
+      return;
+    }
+
+    setPassportMissingFields([]);
+
+    try {
+      const payload: Partial<DbPassportAssistance> = {
+        first_name: passportData.firstName.trim(),
+        middle_name: passportData.middleName.trim(),
+        last_name: passportData.lastName.trim(),
+        date_of_birth: passportData.dob.trim(),
+        birth_country: passportData.birthCountry.trim(),
+        birth_region: passportData.birthRegion.trim(),
+        birth_district: passportData.birthDistrict.trim(),
+        birth_ward: passportData.birthWard.trim(),
+        birth_village_street: passportData.birthVillageStreet.trim(),
+        sex: passportData.sex.trim(),
+        marital_status: passportData.maritalStatus.trim(),
+        student_postal_address: passportData.postalAddress.trim(),
+        email: passportData.email.trim(),
+        phone_number: passportData.phone.trim(),
+
+        residence_country: passportData.residenceCountry.trim(),
+        residence_region: passportData.residenceRegion.trim(),
+        residence_district: passportData.residenceDistrict.trim(),
+        residence_ward: passportData.residenceWard.trim(),
+        residence_street_village: passportData.residenceStreetVillage.trim(),
+        residence_house_number: passportData.residenceHouseNumber.trim(),
+
+        father_full_name: passportData.fatherFullName.trim(),
+        father_occupation: passportData.fatherOccupation.trim(),
+        father_dob: passportData.fatherDob.trim(),
+        father_birth_country: passportData.fatherBirthCountry.trim(),
+        father_birth_region: passportData.fatherBirthRegion.trim(),
+        father_birth_district: passportData.fatherBirthDistrict.trim(),
+        father_birth_ward_shehia: passportData.fatherBirthWardShehia.trim(),
+        father_birth_street_village: passportData.fatherBirthStreetVillage.trim(),
+
+        mother_full_name: passportData.motherFullName.trim(),
+        mother_occupation: passportData.motherOccupation.trim(),
+        mother_dob: passportData.motherDob.trim(),
+        mother_birth_country: passportData.motherBirthCountry.trim(),
+        mother_birth_region: passportData.motherBirthRegion.trim(),
+        mother_birth_district: passportData.motherBirthDistrict.trim(),
+        mother_birth_ward_shehia: passportData.motherBirthWardShehia.trim(),
+        mother_birth_street_village: passportData.motherBirthStreetVillage.trim(),
+
+        assistance_status: "form_completed",
+        status: "submitted",
+      };
+
+      const res = await savePassportAssistance(currentUser.id, payload);
+      if (!res.success) {
+        setPassportFormError(res.error || "Failed to save passport assistance details.");
+        setSavingPassport(false);
+        return;
+      }
+
+      if (res.data) {
+        setDashData((prev) => (prev ? { ...prev, passportAssistance: res.data } : prev));
+      }
+
+      setPassportSaveSuccess(true);
+      setIsEditingPassport(false);
+
+      // Check missing passport documents without blocking save
+      const missing = PASSPORT_REQUIRED_DOC_LIST.filter(
+        (req) => !studentDocs.some((d) => d.document_type === req.type)
+      );
+      if (missing.length > 0) {
+        setPassportMissingDocsWarning(missing.map((m) => m.title));
+      }
+    } catch (err: any) {
+      console.error("Save passport error:", err);
+      setPassportFormError(err.message || "An unexpected error occurred while saving passport details.");
+    } finally {
+      setSavingPassport(false);
+    }
+  };
+
+  const handlePassportPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.id) return;
+    if (!passportReceiptFile && !passportPayRef.trim()) {
+      setPassportPayErrorMsg("Please either upload a payment receipt file or enter your transaction reference number.");
+      return;
+    }
+
+    setSubmittingPassportPay(true);
+    setPassportPayErrorMsg("");
+    setPassportPaySuccessMsg("");
+
+    try {
+      const res = await submitPassportPaymentProof(currentUser.id, {
+        paymentMethod: passportPayMethod,
+        transactionRef: passportPayRef.trim() || undefined,
+        receiptFile: passportReceiptFile,
+        amount: 300000,
+      });
+
+      if (!res.success) {
+        setPassportPayErrorMsg(res.error || "Failed to submit passport payment proof.");
+      } else {
+        setPassportPaySuccessMsg("Passport Assistance Fee payment proof submitted successfully! Our Finance team will verify your payment shortly.");
+        if (res.data) {
+          setDashData((prev) => (prev ? { ...prev, passportAssistance: res.data } : prev));
+        }
+        setPassportReceiptFile(null);
+        setPassportPayRef("");
+        const updatedDocs = await fetchStudentDocuments(currentUser.id);
+        setStudentDocs(updatedDocs || []);
+      }
+    } catch (err: any) {
+      setPassportPayErrorMsg(err.message || "Failed to submit payment proof.");
+    } finally {
+      setSubmittingPassportPay(false);
+    }
+  };
+
   // 10-Step Guided Application Wizard State
   const [appWizardStep, setAppWizardStep] = useState<number>(1);
   const [appCountry, setAppCountry] = useState<string>("India");
@@ -1182,6 +1542,36 @@ function DashboardContent() {
       description: "Official medical fitness certificate or health check report from an accredited clinic.",
       required: false,
       category: "Supporting Documents",
+    },
+    applicant_birth_certificate: {
+      label: "Applicant Birth Certificate",
+      description: "Official birth certificate of the applicant issued by RITA or competent government authority.",
+      required: true,
+      category: "Passport Assistance Documents",
+    },
+    parent_birth_certificate_or_affidavit: {
+      label: "Parent's Birth Certificate or Affidavit",
+      description: "Birth certificate of either father or mother, or an official sworn affidavit if unavailable.",
+      required: true,
+      category: "Passport Assistance Documents",
+    },
+    local_government_introduction_letter: {
+      label: "Local Government Introduction Letter",
+      description: "Official letter of introduction from the local government (Ward / Mtaa Executive Officer) to the Tanzania Immigration Services Department.",
+      required: true,
+      category: "Passport Assistance Documents",
+    },
+    passport_photo: {
+      label: "Recent Passport Size Photo",
+      description: "Recent 2x2 inch passport-sized photograph with a clear white background.",
+      required: true,
+      category: "Passport Assistance Documents",
+    },
+    Passport_Payment_Receipt: {
+      label: "Passport Assistance Fee Receipt",
+      description: "Proof of payment for the TZS 300,000 passport assistance processing fee.",
+      required: false,
+      category: "Payment Proof",
     },
     Other: {
       label: "Other Supporting Document",
@@ -2131,6 +2521,34 @@ function DashboardContent() {
     return Array.from(new Set([...uniCourses, ...countrySpecificFallback]));
   };
 
+  const needsPassportAssistance = Boolean(
+    profileData.hasPassport === "No" ||
+    dashData?.profile?.has_passport === "No" ||
+    (dashData?.profile?.has_passport as any) === false ||
+    dashData?.passportAssistance
+  );
+
+  const isPassportPaymentVerified = Boolean(
+    dashData?.passportAssistance?.payment_status === "paid" ||
+    dashData?.passportAssistance?.payment_status === "verified" ||
+    dashData?.payments?.some(
+      (p) =>
+        (p.status === "Approved" || p.status === "Paid" || p.status === "verified") &&
+        (p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport") || (p as any).payment_type === "passport")
+    )
+  );
+
+  const isPassportPaymentPending = Boolean(
+    !isPassportPaymentVerified &&
+    (dashData?.passportAssistance?.payment_status === "pending_verification" ||
+     Boolean(dashData?.passportAssistance?.payment_proof_url || dashData?.passportAssistance?.payment_ref) ||
+     dashData?.payments?.some(
+       (p) =>
+         (p.status === "Submitted" || p.status === "Pending" || p.status === "under_review") &&
+         (p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport") || (p as any).payment_type === "passport")
+     ))
+  );
+
   if (authChecking) {
     return (
       <div className="min-h-screen bg-[#0B192C] flex flex-col items-center justify-center text-white space-y-4 font-sans">
@@ -2192,6 +2610,9 @@ function DashboardContent() {
               { id: "universities", label: "Universities", icon: Building2, locked: false },
               { id: "connect", label: "Student Connect", icon: Users, locked: false },
               { id: "notifications", label: "Notifications", icon: Bell, badge: unreadNotifCount > 0 ? unreadNotifCount : undefined },
+              ...(needsPassportAssistance
+                ? [{ id: "passport", label: "Passport", icon: Plane, locked: !isPassportPaymentVerified }]
+                : []),
               { id: "settings", label: "Settings", icon: Settings, locked: false },
             ].map((item) => {
               const Icon = item.icon;
@@ -2201,6 +2622,11 @@ function DashboardContent() {
                   key={item.id}
                   onClick={() => {
                     if (item.locked) {
+                      if (item.id === "passport") {
+                        setActiveNav("passport");
+                        setSidebarOpen(false);
+                        return;
+                      }
                       setPaymentLockMessage(
                         "Your TSh 50,000 MtishbiScholar Application File Opening Fee must be approved by a Finance Officer before you can access university applications."
                       );
@@ -4786,6 +5212,18 @@ function DashboardContent() {
                         )}
                       </div>
 
+                      {profileData.hasPassport === "No" && (
+                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-2 mt-2">
+                          <div className="flex items-center gap-2 font-bold text-blue-950 text-xs">
+                            <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                            <span>Passport Assistance Required</span>
+                          </div>
+                          <p className="text-xs text-blue-800 leading-relaxed">
+                            You have selected that you need assistance obtaining a passport. Please complete the Passport Assistance form in the Passport section and pay the TZS 300,000 passport assistance fee for the required passport processing services.
+                          </p>
+                        </div>
+                      )}
+
                       {profileData.hasPassport === "Yes" && (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                           <div>
@@ -6074,6 +6512,244 @@ function DashboardContent() {
                       </div>
                     )}
                   </div>
+
+                  {/* ── PASSPORT ASSISTANCE FEE (TZS 300,000) SECTION ── */}
+                  {needsPassportAssistance && (
+                    <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider">
+                              Passport Processing Service
+                            </span>
+                            {dashData?.passportAssistance?.payment_status === "paid" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex items-center gap-1 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Payment Successful
+                              </span>
+                            ) : dashData?.passportAssistance?.payment_status === "pending_verification" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold flex items-center gap-1 border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                                Payment Under Review
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold border border-blue-200">
+                                Payment Required
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-xl font-black text-slate-900 tracking-tight mt-1.5 flex items-center gap-2">
+                            <Plane className="w-5 h-5 text-blue-600" />
+                            <span>Passport Assistance Fee: TSh 300,000</span>
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            One-time fee for official document preparation and passport application assistance with the Tanzania Immigration Services Department.
+                          </p>
+                        </div>
+                        <div className="text-right sm:text-right shrink-0">
+                          <p className="text-2xl font-black text-slate-900">TSh 300,000</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Official Service Fee</p>
+                        </div>
+                      </div>
+
+                      {dashData?.passportAssistance?.payment_status === "paid" ? (
+                        <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
+                              <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <p className="font-extrabold text-sm text-emerald-950">Passport Fee Verified &bull; Active</p>
+                              <p className="text-xs text-emerald-800 mt-0.5">
+                                Your TSh 300,000 passport fee payment is confirmed. Your passport assistance application is being processed by the admissions &amp; immigration desk.
+                              </p>
+                              {dashData.passportAssistance.payment_ref && (
+                                <p className="text-[11px] font-mono font-bold text-emerald-700 mt-1">
+                                  Ref: {dashData.passportAssistance.payment_ref}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {dashData.passportAssistance.payment_proof_url && (
+                            <button
+                              type="button"
+                              onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View Receipt</span>
+                            </button>
+                          )}
+                        </div>
+                      ) : dashData?.passportAssistance?.payment_status === "pending_verification" ? (
+                        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                              <Clock className="w-6 h-6 animate-pulse" />
+                            </div>
+                            <div>
+                              <p className="font-extrabold text-sm text-amber-950">Payment Proof Under Review</p>
+                              <p className="text-xs text-amber-800 mt-0.5">
+                                Your payment proof of TSh 300,000 has been received and is currently being verified by the Mtishbi Finance Desk.
+                              </p>
+                              {dashData.passportAssistance.payment_ref && (
+                                <p className="text-[11px] font-mono font-bold text-amber-700 mt-1">
+                                  Ref: {dashData.passportAssistance.payment_ref}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {dashData.passportAssistance.payment_proof_url && (
+                            <button
+                              type="button"
+                              onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
+                              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View Submitted Proof</span>
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <form onSubmit={handlePassportPaymentSubmit} className="space-y-4">
+                          {passportPayErrorMsg && (
+                            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                              <span>{passportPayErrorMsg}</span>
+                            </div>
+                          )}
+
+                          {passportPaySuccessMsg && (
+                            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>{passportPaySuccessMsg}</span>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block font-bold text-slate-700 text-xs mb-1">
+                                Payment Method <span className="text-red-500">*</span>
+                              </label>
+                              <select
+                                value={passportPayMethod}
+                                onChange={(e) => setPassportPayMethod(e.target.value)}
+                                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold outline-none focus:border-blue-600 cursor-pointer"
+                              >
+                                <option value="Lipa Namba / M-Pesa">Lipa Namba (114535008 - Vodacom / M-Pesa)</option>
+                                <option value="Mixx by Yas">Mixx by Yas (114535008)</option>
+                                <option value="Airtel Money">Airtel Money (114535008)</option>
+                                <option value="CRDB Bank TZS">CRDB Bank TZS (10458426886)</option>
+                                <option value="CRDB Bank USD">CRDB Bank USD (10458961889)</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block font-bold text-slate-700 text-xs mb-1">
+                                Option A: Transaction Ref / Reference No.
+                              </label>
+                              <input
+                                type="text"
+                                value={passportPayRef}
+                                onChange={(e) => setPassportPayRef(e.target.value)}
+                                placeholder="e.g. 9B76A54321 or Bank Slip Ref"
+                                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs outline-none focus:border-blue-600"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block font-bold text-slate-700 text-xs mb-1">
+                                Option B: Upload Receipt / Screenshot
+                              </label>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <label className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors shrink-0 flex items-center gap-1.5 border border-slate-200">
+                                  <Upload className="w-3.5 h-3.5" />
+                                  <span>{passportReceiptFile ? "Change Receipt" : "Choose Receipt"}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        setPassportReceiptFile(e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+
+                                {passportReceiptFile ? (
+                                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-xl max-w-full">
+                                    <span className="text-[11px] font-semibold text-blue-900 truncate max-w-[140px] sm:max-w-[200px]">
+                                      {passportReceiptFile.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const localUrl = URL.createObjectURL(passportReceiptFile);
+                                        setPreviewReceiptModal({
+                                          isOpen: true,
+                                          url: localUrl,
+                                          title: `Passport Fee Receipt (${passportReceiptFile.name})`,
+                                          isPdf: passportReceiptFile.name.toLowerCase().endsWith(".pdf") || passportReceiptFile.type === "application/pdf",
+                                          loading: false,
+                                        });
+                                      }}
+                                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
+                                      title="View / Preview selected receipt"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      <span>View</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPassportReceiptFile(null)}
+                                      className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                                      title="Remove file"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : dashData?.passportAssistance?.payment_proof_url ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
+                                    className="px-2.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>View Existing Receipt</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] text-slate-500 truncate">
+                                    No file chosen
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex items-center justify-end">
+                            <button
+                              type="submit"
+                              disabled={submittingPassportPay}
+                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            >
+                              {submittingPassportPay ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  <span>Submitting...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>Submit Passport Payment Proof (TSh 300,000) &rarr;</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -7439,6 +8115,43 @@ function DashboardContent() {
                             },
                           ]
                         : []),
+                      // Include 4 Passport Assistance Documents if student needs passport assistance
+                      ...(needsPassportAssistance
+                        ? [
+                            {
+                              type: "applicant_birth_certificate",
+                              title: "Applicant Birth Certificate",
+                              description: "Official birth certificate of the applicant issued by RITA or designated government authority.",
+                              required: true,
+                              note: undefined,
+                              category: "Passport Assistance Documents",
+                            },
+                            {
+                              type: "parent_birth_certificate_or_affidavit",
+                              title: "Parent's Birth Certificate or Affidavit",
+                              description: "Birth certificate of either father or mother, or an official sworn affidavit if birth certificate is unavailable.",
+                              required: true,
+                              note: undefined,
+                              category: "Passport Assistance Documents",
+                            },
+                            {
+                              type: "local_government_introduction_letter",
+                              title: "Local Government Introduction Letter",
+                              description: "Official letter of introduction from the local government (Ward / Mtaa Executive Officer) to the Tanzania Immigration Services Department.",
+                              required: true,
+                              note: undefined,
+                              category: "Passport Assistance Documents",
+                            },
+                            {
+                              type: "passport_photo",
+                              title: "Recent Passport Size Photo",
+                              description: "Recent 2x2 inch passport-sized photograph with a clear white background.",
+                              required: true,
+                              note: undefined,
+                              category: "Passport Assistance Documents",
+                            },
+                          ]
+                        : []),
                     ];
 
                     const uniqueRequiredMap = new Map<string, typeof requiredSpecs[0]>();
@@ -7458,7 +8171,7 @@ function DashboardContent() {
                     const hasAdmissionDocs = uploadedAdmissionDocs.length > 0 || appsWithOfferLetters.length > 0;
 
                     return (
-                      <div className="space-y-10">
+                      <div className="space-y-8">
 
                         {/* ──────────────────────────────────────────────────────────── */}
                         {/* SECTION 1: ACADEMIC & IDENTIFICATION DOCUMENTS (UPLOADED)   */}
@@ -7468,10 +8181,10 @@ function DashboardContent() {
                             <div>
                               <h3 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2 uppercase">
                                 <GraduationCap className="w-5 h-5 text-blue-600" />
-                                <span>Academic &amp; Identification Documents</span>
+                                <span>Academic, Travel &amp; Identification Documents</span>
                               </h3>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                Official academic certificates, transcripts, and travel identification documents on file.
+                                Official academic certificates, transcripts, passport, and supporting documents on file.
                               </p>
                             </div>
                             <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
@@ -7494,12 +8207,12 @@ function DashboardContent() {
                           </div>
 
                           {uploadedAcademicDocs.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="space-y-2.5">
                               {uploadedAcademicDocs.map((doc) => {
                                 const config = DOCUMENT_TYPE_CONFIG[doc.document_type] || {
                                   label: doc.document_type.replace(/_/g, " "),
                                   description: "Uploaded document record.",
-                                  category: "Academic & Identification",
+                                  category: "Supporting Documents",
                                   required: false,
                                 };
                                 const isUploading = uploadingDoc === doc.document_type;
@@ -7512,97 +8225,69 @@ function DashboardContent() {
                                 return (
                                   <div
                                     key={doc.id || doc.file_url}
-                                    className={`p-5 rounded-2xl bg-white border transition-all flex flex-col justify-between space-y-4 ${
-                                      isDocVerified
-                                        ? "border-emerald-200 shadow-xs hover:border-emerald-300"
-                                        : "border-slate-200 shadow-xs hover:border-slate-300"
+                                    className={`p-4 rounded-xl bg-white border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:shadow-xs ${
+                                      isDocVerified ? "border-emerald-200" : "border-slate-200"
                                     }`}
                                   >
-                                    <div className="space-y-3">
-                                      {/* Header: Category, Status Badge & Delete 'X' Button */}
-                                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                                          {config.category}
-                                        </span>
-                                        <div className="flex items-center gap-1.5">
-                                          {isDocVerified ? (
-                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                              Verified
-                                            </span>
-                                          ) : (
-                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
-                                              <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
-                                              Pending Verification
-                                            </span>
-                                          )}
-                                          <button
-                                            type="button"
-                                            disabled={deletingDocId === doc.id}
-                                            onClick={() => handleDeleteDoc(doc)}
-                                            className="w-6 h-6 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer border border-transparent hover:border-red-200 disabled:opacity-50"
-                                            title={`Delete ${config.label}`}
-                                          >
-                                            {deletingDocId === doc.id ? (
-                                              <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                            ) : (
-                                              <X className="w-3.5 h-3.5" />
-                                            )}
-                                          </button>
-                                        </div>
+                                    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                        isDocVerified ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                                      }`}>
+                                        <FileText className="w-4.5 h-4.5" />
                                       </div>
-
-                                      {/* Title & Description */}
-                                      <div>
-                                        <h4 className="font-extrabold text-sm text-slate-900 line-clamp-1">
-                                          {config.label}
-                                        </h4>
-                                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                                          {config.description}
-                                        </p>
-                                      </div>
-
-                                      {/* Uploaded File Specs Box */}
-                                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1 text-xs font-mono">
-                                        <div className="flex items-center justify-between text-slate-700 font-bold truncate">
-                                          <span className="truncate">{doc.file_name}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/50">
-                                          <span>
-                                            {doc.created_at
-                                              ? new Date(doc.created_at).toLocaleDateString("en-GB", {
-                                                  day: "numeric",
-                                                  month: "short",
-                                                  year: "numeric",
-                                                })
-                                              : "Uploaded"}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                            {config.category}
                                           </span>
+                                          <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                                            {config.label}
+                                          </h4>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5 flex-wrap">
+                                          <span className="text-slate-700 font-semibold truncate max-w-xs">{doc.file_name}</span>
                                           {formatDocFileSize(doc.file_size) && (
-                                            <span>{formatDocFileSize(doc.file_size)}</span>
+                                            <span className="text-slate-400">&bull; {formatDocFileSize(doc.file_size)}</span>
+                                          )}
+                                          {doc.created_at && (
+                                            <span className="text-slate-400">
+                                              &bull; {new Date(doc.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                            </span>
                                           )}
                                         </div>
                                       </div>
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                      {isDocVerified ? (
+                                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                          Verified
+                                        </span>
+                                      ) : (
+                                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                          <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                                          Pending Review
+                                        </span>
+                                      )}
+
                                       <button
                                         type="button"
                                         disabled={isViewing}
                                         onClick={() => handleViewDocument(doc.file_url, doc.document_type)}
-                                        className="flex-1 py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                        className="py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                       >
                                         {isViewing ? (
-                                          <div className="w-3.5 h-3.5 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                                          <div className="w-3 h-3 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
                                         ) : (
                                           <Eye className="w-3.5 h-3.5" />
                                         )}
-                                        <span>View Document</span>
+                                        <span>View</span>
                                       </button>
 
-                                      <label className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                                      <label className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer">
                                         {isUploading ? (
-                                          <div className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
+                                          <div className="w-3 h-3 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
                                         ) : (
                                           <Upload className="w-3.5 h-3.5" />
                                         )}
@@ -7619,6 +8304,20 @@ function DashboardContent() {
                                           }}
                                         />
                                       </label>
+
+                                      <button
+                                        type="button"
+                                        disabled={deletingDocId === doc.id}
+                                        onClick={() => handleDeleteDoc(doc)}
+                                        className="w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer border border-transparent hover:border-red-200 disabled:opacity-50"
+                                        title={`Delete ${config.label}`}
+                                      >
+                                        {deletingDocId === doc.id ? (
+                                          <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        )}
+                                      </button>
                                     </div>
                                   </div>
                                 );
@@ -7648,7 +8347,7 @@ function DashboardContent() {
                                 <span>Documents You Still Need</span>
                               </h3>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                Based on your education level ({studentHighestEd || "Standard Track"}), these mandatory documents are required for university admissions.
+                                Based on your education level ({studentHighestEd || "Standard Track"}) and passport service status, these mandatory documents are required.
                               </p>
                             </div>
                             {missingRequiredDocs.length > 0 && (
@@ -7659,53 +8358,49 @@ function DashboardContent() {
                           </div>
 
                           {missingRequiredDocs.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="space-y-2.5">
                               {missingRequiredDocs.map((req) => {
                                 const isUploading = uploadingDoc === req.type;
 
                                 return (
                                   <div
                                     key={req.type}
-                                    className="p-5 rounded-2xl bg-amber-50/30 border border-amber-200/80 hover:border-amber-400 transition-all flex flex-col justify-between space-y-4 shadow-xs"
+                                    className="p-4 rounded-xl bg-amber-50/40 border border-amber-200/80 hover:border-amber-400 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
                                   >
-                                    <div className="space-y-3">
-                                      <div className="flex items-center justify-between gap-2 border-b border-amber-100 pb-2.5">
-                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                                          {req.category}
-                                        </span>
-                                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                          Required
-                                        </span>
+                                    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                      <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                        <FileText className="w-4.5 h-4.5" />
                                       </div>
-
-                                      <div>
-                                        <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                                          <span>{req.title}</span>
-                                        </h4>
-                                        <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                                          {req.description}
-                                        </p>
-                                      </div>
-
-                                      {req.note && (
-                                        <div className="p-2.5 rounded-xl bg-amber-100/70 border border-amber-200 text-[10px] text-amber-900 flex items-start gap-1.5">
-                                          <Info className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
-                                          <span className="leading-snug">{req.note}</span>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-200/70 text-amber-900">
+                                            {req.category}
+                                          </span>
+                                          <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                                            {req.title}
+                                          </h4>
                                         </div>
-                                      )}
+                                        <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-1">{req.description}</p>
+                                        {req.note && (
+                                          <p className="text-[10px] text-amber-800 font-medium mt-0.5">&bull; {req.note}</p>
+                                        )}
+                                      </div>
                                     </div>
 
-                                    <div className="pt-2 border-t border-amber-100">
-                                      <label className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer">
+                                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                        Required
+                                      </span>
+                                      <label className="py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
                                         {isUploading ? (
                                           <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                             <span>Uploading...</span>
                                           </>
                                         ) : (
                                           <>
                                             <Upload className="w-3.5 h-3.5" />
-                                            <span>Upload Document</span>
+                                            <span>Upload</span>
                                           </>
                                         )}
                                         <input
@@ -7776,53 +8471,41 @@ function DashboardContent() {
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="space-y-2.5">
                               {/* Uploaded Offer Letter Docs */}
                               {uploadedAdmissionDocs.map((doc) => (
                                 <div
                                   key={doc.id || doc.file_url}
-                                  className="p-5 rounded-2xl bg-white border border-indigo-200 shadow-xs flex flex-col justify-between space-y-4 hover:border-indigo-300 transition-all"
+                                  className="p-4 rounded-xl bg-white border border-indigo-200 shadow-2xs hover:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                                 >
-                                  <div className="space-y-3">
-                                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">
-                                        Official Admission Document
-                                      </span>
-                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                        Offer Letter
-                                      </span>
+                                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                      <Award className="w-4.5 h-4.5" />
                                     </div>
-
-                                    <div>
-                                      <h4 className="font-extrabold text-sm text-slate-900">
-                                        {doc.file_name || "Official University Offer Letter"}
-                                      </h4>
-                                      <p className="text-[11px] text-slate-500 mt-1">
-                                        Issued by Partner University Admissions Office
-                                      </p>
-                                    </div>
-
-                                    <div className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs font-mono text-[10px] text-slate-500 flex justify-between">
-                                      <span>
-                                        {doc.created_at
-                                          ? new Date(doc.created_at).toLocaleDateString("en-GB", {
-                                              day: "numeric",
-                                              month: "short",
-                                              year: "numeric",
-                                            })
-                                          : "Issued"}
-                                      </span>
-                                      {formatDocFileSize(doc.file_size) && (
-                                        <span>{formatDocFileSize(doc.file_size)}</span>
-                                      )}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800">
+                                          Official Admission Document
+                                        </span>
+                                        <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                                          {doc.file_name || "Official University Offer Letter"}
+                                        </h4>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5">
+                                        <span>Issued by Partner University</span>
+                                        {formatDocFileSize(doc.file_size) && <span>&bull; {formatDocFileSize(doc.file_size)}</span>}
+                                        {doc.created_at && (
+                                          <span>&bull; {new Date(doc.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
 
-                                  <div className="pt-2 border-t border-slate-100">
+                                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                                     <button
                                       type="button"
                                       onClick={() => handleViewDocument(doc.file_url, doc.document_type)}
-                                      className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                      className="py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                       <span>View Offer Document</span>
@@ -7831,47 +8514,40 @@ function DashboardContent() {
                                 </div>
                               ))}
 
-                              {/* Application Offer Letters with direct URLs */}
+                              {/* Applications with direct offer letter URLs */}
                               {appsWithOfferLetters.map((app) => (
                                 <div
                                   key={app.id}
-                                  className="p-5 rounded-2xl bg-white border border-emerald-200 shadow-xs flex flex-col justify-between space-y-4 hover:border-emerald-300 transition-all"
+                                  className="p-4 rounded-xl bg-white border border-emerald-200 shadow-2xs hover:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                                 >
-                                  <div className="space-y-3">
-                                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">
-                                        Admission Offer
-                                      </span>
-                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                        Offer Issued
-                                      </span>
+                                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                      <Award className="w-4.5 h-4.5" />
                                     </div>
-
-                                    <div>
-                                      <h4 className="font-extrabold text-sm text-slate-900">
-                                        {app.universities?.name || "Partner University"}
-                                      </h4>
-                                      <p className="text-[11px] text-slate-500 mt-1">
-                                        {app.courses?.title || app.preferred_course || "Degree Program"} &bull; {app.target_country || "International"}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                          Admission Offer Letter
+                                        </span>
+                                        <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                                          {app.universities?.name || "Partner University"} &bull; {app.courses?.title || "Program Admission"}
+                                        </h4>
+                                      </div>
+                                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                        Official Acceptance &amp; Offer Document
                                       </p>
-                                    </div>
-
-                                    <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs font-mono text-[10px] text-slate-600 flex justify-between">
-                                      <span>Application ID: {app.id.slice(0, 8).toUpperCase()}</span>
-                                      <span>Official PDF</span>
                                     </div>
                                   </div>
 
-                                  <div className="pt-2 border-t border-slate-100">
-                                    <a
-                                      href={app.offer_letter_url || "#"}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleViewDocument(app.offer_letter_url!, "Official Offer Letter")}
+                                      className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                                     >
-                                      <Download className="w-3.5 h-3.5" />
-                                      <span>Download Offer Letter</span>
-                                    </a>
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>View Offer Letter</span>
+                                    </button>
                                   </div>
                                 </div>
                               ))}
@@ -8888,6 +9564,1034 @@ function DashboardContent() {
                     </>
                   )}
 
+                </div>
+              )}
+
+              {/* ── PASSPORT ASSISTANCE SECTION ── */}
+              {activeNav === "passport" && (
+                <div className="space-y-6">
+
+                  {!isPassportPaymentVerified ? (
+                    /* ── LOCKED STATE CARD (PAYMENT NOT VERIFIED) ── */
+                    <div className="p-8 sm:p-12 rounded-3xl bg-white border border-slate-200 shadow-sm text-center max-w-2xl mx-auto my-6 space-y-6">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+                        {isPassportPaymentPending ? (
+                          <Clock className="w-8 h-8 text-amber-600 animate-pulse" />
+                        ) : (
+                          <Lock className="w-8 h-8 text-amber-600" />
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-extrabold uppercase tracking-wider">
+                          {isPassportPaymentPending ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Payment Under Verification</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Passport Assistance Locked</span>
+                            </>
+                          )}
+                        </div>
+
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                          {isPassportPaymentPending
+                            ? "Passport Assistance Payment Under Verification"
+                            : "Passport Assistance Fee Required"}
+                        </h3>
+
+                        <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+                          {isPassportPaymentPending
+                            ? "Your payment proof of TSh 300,000 has been received and is currently being verified by the Finance Desk. The Passport section will unlock automatically once your payment is approved."
+                            : "Please complete and verify your TZS 300,000 passport assistance payment to unlock the Passport section and access the official immigration application form."}
+                        </p>
+
+                        {isPassportPaymentPending && dashData?.passportAssistance?.payment_ref && (
+                          <p className="text-xs font-mono font-bold text-amber-800 bg-amber-50 py-1.5 px-3 rounded-lg inline-block border border-amber-200">
+                            Ref: {dashData.passportAssistance.payment_ref}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveNav("payments")}
+                          className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>Go to Payments &rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── UNLOCKED: FULL 36 QUESTIONS PASSPORT FORM ── */
+                    <>
+                      {/* 1. Header Card */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-extrabold uppercase tracking-wider">
+                              Passport Assistance
+                            </span>
+                            {dashData?.passportAssistance?.assistance_status === "completed" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Completed</span>
+                              </span>
+                            ) : dashData?.passportAssistance?.assistance_status === "under_review" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+                                <span>Under Review</span>
+                              </span>
+                            ) : dashData?.passportAssistance?.assistance_status === "submitted" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Submitted</span>
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                In Progress
+                              </span>
+                            )}
+                          </div>
+                          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+                            <Plane className="w-6 h-6 text-blue-600" />
+                            <span>Passport Assistance Application Form</span>
+                          </h2>
+                          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                            Complete this form accurately for your official passport processing application.
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {!isEditingPassport && (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingPassport(true)}
+                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit Details</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2. Notice / Info Callout */}
+                      <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-start gap-3">
+                        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1 leading-relaxed">
+                          <p className="font-bold">
+                            Instructions:
+                          </p>
+                          <p className="text-blue-900 text-[11px]">
+                            Please complete all 36 questions below accurately. This information will be used to prepare your official passport application with the Tanzania Immigration Services Department. Each question is presented in Swahili and English. An asterisk (<span className="text-red-600 font-bold">*</span>) indicates a mandatory field.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3. Missing Documents Reminder Banner (If any) */}
+                      {passportMissingDocsWarning.length > 0 && (
+                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs space-y-2">
+                          <div className="flex items-center gap-2 font-bold text-amber-900">
+                            <AlertCircle className="w-4.5 h-4.5 text-amber-600 shrink-0" />
+                            <span>Missing Passport Documents Reminder</span>
+                          </div>
+                          <p className="text-[11px] text-amber-800">
+                            Please ensure you upload the following documents in the <strong>My Documents</strong> section to complete your passport file:
+                          </p>
+                          <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 font-medium pl-1">
+                            {passportMissingDocsWarning.map((docTitle, idx) => (
+                              <li key={idx}>
+                                {docTitle}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setActiveNav("documents")}
+                              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-[11px] rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Go to My Documents to Upload &rarr;</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Feedback Alerts */}
+                      {passportSaveSuccess && (
+                        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Passport details saved successfully!</span>
+                        </div>
+                      )}
+
+                      {passportFormError && (
+                        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>{passportFormError}</span>
+                        </div>
+                      )}
+
+                      {/* 5. Main Form & View */}
+                      <form onSubmit={(e) => { e.preventDefault(); handleSavePassport(); }} className="space-y-6">
+
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        {/* SECTION 1: APPLICANT INFORMATION                             */}
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                            <div>
+                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">1</span>
+                                <span>Applicant Information</span>
+                              </h3>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Questions 1 to 14
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                            {/* Q1 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                1. Jina la kwanza / First Name <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.firstName}
+                                  onChange={(e) => updatePassportField("firstName", e.target.value)}
+                                  placeholder="e.g. John"
+                                  className={getPassportInputClass("firstName")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.firstName || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q2 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                2. Jina la kati / Middle Name <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.middleName}
+                                  onChange={(e) => updatePassportField("middleName", e.target.value)}
+                                  placeholder="e.g. Peter"
+                                  className={getPassportInputClass("middleName")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.middleName || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q3 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                3. Jina la ukoo / Last Name <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.lastName}
+                                  onChange={(e) => updatePassportField("lastName", e.target.value)}
+                                  placeholder="e.g. Mtishbi"
+                                  className={getPassportInputClass("lastName")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.lastName || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q4 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                4. Jinsia / Gender <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <select
+                                  value={passportData.sex}
+                                  onChange={(e) => updatePassportField("sex", e.target.value)}
+                                  className={`${getPassportInputClass("sex")} cursor-pointer`}
+                                >
+                                  <option value="">Select Gender</option>
+                                  <option value="Male">Male</option>
+                                  <option value="Female">Female</option>
+                                </select>
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.sex || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q5 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                5. Tarehe ya kuzaliwa / Date of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="date"
+                                  value={passportData.dob}
+                                  onChange={(e) => updatePassportField("dob", e.target.value)}
+                                  className={getPassportInputClass("dob")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.dob || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q6 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                6. Nchi uliyozaliwa / Country of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.birthCountry}
+                                  onChange={(e) => updatePassportField("birthCountry", e.target.value)}
+                                  placeholder="e.g. Tanzania"
+                                  className={getPassportInputClass("birthCountry")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.birthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q7 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                7. Mkoa uliozaliwa / Region of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.birthRegion}
+                                  onChange={(e) => updatePassportField("birthRegion", e.target.value)}
+                                  placeholder="e.g. Dar es Salaam"
+                                  className={getPassportInputClass("birthRegion")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.birthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q8 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                8. Wilaya uliyozaliwa / District of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.birthDistrict}
+                                  onChange={(e) => updatePassportField("birthDistrict", e.target.value)}
+                                  placeholder="e.g. Ilala"
+                                  className={getPassportInputClass("birthDistrict")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.birthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q9 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                9. Kata uliyozaliwa / Ward of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.birthWard}
+                                  onChange={(e) => updatePassportField("birthWard", e.target.value)}
+                                  placeholder="e.g. Kariakoo"
+                                  className={getPassportInputClass("birthWard")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.birthWard || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q10 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                10. Kijiji au Mtaa uliozaliwa / Village or Street <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.birthVillageStreet}
+                                  onChange={(e) => updatePassportField("birthVillageStreet", e.target.value)}
+                                  placeholder="e.g. Msimbazi Street"
+                                  className={getPassportInputClass("birthVillageStreet")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.birthVillageStreet || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q11 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                11. Hali ya ndoa / Marital Status <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <select
+                                  value={passportData.maritalStatus}
+                                  onChange={(e) => updatePassportField("maritalStatus", e.target.value)}
+                                  className={`${getPassportInputClass("maritalStatus")} cursor-pointer`}
+                                >
+                                  <option value="Single">Single</option>
+                                  <option value="Married">Married</option>
+                                  <option value="Separated">Separated</option>
+                                  <option value="Divorced">Divorced</option>
+                                  <option value="Widowed">Widowed</option>
+                                </select>
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.maritalStatus || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q12 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                12. Namba ya simu ya mwombaji / Applicant Phone <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="tel"
+                                  value={passportData.phone}
+                                  onChange={(e) => updatePassportField("phone", e.target.value)}
+                                  placeholder="e.g. +255 712 345 678"
+                                  className={getPassportInputClass("phone")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.phone || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q13 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                13. Barua pepe ya mwombaji / Applicant Email <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="email"
+                                  value={passportData.email}
+                                  onChange={(e) => updatePassportField("email", e.target.value)}
+                                  placeholder="e.g. student@gmail.com"
+                                  className={getPassportInputClass("email")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.email || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q14 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                14. Sanduku la Posta / Postal Address <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.postalAddress}
+                                  onChange={(e) => updatePassportField("postalAddress", e.target.value)}
+                                  placeholder="e.g. P.O. Box 12345 Dar es Salaam"
+                                  className={getPassportInputClass("postalAddress")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.postalAddress || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        {/* SECTION 2: CURRENT RESIDENCE                                 */}
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                            <div>
+                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">2</span>
+                                <span>Current Residence</span>
+                              </h3>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Questions 15 to 20
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                            {/* Q15 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                15. Nchi unayoishi sasa / Current Country of Residence <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceCountry}
+                                  onChange={(e) => updatePassportField("residenceCountry", e.target.value)}
+                                  placeholder="e.g. Tanzania"
+                                  className={getPassportInputClass("residenceCountry")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q16 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                16. Mkoa unaoishi sasa / Current Region <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceRegion}
+                                  onChange={(e) => updatePassportField("residenceRegion", e.target.value)}
+                                  placeholder="e.g. Dar es Salaam"
+                                  className={getPassportInputClass("residenceRegion")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q17 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                17. Wilaya unayoishi sasa / Current District <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceDistrict}
+                                  onChange={(e) => updatePassportField("residenceDistrict", e.target.value)}
+                                  placeholder="e.g. Kinondoni"
+                                  className={getPassportInputClass("residenceDistrict")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q18 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                18. Kata unayoishi sasa / Current Ward <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceWard}
+                                  onChange={(e) => updatePassportField("residenceWard", e.target.value)}
+                                  placeholder="e.g. Mikocheni"
+                                  className={getPassportInputClass("residenceWard")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceWard || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q19 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                19. Kijiji au Mtaa unaoishi sasa / Current Street or Village <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceStreetVillage}
+                                  onChange={(e) => updatePassportField("residenceStreetVillage", e.target.value)}
+                                  placeholder="e.g. Regent Street"
+                                  className={getPassportInputClass("residenceStreetVillage")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q20 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                20. Namba ya nyumba / House Number <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.residenceHouseNumber}
+                                  onChange={(e) => updatePassportField("residenceHouseNumber", e.target.value)}
+                                  placeholder="e.g. House No. 45"
+                                  className={getPassportInputClass("residenceHouseNumber")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.residenceHouseNumber || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        {/* SECTION 3: FATHER'S INFORMATION                              */}
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                            <div>
+                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">3</span>
+                                <span>Father's Information</span>
+                              </h3>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Questions 21 to 28
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                            {/* Q21 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                21. Jina kamili la baba / Father's Full Name <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherFullName}
+                                  onChange={(e) => updatePassportField("fatherFullName", e.target.value)}
+                                  placeholder="e.g. Peter James Mtishbi"
+                                  className={getPassportInputClass("fatherFullName")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherFullName || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q22 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                22. Kazi ya baba / Father's Occupation <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherOccupation}
+                                  onChange={(e) => updatePassportField("fatherOccupation", e.target.value)}
+                                  placeholder="e.g. Businessman"
+                                  className={getPassportInputClass("fatherOccupation")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherOccupation || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q23 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                23. Tarehe ya kuzaliwa ya baba / Father's Date of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="date"
+                                  value={passportData.fatherDob}
+                                  onChange={(e) => updatePassportField("fatherDob", e.target.value)}
+                                  className={getPassportInputClass("fatherDob")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherDob || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q24 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                24. Nchi aliyozaliwa baba / Father's Country of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherBirthCountry}
+                                  onChange={(e) => updatePassportField("fatherBirthCountry", e.target.value)}
+                                  placeholder="e.g. Tanzania"
+                                  className={getPassportInputClass("fatherBirthCountry")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherBirthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q25 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                25. Mkoa aliozaliwa baba / Father's Region of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherBirthRegion}
+                                  onChange={(e) => updatePassportField("fatherBirthRegion", e.target.value)}
+                                  placeholder="e.g. Kilimanjaro"
+                                  className={getPassportInputClass("fatherBirthRegion")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherBirthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q26 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                26. Wilaya aliyozaliwa baba / Father's District of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherBirthDistrict}
+                                  onChange={(e) => updatePassportField("fatherBirthDistrict", e.target.value)}
+                                  placeholder="e.g. Moshi Rural"
+                                  className={getPassportInputClass("fatherBirthDistrict")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherBirthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q27 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                27. Kata/Shehia aliyozaliwa baba / Father's Birth Ward/Shehia <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherBirthWardShehia}
+                                  onChange={(e) => updatePassportField("fatherBirthWardShehia", e.target.value)}
+                                  placeholder="e.g. West Kibosho"
+                                  className={getPassportInputClass("fatherBirthWardShehia")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherBirthWardShehia || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q28 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                28. Kijiji au Mtaa aliozaliwa baba / Father's Birth Street/Village <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.fatherBirthStreetVillage}
+                                  onChange={(e) => updatePassportField("fatherBirthStreetVillage", e.target.value)}
+                                  placeholder="e.g. Umbwe Village"
+                                  className={getPassportInputClass("fatherBirthStreetVillage")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.fatherBirthStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        {/* SECTION 4: MOTHER'S INFORMATION                              */}
+                        {/* ──────────────────────────────────────────────────────────── */}
+                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                            <div>
+                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">4</span>
+                                <span>Mother's Information</span>
+                              </h3>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Questions 29 to 36
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                            {/* Q29 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                29. Jina kamili la mama / Mother's Full Name <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherFullName}
+                                  onChange={(e) => updatePassportField("motherFullName", e.target.value)}
+                                  placeholder="e.g. Mary Grace Mtishbi"
+                                  className={getPassportInputClass("motherFullName")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherFullName || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q30 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                30. Kazi ya mama / Mother's Occupation <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherOccupation}
+                                  onChange={(e) => updatePassportField("motherOccupation", e.target.value)}
+                                  placeholder="e.g. Teacher"
+                                  className={getPassportInputClass("motherOccupation")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherOccupation || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q31 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                31. Tarehe ya kuzaliwa ya mama / Mother's Date of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="date"
+                                  value={passportData.motherDob}
+                                  onChange={(e) => updatePassportField("motherDob", e.target.value)}
+                                  className={getPassportInputClass("motherDob")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherDob || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q32 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                32. Nchi aliyozaliwa mama / Mother's Country of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherBirthCountry}
+                                  onChange={(e) => updatePassportField("motherBirthCountry", e.target.value)}
+                                  placeholder="e.g. Tanzania"
+                                  className={getPassportInputClass("motherBirthCountry")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherBirthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q33 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                33. Mkoa aliozaliwa mama / Mother's Region of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherBirthRegion}
+                                  onChange={(e) => updatePassportField("motherBirthRegion", e.target.value)}
+                                  placeholder="e.g. Mbeya"
+                                  className={getPassportInputClass("motherBirthRegion")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherBirthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q34 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                34. Wilaya aliyozaliwa mama / Mother's District of Birth <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherBirthDistrict}
+                                  onChange={(e) => updatePassportField("motherBirthDistrict", e.target.value)}
+                                  placeholder="e.g. Mbeya Urban"
+                                  className={getPassportInputClass("motherBirthDistrict")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherBirthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q35 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                35. Kata/Shehia aliyozaliwa mama / Mother's Birth Ward/Shehia <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherBirthWardShehia}
+                                  onChange={(e) => updatePassportField("motherBirthWardShehia", e.target.value)}
+                                  placeholder="e.g. Iyunga"
+                                  className={getPassportInputClass("motherBirthWardShehia")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherBirthWardShehia || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Q36 */}
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">
+                                36. Kijiji au Mtaa aliozaliwa mama / Mother's Birth Street/Village <span className="text-red-500">*</span>
+                              </label>
+                              {isEditingPassport ? (
+                                <input
+                                  type="text"
+                                  value={passportData.motherBirthStreetVillage}
+                                  onChange={(e) => updatePassportField("motherBirthStreetVillage", e.target.value)}
+                                  placeholder="e.g. Mbalizi Street"
+                                  className={getPassportInputClass("motherBirthStreetVillage")}
+                                />
+                              ) : (
+                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
+                                  {passportData.motherBirthStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Form Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveNav("documents")}
+                            className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto text-center"
+                          >
+                            &larr; View My Documents
+                          </button>
+
+                          {isEditingPassport ? (
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingPassport(false)}
+                                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer flex-1 sm:flex-none"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={savingPassport}
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-none"
+                              >
+                                {savingPassport ? (
+                                  <>
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Saving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>Save Passport Details</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingPassport(true)}
+                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              <span>Edit Passport Details</span>
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </>
+                  )}
                 </div>
               )}
 
