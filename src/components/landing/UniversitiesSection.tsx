@@ -189,6 +189,39 @@ export default function UniversitiesSection() {
         if (rankA !== rankB) return rankA - rankB;
       }
 
+      if (activeLower === "uk") {
+        const getUkRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "hult-international-business-school-uk" || name.includes("hult")) return 1;
+          return 99;
+        };
+        const rankA = getUkRank(a);
+        const rankB = getUkRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeLower === "canada") {
+        const getCanadaRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "algoma-university-canada" || name.includes("algoma")) return 1;
+          return 99;
+        };
+        const rankA = getCanadaRank(a);
+        const rankB = getCanadaRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
+      if (activeLower === "china") {
+        const getChinaRank = (u: UniversityWithCourses) => {
+          const name = u.name.toLowerCase();
+          if (u.id === "wuhan-china" || name.includes("wuhan")) return 1;
+          return 99;
+        };
+        const rankA = getChinaRank(a);
+        const rankB = getChinaRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+      }
+
       return a.name.localeCompare(b.name);
     });
 
