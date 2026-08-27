@@ -3124,30 +3124,87 @@ function DashboardContent() {
                         </button>
                       </div>
 
-                      {/* Prominent Application Fee CTA Banner at the Top */}
-                      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/60 to-blue-50 border-2 border-blue-200 text-blue-950 shadow-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="space-y-1 max-w-2xl">
-                            <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2 text-blue-900">
-                              <GraduationCap className="w-5 h-5 text-blue-600 shrink-0" />
-                              <span>Ready to Start Your Application?</span>
-                            </h3>
-                            <p className="text-xs text-blue-800 leading-relaxed font-medium">
-                              One-time fee to open and activate your application file with MtishbiScholar.
-                            </p>
-                            <p className="text-[11px] text-blue-700/80 font-normal leading-normal italic">
-                              This fee does not cover university application fees or other university-specific charges. Those are separate.
-                            </p>
+                      {/* Prominent Application Status CTA Banner at the Top of Profile */}
+                      {dashData?.hasApprovedPayment || stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" ? (
+                        /* Payment Verified / Active File Banner */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1 max-w-2xl">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                  Payment Verified &bull; File Active
+                                </span>
+                              </div>
+                              <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2 text-emerald-950 mt-1">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                                <span>MtishbiScholar Application File Fee (TSh 50,000) Paid &amp; Approved</span>
+                              </h3>
+                              <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                                Your application file is active and verified by Mtishbi Finance. You can now proceed with your university application.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setActiveNav("application")}
+                              className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 shrink-0 flex items-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <Building2 className="w-4 h-4" />
+                              <span>Go to My Application &rarr;</span>
+                            </button>
                           </div>
-                          <button
-                            onClick={() => setActiveNav("payments")}
-                            className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 shrink-0 flex items-center gap-2 cursor-pointer active:scale-95"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            <span>Pay Application File Fee &mdash; TSh 50,000</span>
-                          </button>
                         </div>
-                      </div>
+                      ) : stage === "payment_pending" && !isReuploadingPayment ? (
+                        /* Payment Pending Banner */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 border-2 border-amber-200 text-amber-950 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1 max-w-2xl">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider">
+                                  Payment Pending Verification
+                                </span>
+                              </div>
+                              <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2 text-amber-950 mt-1">
+                                <Clock className="w-5 h-5 text-amber-600 shrink-0 animate-spin" />
+                                <span>Waiting for Finance Approval</span>
+                              </h3>
+                              <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                                Your TSh 50,000 payment receipt is under review by Mtishbi Finance Desk. Once approved, your university applications will unlock.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setActiveNav("payments")}
+                              className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              <span>Check Payment Status &rarr;</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Unpaid CTA Banner */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/60 to-blue-50 border-2 border-blue-200 text-blue-950 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1 max-w-2xl">
+                              <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2 text-blue-900">
+                                <GraduationCap className="w-5 h-5 text-blue-600 shrink-0" />
+                                <span>Ready to Start Your Application?</span>
+                              </h3>
+                              <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                                One-time fee to open and activate your application file with MtishbiScholar.
+                              </p>
+                              <p className="text-[11px] text-blue-700/80 font-normal leading-normal italic">
+                                This fee does not cover university application fees or other university-specific charges. Those are separate.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setActiveNav("payments")}
+                              className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 shrink-0 flex items-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              <span>Pay Application File Fee &mdash; TSh 50,000</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* 2 - 7 Detailed Profile Info Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
@@ -5301,6 +5358,7 @@ function DashboardContent() {
               {/* ── STAGE 2 & 3: PAYMENTS SECTION (ONLY VISIBLE UNDER PAYMENTS TAB) ── */}
               {activeNav === "payments" && (
                 <div className="space-y-4">
+                  {/* Top Status Banner: Pending vs Approved */}
                   {stage === "payment_pending" && !isReuploadingPayment ? (
                     /* STAGE 3: PAYMENT PENDING FINANCE APPROVAL */
                     <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm shadow-slate-200/60 space-y-4">
@@ -5384,9 +5442,9 @@ function DashboardContent() {
                         </div>
                       </div>
                     </div>
-                  ) : stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
-                    /* ALREADY PAID & APPROVED NOTICE */
-                    <div className="p-7 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-sm space-y-4">
+                  ) : (stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment) ? (
+                    /* ALREADY PAID & APPROVED TOP BANNER */
+                    <div className="p-6 sm:p-7 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-sm space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3.5">
                           <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-md">
@@ -5427,356 +5485,430 @@ function DashboardContent() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    /* APPLICATION FEE PAYMENT FORM (TWO TOP CARDS SIDE-BY-SIDE + DYNAMIC DETAILS) */
-                    <div className="space-y-4">
-                      {/* Top Row: Two Cards Side-by-Side */}
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                        {/* Card 1: Official Fee Banner */}
-                        <div className="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white shadow-md border border-blue-500/30 flex flex-col justify-between gap-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-extrabold uppercase tracking-wider">
-                                Official Fee
-                              </span>
-                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-extrabold">
-                                Application Processing
-                              </span>
-                            </div>
-                            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                              MtishbiScholar Application File Fee: TSh 50,000
-                            </h2>
-                            <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
-                              One-time fee to open and activate your application file with MtishbiScholar.
-                            </p>
-                            <p className="text-[11px] text-blue-200/90 font-normal leading-normal italic">
-                              This fee does not cover university application fees or other university-specific charges. Those are separate.
-                            </p>
-                          </div>
+                  ) : null}
 
-                          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
-                            <div>
-                              <p className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">Amount Due</p>
-                              <p className="text-xl font-black text-white font-mono mt-0.5">TSh 50,000</p>
-                            </div>
-                            <span className="text-[11px] text-blue-100 font-medium bg-white/10 px-2.5 py-1 rounded-lg">
-                              One-time processing fee
+                  {/* ── APPLICATION FEE PAYMENT METHODS & ACCOUNTS (ALWAYS VISIBLE) ── */}
+                  <div className="space-y-4">
+                    {/* Top Row: Two Cards Side-by-Side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                      {/* Card 1: Official Fee Banner */}
+                      <div className="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white shadow-md border border-blue-500/30 flex flex-col justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-extrabold uppercase tracking-wider">
+                              Official Fee
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-extrabold">
+                              {dashData?.hasApprovedPayment ? "Payment Settled" : "Application Processing"}
                             </span>
                           </div>
-                        </div>
-
-                        {/* Card 2: Select Payment Method */}
-                        <div className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-3">
-                          <div className="border-b border-slate-100 pb-2">
-                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">Select Payment Method</h3>
-                            <p className="text-xs text-slate-500">Choose your preferred payment method:</p>
-                          </div>
-
-                          <div className="space-y-2.5 flex-1 flex flex-col justify-center">
-                            {/* Option 1: Mobile Money / Lipa Namba */}
-                            <button
-                              type="button"
-                              onClick={() => setPaymentMethod("LipaNamba")}
-                              className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
-                                paymentMethod === "LipaNamba"
-                                  ? "border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-2xs"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                              }`}
-                            >
-                              <div
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
-                                  paymentMethod === "LipaNamba"
-                                    ? "bg-emerald-600 text-white shadow-xs"
-                                    : "bg-slate-100 text-slate-600"
-                                }`}
-                              >
-                                <Smartphone className="w-5 h-5" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                                    Mobile Money / Lipa Namba
-                                  </h4>
-                                  {paymentMethod === "LipaNamba" && (
-                                    <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-[10px]">
-                                      <Check className="w-3 h-3" />
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                                  M-Pesa &bull; Mixx by Yas &bull; Airtel Money
-                                </p>
-                              </div>
-                            </button>
-
-                            {/* Option 2: Bank Transfer */}
-                            <button
-                              type="button"
-                              onClick={() => setPaymentMethod("BankTransfer")}
-                              className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
-                                paymentMethod === "BankTransfer"
-                                  ? "border-blue-600 bg-blue-50/80 text-blue-950 ring-2 ring-blue-500/20 shadow-2xs"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                              }`}
-                            >
-                              <div
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
-                                  paymentMethod === "BankTransfer"
-                                    ? "bg-blue-600 text-white shadow-xs"
-                                    : "bg-slate-100 text-slate-600"
-                                }`}
-                              >
-                                <Building2 className="w-5 h-5" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">Bank Transfer</h4>
-                                  {paymentMethod === "BankTransfer" && (
-                                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 text-[10px]">
-                                      <Check className="w-3 h-3" />
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] font-semibold text-blue-700 mt-0.5">CRDB TZS &bull; CRDB USD</p>
-                              </div>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Dynamic Payment Content Card */}
-                      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                        {/* Mobile Money Details */}
-                        {paymentMethod === "LipaNamba" && (
-                          <div className="space-y-4 pt-1">
-                            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white text-slate-900 shadow-sm border-2 border-emerald-300 flex flex-col md:flex-row items-center justify-between gap-5">
-                              <div className="space-y-3.5 flex-1 w-full min-w-0">
-                                <div className="flex items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-2xs">
-                                    CRDB TIPS / TANQR
-                                  </span>
-                                  <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    Instant Confirmation
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
-                                    <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Lipa Namba</p>
-                                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                                      <p className="font-mono text-xl sm:text-2xl font-black text-slate-900 tracking-wider">
-                                        114535008
-                                      </p>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy("114535008", "lipa")}
-                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
-                                      >
-                                        <Copy className="w-3 h-3" />
-                                        <span>{copiedField === "lipa" ? "Copied!" : "Copy"}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
-                                    <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Beneficiary Name</p>
-                                    <p className="text-xs sm:text-sm font-black text-slate-900 truncate mt-1">
-                                      MTISHBI COMPANY LIMITED
-                                    </p>
-                                    <p className="text-[10px] font-bold text-emerald-700 mt-0.5">Verified Business Merchant</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-700 bg-white/90 p-2.5 rounded-xl border border-emerald-200">
-                                  <span className="font-extrabold text-slate-900">Supported Networks:</span>
-                                  <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-bold text-[10px]">Vodacom M-Pesa</span>
-                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold text-[10px]">Mixx by Yas</span>
-                                  <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">Airtel Money</span>
-                                </div>
-                              </div>
-
-                              <div className="shrink-0 flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border-2 border-emerald-200 shadow-xs text-center">
-                                <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100">
-                                  <img
-                                    src="/images/lipa_namba_qr.png"
-                                    alt="Lipa Namba CRDB TIPS TANQR 114535008"
-                                    className="w-full h-full object-contain rounded-lg"
-                                  />
-                                </div>
-                                <p className="text-[11px] font-extrabold text-slate-900 mt-1.5 flex items-center gap-1">
-                                  <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Scan to Pay</span>
-                                </p>
-                                <p className="text-[9px] text-slate-500">M-Pesa • Mixx • Airtel App</p>
-                              </div>
-                            </div>
-
-                            {/* Mobile USSD Instructions */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              {/* 1. M-Pesa */}
-                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                      <img src="/images/mpesa_logo.png" alt="Vodacom M-Pesa" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div>
-                                      <h5 className="font-extrabold text-xs text-slate-900">Vodacom M-Pesa</h5>
-                                      <p className="text-[10px] text-slate-500 font-mono">*150*00#</p>
-                                    </div>
-                                  </div>
-                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*00#</span></li>
-                                    <li>2. Select <span className="font-bold text-slate-900">4 (Lipa kwa M-Pesa)</span></li>
-                                    <li>3. Select <span className="font-bold text-slate-900">1 (Lipa kwa Simu / Namba)</span></li>
-                                    <li>4. Enter <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                    <li>6. Confirm name: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                  </ol>
-                                </div>
-                              </div>
-
-                              {/* 2. Mixx by Yas */}
-                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                      <img src="/images/mixx_logo.png" alt="Mixx by Yas (Tigo / Halopesa)" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div>
-                                      <h5 className="font-extrabold text-xs text-slate-900">Mixx by Yas</h5>
-                                      <p className="text-[10px] text-slate-500 font-mono">*150*01# / *150*88#</p>
-                                    </div>
-                                  </div>
-                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*01#</span> au <span className="font-mono font-bold text-slate-900">*150*88#</span></li>
-                                    <li>2. Select <span className="font-bold text-slate-900">Lipa kwa Simu</span></li>
-                                    <li>3. Select <span className="font-bold text-slate-900">Kwenda Mitandao Mingine / CRDB TIPS</span></li>
-                                    <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                    <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                  </ol>
-                                </div>
-                              </div>
-
-                              {/* 3. Airtel Money */}
-                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                      <img src="/images/airtel_logo.svg" alt="Airtel Money" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div>
-                                      <h5 className="font-extrabold text-xs text-slate-900">Airtel Money</h5>
-                                      <p className="text-[10px] text-slate-500 font-mono">*150*60#</p>
-                                    </div>
-                                  </div>
-                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*60#</span></li>
-                                    <li>2. Select <span className="font-bold text-slate-900">5 (Lipa kwa Simu / Merchant)</span></li>
-                                    <li>3. Select <span className="font-bold text-slate-900">Kwenda CRDB TIPS / Mitandao Mingine</span></li>
-                                    <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                    <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                  </ol>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Bank Transfer Details */}
-                        {paymentMethod === "BankTransfer" && (
-                          <div className="space-y-4 pt-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* CRDB TZS */}
-                              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white text-slate-900 shadow-sm border-2 border-emerald-300 space-y-3">
-                                <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-                                  <div>
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
-                                      TZS Account
-                                    </span>
-                                    <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; Tanzanian Shillings</h4>
-                                  </div>
-                                  <Building2 className="w-5 h-5 text-emerald-700" />
-                                </div>
-                                <div className="space-y-2 text-xs">
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
-                                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                                      <p className="font-mono text-lg font-black text-slate-900">10458426886</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy("10458426886", "crdb_tzs")}
-                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Copy className="w-3 h-3" />
-                                        <span>{copiedField === "crdb_tzs" ? "Copied!" : "Copy"}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
-                                    <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Amount Due:</span>
-                                    <p className="font-black text-emerald-800 text-sm">TSh 50,000</p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* CRDB USD */}
-                              <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/40 to-white text-slate-900 shadow-sm border-2 border-blue-300 space-y-3">
-                                <div className="flex items-center justify-between border-b border-blue-200 pb-2">
-                                  <div>
-                                    <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase">
-                                      USD Account
-                                    </span>
-                                    <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; US Dollars</h4>
-                                  </div>
-                                  <Building2 className="w-5 h-5 text-blue-700" />
-                                </div>
-                                <div className="space-y-2 text-xs">
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
-                                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                                      <p className="font-mono text-lg font-black text-slate-900">10458961889</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy("10458961889", "crdb_usd")}
-                                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Copy className="w-3 h-3" />
-                                        <span>{copiedField === "crdb_usd" ? "Copied!" : "Copy"}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
-                                    <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold text-slate-500">Swift Code:</span>
-                                    <p className="font-mono font-bold text-slate-900">CORUTZTZ</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Universal Safety Note */}
-                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <p className="leading-relaxed">
-                            <span className="font-extrabold">Important:</span> Always verify that the recipient name displays <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span> before confirming payment.
+                          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                            MtishbiScholar Application File Fee: TSh 50,000
+                          </h2>
+                          <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
+                            One-time fee to open and activate your application file with MtishbiScholar.
+                          </p>
+                          <p className="text-[11px] text-blue-200/90 font-normal leading-normal italic">
+                            This fee does not cover university application fees or other university-specific charges. Those are separate.
                           </p>
                         </div>
+
+                        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
+                          <div>
+                            <p className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">
+                              {dashData?.hasApprovedPayment ? "Amount Paid" : "Amount Due"}
+                            </p>
+                            <p className="text-xl font-black text-white font-mono mt-0.5">TSh 50,000</p>
+                          </div>
+                          <span className="text-[11px] text-blue-100 font-medium bg-white/10 px-2.5 py-1 rounded-lg">
+                            {dashData?.hasApprovedPayment ? "Verified by Finance" : "One-time processing fee"}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Payment Proof Submission Card */}
+                      {/* Card 2: Select Payment Method */}
+                      <div className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-3">
+                        <div className="border-b border-slate-100 pb-2">
+                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900">Select Payment Method</h3>
+                          <p className="text-xs text-slate-500">Choose your preferred payment method:</p>
+                        </div>
+
+                        <div className="space-y-2.5 flex-1 flex flex-col justify-center">
+                          {/* Option 1: Mobile Money / Lipa Namba */}
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("LipaNamba")}
+                            className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
+                              paymentMethod === "LipaNamba"
+                                ? "border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-2xs"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                                paymentMethod === "LipaNamba"
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              <Smartphone className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1.5">
+                                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                                  Mobile Money / Lipa Namba
+                                </h4>
+                                {paymentMethod === "LipaNamba" && (
+                                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-[10px]">
+                                    <Check className="w-3 h-3" />
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+                                M-Pesa &bull; Mixx by Yas &bull; Airtel Money
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* Option 2: Bank Transfer */}
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("BankTransfer")}
+                            className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
+                              paymentMethod === "BankTransfer"
+                                ? "border-blue-600 bg-blue-50/80 text-blue-950 ring-2 ring-blue-500/20 shadow-2xs"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                                paymentMethod === "BankTransfer"
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              <Building2 className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1.5">
+                                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">Bank Transfer</h4>
+                                {paymentMethod === "BankTransfer" && (
+                                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 text-[10px]">
+                                    <Check className="w-3 h-3" />
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] font-semibold text-blue-700 mt-0.5">CRDB TZS &bull; CRDB USD</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Payment Content Card */}
+                    <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                      {/* Mobile Money Details */}
+                      {paymentMethod === "LipaNamba" && (
+                        <div className="space-y-4 pt-1">
+                          <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white text-slate-900 shadow-sm border-2 border-emerald-300 flex flex-col md:flex-row items-center justify-between gap-5">
+                            <div className="space-y-3.5 flex-1 w-full min-w-0">
+                              <div className="flex items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                  CRDB TIPS / TANQR
+                                </span>
+                                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  Instant Confirmation
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
+                                  <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Lipa Namba</p>
+                                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <p className="font-mono text-xl sm:text-2xl font-black text-slate-900 tracking-wider">
+                                      114535008
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy("114535008", "lipa")}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      <span>{copiedField === "lipa" ? "Copied!" : "Copy"}</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
+                                  <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Beneficiary Name</p>
+                                  <p className="text-xs sm:text-sm font-black text-slate-900 truncate mt-1">
+                                    MTISHBI COMPANY LIMITED
+                                  </p>
+                                  <p className="text-[10px] font-bold text-emerald-700 mt-0.5">Verified Business Merchant</p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-700 bg-white/90 p-2.5 rounded-xl border border-emerald-200">
+                                <span className="font-extrabold text-slate-900">Supported Networks:</span>
+                                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-bold text-[10px]">Vodacom M-Pesa</span>
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold text-[10px]">Mixx by Yas</span>
+                                <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">Airtel Money</span>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border-2 border-emerald-200 shadow-xs text-center">
+                              <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100">
+                                <img
+                                  src="/images/lipa_namba_qr.png"
+                                  alt="Lipa Namba CRDB TIPS TANQR 114535008"
+                                  className="w-full h-full object-contain rounded-lg"
+                                />
+                              </div>
+                              <p className="text-[11px] font-extrabold text-slate-900 mt-1.5 flex items-center gap-1">
+                                <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Scan to Pay</span>
+                              </p>
+                              <p className="text-[9px] text-slate-500">M-Pesa • Mixx • Airtel App</p>
+                            </div>
+                          </div>
+
+                          {/* Mobile USSD Instructions */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {/* 1. M-Pesa */}
+                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                    <img src="/images/mpesa_logo.png" alt="Vodacom M-Pesa" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <h5 className="font-extrabold text-xs text-slate-900">Vodacom M-Pesa</h5>
+                                    <p className="text-[10px] text-slate-500 font-mono">*150*00#</p>
+                                  </div>
+                                </div>
+                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*00#</span></li>
+                                  <li>2. Select <span className="font-bold text-slate-900">4 (Lipa kwa M-Pesa)</span></li>
+                                  <li>3. Select <span className="font-bold text-slate-900">1 (Lipa kwa Simu / Namba)</span></li>
+                                  <li>4. Enter <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                  <li>6. Confirm name: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                </ol>
+                              </div>
+                            </div>
+
+                            {/* 2. Mixx by Yas */}
+                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                    <img src="/images/mixx_logo.png" alt="Mixx by Yas (Tigo / Halopesa)" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <h5 className="font-extrabold text-xs text-slate-900">Mixx by Yas</h5>
+                                    <p className="text-[10px] text-slate-500 font-mono">*150*01# / *150*88#</p>
+                                  </div>
+                                </div>
+                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*01#</span> au <span className="font-mono font-bold text-slate-900">*150*88#</span></li>
+                                  <li>2. Select <span className="font-bold text-slate-900">Lipa kwa Simu</span></li>
+                                  <li>3. Select <span className="font-bold text-slate-900">Kwenda Mitandao Mingine / CRDB TIPS</span></li>
+                                  <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                  <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                </ol>
+                              </div>
+                            </div>
+
+                            {/* 3. Airtel Money */}
+                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                    <img src="/images/airtel_logo.svg" alt="Airtel Money" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <h5 className="font-extrabold text-xs text-slate-900">Airtel Money</h5>
+                                    <p className="text-[10px] text-slate-500 font-mono">*150*60#</p>
+                                  </div>
+                                </div>
+                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*60#</span></li>
+                                  <li>2. Select <span className="font-bold text-slate-900">5 (Lipa kwa Simu / Merchant)</span></li>
+                                  <li>3. Select <span className="font-bold text-slate-900">Kwenda CRDB TIPS / Mitandao Mingine</span></li>
+                                  <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                  <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                </ol>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bank Transfer Details */}
+                      {paymentMethod === "BankTransfer" && (
+                        <div className="space-y-4 pt-1">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* CRDB TZS */}
+                            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white text-slate-900 shadow-sm border-2 border-emerald-300 space-y-3">
+                              <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
+                                    TZS Account
+                                  </span>
+                                  <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; Tanzanian Shillings</h4>
+                                </div>
+                                <Building2 className="w-5 h-5 text-emerald-700" />
+                              </div>
+                              <div className="space-y-2 text-xs">
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
+                                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <p className="font-mono text-lg font-black text-slate-900">10458426886</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy("10458426886", "crdb_tzs")}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      <span>{copiedField === "crdb_tzs" ? "Copied!" : "Copy"}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
+                                  <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Amount Due:</span>
+                                  <p className="font-black text-emerald-800 text-sm">TSh 50,000</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* CRDB USD */}
+                            <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/40 to-white text-slate-900 shadow-sm border-2 border-blue-300 space-y-3">
+                              <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase">
+                                    USD Account
+                                  </span>
+                                  <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; US Dollars</h4>
+                                </div>
+                                <Building2 className="w-5 h-5 text-blue-700" />
+                              </div>
+                              <div className="space-y-2 text-xs">
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
+                                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <p className="font-mono text-lg font-black text-slate-900">10458961889</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy("10458961889", "crdb_usd")}
+                                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      <span>{copiedField === "crdb_usd" ? "Copied!" : "Copy"}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
+                                  <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-500">Swift Code:</span>
+                                  <p className="font-mono font-bold text-slate-900">CORUTZTZ</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Universal Safety Note */}
+                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="leading-relaxed">
+                          <span className="font-extrabold">Important:</span> Always verify that the recipient name displays <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span> before confirming payment.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom Card: Either Settled Payment Confirmation (when verified) OR Proof Submission Form */}
+                    {stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
+                      /* PAYMENT SETTLEMENT CONFIRMATION CARD */
+                      <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/70 border-2 border-emerald-300 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/80 pb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <h3 className="font-extrabold text-sm sm:text-base text-emerald-950 flex items-center gap-2">
+                                <span>Official Payment Proof Settled</span>
+                              </h3>
+                            </div>
+                            <p className="text-xs text-emerald-800/90 mt-0.5">
+                              Your TSh 50,000 Application File Fee was approved and verified by Mtishbi Finance.
+                            </p>
+                          </div>
+                          <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider self-start sm:self-auto shadow-2xs">
+                            Verified &amp; Settled
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Amount Paid</p>
+                            <p className="text-sm font-black text-emerald-900 font-mono mt-0.5">TSh 50,000</p>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Payment Method</p>
+                            <p className="text-xs font-extrabold text-slate-900 mt-0.5">
+                              {dashData?.payments?.[0]?.payment_method || "Mobile Money / Bank Transfer"}
+                            </p>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Transaction Reference</p>
+                            {(() => {
+                              const rawRef = dashData?.payments?.[0]?.transaction_ref;
+                              const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "Verified";
+                              return <p className="text-xs font-mono font-bold text-slate-900 mt-0.5">{displayRef}</p>;
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            {dashData?.payments?.[0]?.payment_proof_url && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleViewReceipt(dashData.payments[0].payment_proof_url!, dashData.payments[0].transaction_ref || undefined);
+                                }}
+                                className="px-4 py-2.5 bg-white hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-xl border border-emerald-300 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span>View Uploaded Receipt Proof</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setActiveNav("application")}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Building2 className="w-4 h-4" />
+                            <span>Go to My University Application &rarr;</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Payment Proof Submission Card */
                       <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                           <div>
@@ -5940,8 +6072,8 @@ function DashboardContent() {
                           )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
