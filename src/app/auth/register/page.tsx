@@ -128,11 +128,15 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Real Supabase Auth SignUp which sends confirmation email to user's mailbox
+      // Pass proper emailRedirectTo pointing to /auth/callback
+      const redirectUrl =
+        typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+
       const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             first_name: form.firstName.trim(),
             last_name: form.lastName.trim(),
@@ -142,7 +146,35 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        console.error("[StudentRegistration] Supabase signUp error:", {
+          message: error.message,
+          status: (error as any)?.status,
+          name: error.name,
+          code: (error as any)?.code,
+          hasUser: !!data?.user,
+        });
+
+        const errMsg = error.message || "";
+        const isEmailSendError =
+          errMsg.toLowerCase().includes("confirmation email") ||
+          errMsg.toLowerCase().includes("error sending") ||
+          (error as any)?.status === 500;
+
+        if (isEmailSendError) {
+          setErrorMessage(
+            "Unable to send the confirmation email. Please check that your email address is correct and try again, or contact support if the problem continues."
+          );
+        } else if (
+          errMsg.toLowerCase().includes("already registered") ||
+          errMsg.toLowerCase().includes("already exists")
+        ) {
+          setErrorMessage(
+            "An account with this email address already exists. Please sign in instead."
+          );
+        } else {
+          setErrorMessage(errMsg);
+        }
+
         setLoading(false);
         return;
       }
@@ -153,8 +185,12 @@ export default function RegisterPage() {
       setStep("verify_otp");
       setInfoMessage(`We sent a 6-digit verification code to ${form.email}. Check your email inbox or spam folder.`);
     } catch (err: any) {
+      console.error("[StudentRegistration] Unexpected exception during signUp:", {
+        message: err?.message,
+        name: err?.name,
+      });
       setLoading(false);
-      setErrorMessage(err?.message || "Failed to create account. Please try again.");
+      setErrorMessage("Failed to create account. Please try again or contact support.");
     }
   };
 
@@ -218,6 +254,10 @@ export default function RegisterPage() {
       });
 
       if (error) {
+        console.error("[StudentRegistration] OTP verification error:", {
+          message: error.message,
+          status: (error as any)?.status,
+        });
         setErrorMessage(error.message || "Invalid verification code. Please check your email inbox and try again.");
         setLoading(false);
         return;
@@ -250,19 +290,20 @@ export default function RegisterPage() {
               updated_at: new Date().toISOString(),
             });
         } catch (profileErr) {
-          console.error("Error creating/updating profile after OTP verification:", profileErr);
+          console.error("[StudentRegistration] Error syncing profile after OTP verification:", profileErr);
         }
       }
 
       setLoading(false);
       setStep("verified_success");
 
-      // Redirect directly to Student Dashboard
+      // Redirect directly to Student Dashboard without exposing email/name in query parameters
       const targetUrl = "/student/dashboard?welcome=true";
       setTimeout(() => {
         window.location.href = targetUrl;
       }, 1200);
     } catch (err: any) {
+      console.error("[StudentRegistration] Unexpected verification exception:", err);
       setLoading(false);
       setErrorMessage(err?.message || "Failed to verify code. Please try again.");
     }
@@ -275,19 +316,41 @@ export default function RegisterPage() {
     setOtp(["", "", "", "", "", ""]);
 
     try {
+      const redirectUrl =
+        typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: form.email,
+        email: form.email.trim(),
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        console.error("[StudentRegistration] Resend verification code error:", {
+          message: error.message,
+          status: (error as any)?.status,
+        });
+        const errMsg = error.message || "";
+        if (
+          errMsg.toLowerCase().includes("confirmation email") ||
+          errMsg.toLowerCase().includes("error sending") ||
+          (error as any)?.status === 500
+        ) {
+          setErrorMessage(
+            "Unable to resend verification email at this moment. Please wait a few moments before trying again."
+          );
+        } else {
+          setErrorMessage(errMsg);
+        }
       } else {
         setTimerSeconds(600);
         setIsTimerExpired(false);
         setInfoMessage(`A new 6-digit code has been sent to ${form.email}. Check your email.`);
       }
     } catch (err: any) {
+      console.error("[StudentRegistration] Resend exception:", err);
       setErrorMessage(err?.message || "Failed to resend verification code.");
     }
   };
