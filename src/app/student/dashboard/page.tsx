@@ -2583,11 +2583,26 @@ function DashboardContent() {
 
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-[#0B192C] flex flex-col items-center justify-center text-white space-y-4 font-sans">
-        <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold tracking-wider text-[#D4AF37] uppercase">
-          Verifying Student Authentication...
-        </p>
+      <div
+        role="status"
+        aria-label="Loading"
+        className="min-h-screen bg-[#0B192C] flex items-center justify-center font-sans"
+      >
+        <span className="sr-only">Loading</span>
+        <svg
+          className="w-11 h-11 animate-spin text-[#D4AF37]"
+          style={{ animationDuration: "1s" }}
+          viewBox="0 0 48 48"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <circle cx="39" cy="24" r="3.2" opacity="1" />
+          <circle cx="31.5" cy="37" r="3.0" opacity="0.82" />
+          <circle cx="16.5" cy="37" r="2.8" opacity="0.66" />
+          <circle cx="9" cy="24" r="2.6" opacity="0.50" />
+          <circle cx="16.5" cy="11" r="2.4" opacity="0.36" />
+          <circle cx="31.5" cy="11" r="2.2" opacity="0.25" />
+        </svg>
       </div>
     );
   }
