@@ -874,7 +874,10 @@ function DashboardContent() {
         motherBirthWardShehia: pa.mother_birth_ward_shehia || "",
         motherBirthStreetVillage: pa.mother_birth_street_village || "",
       });
-      setIsEditingPassport(false);
+      const hasCompletedPassport = Boolean(
+        pa.first_name && (pa.last_name || pa.father_full_name || pa.residence_region || pa.assistance_status === "form_completed" || pa.assistance_status === "submitted" || pa.assistance_status === "completed")
+      );
+      setIsEditingPassport(!hasCompletedPassport);
     } else if (dashData?.profile || currentUser) {
       const prof = dashData?.profile;
       const fatherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Father");
@@ -9704,10 +9707,10 @@ function DashboardContent() {
                                 <Clock className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
                                 <span>Under Review</span>
                               </span>
-                            ) : dashData?.passportAssistance?.assistance_status === "submitted" ? (
+                            ) : dashData?.passportAssistance?.assistance_status === "submitted" || dashData?.passportAssistance?.assistance_status === "form_completed" ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Submitted</span>
+                                <span>Information Recorded</span>
                               </span>
                             ) : (
                               <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">
@@ -9717,15 +9720,17 @@ function DashboardContent() {
                           </div>
                           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-1 flex items-center gap-2">
                             <Plane className="w-6 h-6 text-blue-600" />
-                            <span>Passport Assistance Application Form</span>
+                            <span>{isEditingPassport ? "Passport Assistance Application Form" : "Passport Assistance Record"}</span>
                           </h2>
                           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                            Complete this form accurately for your official passport processing application.
+                            {isEditingPassport
+                              ? "Complete this form accurately for your official passport processing application."
+                              : "Review your official recorded passport information for the Tanzania Immigration Services Department."}
                           </p>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          {!isEditingPassport && (
+                          {!isEditingPassport ? (
                             <button
                               type="button"
                               onClick={() => setIsEditingPassport(true)}
@@ -9734,22 +9739,44 @@ function DashboardContent() {
                               <Edit3 className="w-3.5 h-3.5" />
                               <span>Edit Details</span>
                             </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingPassport(false)}
+                              className="px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-100 font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <span>Cancel</span>
+                            </button>
                           )}
                         </div>
                       </div>
 
                       {/* 2. Notice / Info Callout */}
-                      <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-start gap-3">
-                        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                        <div className="space-y-1 leading-relaxed">
-                          <p className="font-bold">
-                            Instructions:
-                          </p>
-                          <p className="text-blue-900 text-[11px]">
-                            Please complete all 36 questions below accurately. This information will be used to prepare your official passport application with the Tanzania Immigration Services Department. Each question is presented in Swahili and English. An asterisk (<span className="text-red-600 font-bold">*</span>) indicates a mandatory field.
-                          </p>
+                      {isEditingPassport ? (
+                        <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs flex items-start gap-3">
+                          <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                          <div className="space-y-1 leading-relaxed">
+                            <p className="font-bold">
+                              Instructions:
+                            </p>
+                            <p className="text-blue-900 text-[11px]">
+                              Please complete all 36 questions below accurately. This information will be used to prepare your official passport application with the Tanzania Immigration Services Department. Each question is presented in Swahili and English. An asterisk (<span className="text-red-600 font-bold">*</span>) indicates a mandatory field.
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 text-xs flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5 leading-relaxed">
+                            <p className="font-bold text-slate-900">
+                              Passport Application Information Recorded
+                            </p>
+                            <p className="text-slate-600 text-[11px]">
+                              All 36 passport questions are saved. You can review your details below or click <strong>Edit Details</strong> at any time to update your information.
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* 3. Missing Documents Reminder Banner (If any) */}
                       {passportMissingDocsWarning.length > 0 && (
@@ -9796,32 +9823,246 @@ function DashboardContent() {
                         </div>
                       )}
 
-                      {/* 5. Main Form & View */}
-                      <form onSubmit={(e) => { e.preventDefault(); handleSavePassport(); }} className="space-y-6">
-
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        {/* SECTION 1: APPLICANT INFORMATION                             */}
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-                            <div>
-                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">1</span>
+                      {/* 5. Main Content: VIEW MODE vs EDIT MODE */}
+                      {!isEditingPassport ? (
+                        /* ════════════════════════════════════════════════════════════════════════════ */
+                        /* ── PASSPORT VIEW MODE (4 CLEAN INFORMATION CARDS) ──                         */
+                        /* ════════════════════════════════════════════════════════════════════════════ */
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                            {/* Card 1: Applicant Information */}
+                            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                              <h3 className="font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 text-sm flex items-center gap-2">
+                                <User className="w-4 h-4 text-blue-600" />
                                 <span>Applicant Information</span>
                               </h3>
-                              <p className="text-[11px] text-slate-500 mt-0.5">
-                                Questions 1 to 14
-                              </p>
+                              <div className="space-y-2 text-slate-700 pt-1">
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">First Name:</span>
+                                  <span className="font-bold text-slate-900">{passportData.firstName || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Middle Name:</span>
+                                  <span className="font-bold text-slate-900">{passportData.middleName || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Last Name:</span>
+                                  <span className="font-bold text-slate-900">{passportData.lastName || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Gender:</span>
+                                  <span className="font-bold text-slate-900">{passportData.sex || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Date of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.dob || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Country of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.birthCountry || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Region of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.birthRegion || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">District of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.birthDistrict || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Ward of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.birthWard || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Village / Street:</span>
+                                  <span className="font-bold text-slate-900">{passportData.birthVillageStreet || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Marital Status:</span>
+                                  <span className="font-bold text-slate-900">{passportData.maritalStatus || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Applicant Phone:</span>
+                                  <span className="font-bold text-slate-900">{passportData.phone || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Applicant Email:</span>
+                                  <span className="font-bold text-slate-900 break-all">{passportData.email || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between pb-0.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Postal Address:</span>
+                                  <span className="font-bold text-slate-900 break-words">{passportData.postalAddress || "Not provided"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card 2: Current Residence */}
+                            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                              <h3 className="font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 text-sm flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-blue-600" />
+                                <span>Current Residence</span>
+                              </h3>
+                              <div className="space-y-2 text-slate-700 pt-1">
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Country of Residence:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceCountry || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Region of Residence:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceRegion || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">District of Residence:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceDistrict || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Ward of Residence:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceWard || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Street / Village:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceStreetVillage || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between pb-0.5 gap-1">
+                                  <span className="font-semibold text-slate-500">House Number:</span>
+                                  <span className="font-bold text-slate-900">{passportData.residenceHouseNumber || "Not provided"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card 3: Father's Information */}
+                            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                              <h3 className="font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 text-sm flex items-center gap-2">
+                                <Users className="w-4 h-4 text-blue-600" />
+                                <span>Father's Information</span>
+                              </h3>
+                              <div className="space-y-2 text-slate-700 pt-1">
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Full Name:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherFullName || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Occupation:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherOccupation || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Date of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherDob || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Country of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherBirthCountry || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Region of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherBirthRegion || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's District of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherBirthDistrict || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Ward / Shehia:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherBirthWardShehia || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between pb-0.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Father's Street / Village:</span>
+                                  <span className="font-bold text-slate-900">{passportData.fatherBirthStreetVillage || "Not provided"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card 4: Mother's Information */}
+                            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                              <h3 className="font-extrabold text-slate-900 border-b border-slate-100 pb-2.5 text-sm flex items-center gap-2">
+                                <Users className="w-4 h-4 text-blue-600" />
+                                <span>Mother's Information</span>
+                              </h3>
+                              <div className="space-y-2 text-slate-700 pt-1">
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Full Name:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherFullName || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Occupation:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherOccupation || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Date of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherDob || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Country of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherBirthCountry || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Region of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherBirthRegion || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's District of Birth:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherBirthDistrict || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-50 pb-1.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Ward / Shehia:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherBirthWardShehia || "Not provided"}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between pb-0.5 gap-1">
+                                  <span className="font-semibold text-slate-500">Mother's Street / Village:</span>
+                                  <span className="font-bold text-slate-900">{passportData.motherBirthStreetVillage || "Not provided"}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                            {/* Q1 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                1. Jina la kwanza / First Name <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                          {/* Bottom Action Buttons in View Mode */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveNav("documents")}
+                              className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto text-center"
+                            >
+                              &larr; View My Documents
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingPassport(true)}
+                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              <span>Edit Passport Details</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ════════════════════════════════════════════════════════════════════════════ */
+                        /* ── PASSPORT EDIT MODE (FULL 36 QUESTIONS BILINGUAL FORM) ──                  */
+                        /* ════════════════════════════════════════════════════════════════════════════ */
+                        <form onSubmit={(e) => { e.preventDefault(); handleSavePassport(); }} className="space-y-6">
+
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          {/* SECTION 1: APPLICANT INFORMATION                             */}
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">1</span>
+                                  <span>Applicant Information</span>
+                                </h3>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Questions 1 to 14
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                              {/* Q1 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  1. Jina la kwanza / First Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.firstName}
@@ -9829,19 +10070,13 @@ function DashboardContent() {
                                   placeholder="e.g. John"
                                   className={getPassportInputClass("firstName")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.firstName || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q2 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                2. Jina la kati / Middle Name <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q2 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  2. Jina la kati / Middle Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.middleName}
@@ -9849,19 +10084,13 @@ function DashboardContent() {
                                   placeholder="e.g. Peter"
                                   className={getPassportInputClass("middleName")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.middleName || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q3 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                3. Jina la ukoo / Last Name <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q3 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  3. Jina la ukoo / Last Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.lastName}
@@ -9869,19 +10098,13 @@ function DashboardContent() {
                                   placeholder="e.g. Mtishbi"
                                   className={getPassportInputClass("lastName")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.lastName || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q4 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                4. Jinsia / Gender <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q4 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  4. Jinsia / Gender <span className="text-red-500">*</span>
+                                </label>
                                 <select
                                   value={passportData.sex}
                                   onChange={(e) => updatePassportField("sex", e.target.value)}
@@ -9891,38 +10114,26 @@ function DashboardContent() {
                                   <option value="Male">Male</option>
                                   <option value="Female">Female</option>
                                 </select>
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.sex || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q5 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                5. Tarehe ya kuzaliwa / Date of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q5 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  5. Tarehe ya kuzaliwa / Date of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="date"
                                   value={passportData.dob}
                                   onChange={(e) => updatePassportField("dob", e.target.value)}
                                   className={getPassportInputClass("dob")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.dob || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q6 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                6. Nchi uliyozaliwa / Country of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q6 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  6. Nchi uliyozaliwa / Country of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.birthCountry}
@@ -9930,19 +10141,13 @@ function DashboardContent() {
                                   placeholder="e.g. Tanzania"
                                   className={getPassportInputClass("birthCountry")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.birthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q7 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                7. Mkoa uliozaliwa / Region of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q7 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  7. Mkoa uliozaliwa / Region of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.birthRegion}
@@ -9950,19 +10155,13 @@ function DashboardContent() {
                                   placeholder="e.g. Dar es Salaam"
                                   className={getPassportInputClass("birthRegion")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.birthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q8 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                8. Wilaya uliyozaliwa / District of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q8 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  8. Wilaya uliyozaliwa / District of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.birthDistrict}
@@ -9970,19 +10169,13 @@ function DashboardContent() {
                                   placeholder="e.g. Ilala"
                                   className={getPassportInputClass("birthDistrict")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.birthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q9 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                9. Kata uliyozaliwa / Ward of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q9 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  9. Kata uliyozaliwa / Ward of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.birthWard}
@@ -9990,19 +10183,13 @@ function DashboardContent() {
                                   placeholder="e.g. Kariakoo"
                                   className={getPassportInputClass("birthWard")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.birthWard || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q10 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                10. Kijiji au Mtaa uliozaliwa / Village or Street <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q10 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  10. Kijiji au Mtaa uliozaliwa / Village or Street <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.birthVillageStreet}
@@ -10010,19 +10197,13 @@ function DashboardContent() {
                                   placeholder="e.g. Msimbazi Street"
                                   className={getPassportInputClass("birthVillageStreet")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.birthVillageStreet || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q11 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                11. Hali ya ndoa / Marital Status <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q11 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  11. Hali ya ndoa / Marital Status <span className="text-red-500">*</span>
+                                </label>
                                 <select
                                   value={passportData.maritalStatus}
                                   onChange={(e) => updatePassportField("maritalStatus", e.target.value)}
@@ -10034,19 +10215,13 @@ function DashboardContent() {
                                   <option value="Divorced">Divorced</option>
                                   <option value="Widowed">Widowed</option>
                                 </select>
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.maritalStatus || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q12 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                12. Namba ya simu ya mwombaji / Applicant Phone <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q12 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  12. Namba ya simu ya mwombaji / Applicant Phone <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="tel"
                                   value={passportData.phone}
@@ -10054,19 +10229,13 @@ function DashboardContent() {
                                   placeholder="e.g. +255 712 345 678"
                                   className={getPassportInputClass("phone")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.phone || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q13 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                13. Barua pepe ya mwombaji / Applicant Email <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q13 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  13. Barua pepe ya mwombaji / Applicant Email <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="email"
                                   value={passportData.email}
@@ -10074,19 +10243,13 @@ function DashboardContent() {
                                   placeholder="e.g. student@gmail.com"
                                   className={getPassportInputClass("email")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.email || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q14 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                14. Sanduku la Posta / Postal Address <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q14 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  14. Sanduku la Posta / Postal Address <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.postalAddress}
@@ -10094,38 +10257,32 @@ function DashboardContent() {
                                   placeholder="e.g. P.O. Box 12345 Dar es Salaam"
                                   className={getPassportInputClass("postalAddress")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.postalAddress || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          {/* SECTION 2: CURRENT RESIDENCE                                 */}
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">2</span>
+                                  <span>Current Residence</span>
+                                </h3>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Questions 15 to 20
                                 </p>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        {/* SECTION 2: CURRENT RESIDENCE                                 */}
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-                            <div>
-                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">2</span>
-                                <span>Current Residence</span>
-                              </h3>
-                              <p className="text-[11px] text-slate-500 mt-0.5">
-                                Questions 15 to 20
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                            {/* Q15 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                15. Nchi unayoishi sasa / Current Country of Residence <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                              {/* Q15 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  15. Nchi unayoishi sasa / Current Country of Residence <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceCountry}
@@ -10133,19 +10290,13 @@ function DashboardContent() {
                                   placeholder="e.g. Tanzania"
                                   className={getPassportInputClass("residenceCountry")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q16 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                16. Mkoa unaoishi sasa / Current Region <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q16 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  16. Mkoa unaoishi sasa / Current Region <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceRegion}
@@ -10153,19 +10304,13 @@ function DashboardContent() {
                                   placeholder="e.g. Dar es Salaam"
                                   className={getPassportInputClass("residenceRegion")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q17 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                17. Wilaya unayoishi sasa / Current District <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q17 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  17. Wilaya unayoishi sasa / Current District <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceDistrict}
@@ -10173,19 +10318,13 @@ function DashboardContent() {
                                   placeholder="e.g. Kinondoni"
                                   className={getPassportInputClass("residenceDistrict")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q18 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                18. Kata unayoishi sasa / Current Ward <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q18 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  18. Kata unayoishi sasa / Current Ward <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceWard}
@@ -10193,19 +10332,13 @@ function DashboardContent() {
                                   placeholder="e.g. Mikocheni"
                                   className={getPassportInputClass("residenceWard")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceWard || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q19 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                19. Kijiji au Mtaa unaoishi sasa / Current Street or Village <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q19 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  19. Kijiji au Mtaa unaoishi sasa / Current Street or Village <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceStreetVillage}
@@ -10213,19 +10346,13 @@ function DashboardContent() {
                                   placeholder="e.g. Regent Street"
                                   className={getPassportInputClass("residenceStreetVillage")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q20 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                20. Namba ya nyumba / House Number <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q20 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  20. Namba ya nyumba / House Number <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.residenceHouseNumber}
@@ -10233,38 +10360,32 @@ function DashboardContent() {
                                   placeholder="e.g. House No. 45"
                                   className={getPassportInputClass("residenceHouseNumber")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.residenceHouseNumber || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          {/* SECTION 3: FATHER'S INFORMATION                              */}
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">3</span>
+                                  <span>Father's Information</span>
+                                </h3>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Questions 21 to 28
                                 </p>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        {/* SECTION 3: FATHER'S INFORMATION                              */}
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-                            <div>
-                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">3</span>
-                                <span>Father's Information</span>
-                              </h3>
-                              <p className="text-[11px] text-slate-500 mt-0.5">
-                                Questions 21 to 28
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                            {/* Q21 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                21. Jina kamili la baba / Father's Full Name <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                              {/* Q21 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  21. Jina kamili la baba / Father's Full Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherFullName}
@@ -10272,19 +10393,13 @@ function DashboardContent() {
                                   placeholder="e.g. Peter James Mtishbi"
                                   className={getPassportInputClass("fatherFullName")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherFullName || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q22 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                22. Kazi ya baba / Father's Occupation <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q22 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  22. Kazi ya baba / Father's Occupation <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherOccupation}
@@ -10292,38 +10407,26 @@ function DashboardContent() {
                                   placeholder="e.g. Businessman"
                                   className={getPassportInputClass("fatherOccupation")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherOccupation || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q23 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                23. Tarehe ya kuzaliwa ya baba / Father's Date of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q23 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  23. Tarehe ya kuzaliwa ya baba / Father's Date of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="date"
                                   value={passportData.fatherDob}
                                   onChange={(e) => updatePassportField("fatherDob", e.target.value)}
                                   className={getPassportInputClass("fatherDob")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherDob || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q24 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                24. Nchi aliyozaliwa baba / Father's Country of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q24 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  24. Nchi aliyozaliwa baba / Father's Country of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherBirthCountry}
@@ -10331,19 +10434,13 @@ function DashboardContent() {
                                   placeholder="e.g. Tanzania"
                                   className={getPassportInputClass("fatherBirthCountry")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherBirthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q25 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                25. Mkoa aliozaliwa baba / Father's Region of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q25 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  25. Mkoa aliozaliwa baba / Father's Region of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherBirthRegion}
@@ -10351,19 +10448,13 @@ function DashboardContent() {
                                   placeholder="e.g. Kilimanjaro"
                                   className={getPassportInputClass("fatherBirthRegion")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherBirthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q26 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                26. Wilaya aliyozaliwa baba / Father's District of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q26 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  26. Wilaya aliyozaliwa baba / Father's District of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherBirthDistrict}
@@ -10371,19 +10462,13 @@ function DashboardContent() {
                                   placeholder="e.g. Moshi Rural"
                                   className={getPassportInputClass("fatherBirthDistrict")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherBirthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q27 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                27. Kata/Shehia aliyozaliwa baba / Father's Birth Ward/Shehia <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q27 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  27. Kata/Shehia aliyozaliwa baba / Father's Birth Ward/Shehia <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherBirthWardShehia}
@@ -10391,19 +10476,13 @@ function DashboardContent() {
                                   placeholder="e.g. West Kibosho"
                                   className={getPassportInputClass("fatherBirthWardShehia")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherBirthWardShehia || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q28 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                28. Kijiji au Mtaa aliozaliwa baba / Father's Birth Street/Village <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q28 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  28. Kijiji au Mtaa aliozaliwa baba / Father's Birth Street/Village <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.fatherBirthStreetVillage}
@@ -10411,38 +10490,32 @@ function DashboardContent() {
                                   placeholder="e.g. Umbwe Village"
                                   className={getPassportInputClass("fatherBirthStreetVillage")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.fatherBirthStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          {/* SECTION 4: MOTHER'S INFORMATION                              */}
+                          {/* ──────────────────────────────────────────────────────────── */}
+                          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">4</span>
+                                  <span>Mother's Information</span>
+                                </h3>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Questions 29 to 36
                                 </p>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        {/* SECTION 4: MOTHER'S INFORMATION                              */}
-                        {/* ──────────────────────────────────────────────────────────── */}
-                        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-                            <div>
-                              <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-black flex items-center justify-center">4</span>
-                                <span>Mother's Information</span>
-                              </h3>
-                              <p className="text-[11px] text-slate-500 mt-0.5">
-                                Questions 29 to 36
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                            {/* Q29 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                29. Jina kamili la mama / Mother's Full Name <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                              {/* Q29 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  29. Jina kamili la mama / Mother's Full Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherFullName}
@@ -10450,19 +10523,13 @@ function DashboardContent() {
                                   placeholder="e.g. Mary Grace Mtishbi"
                                   className={getPassportInputClass("motherFullName")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherFullName || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q30 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                30. Kazi ya mama / Mother's Occupation <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q30 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  30. Kazi ya mama / Mother's Occupation <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherOccupation}
@@ -10470,38 +10537,26 @@ function DashboardContent() {
                                   placeholder="e.g. Teacher"
                                   className={getPassportInputClass("motherOccupation")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherOccupation || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q31 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                31. Tarehe ya kuzaliwa ya mama / Mother's Date of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q31 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  31. Tarehe ya kuzaliwa ya mama / Mother's Date of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="date"
                                   value={passportData.motherDob}
                                   onChange={(e) => updatePassportField("motherDob", e.target.value)}
                                   className={getPassportInputClass("motherDob")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherDob || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q32 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                32. Nchi aliyozaliwa mama / Mother's Country of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q32 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  32. Nchi aliyozaliwa mama / Mother's Country of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherBirthCountry}
@@ -10509,19 +10564,13 @@ function DashboardContent() {
                                   placeholder="e.g. Tanzania"
                                   className={getPassportInputClass("motherBirthCountry")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherBirthCountry || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q33 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                33. Mkoa aliozaliwa mama / Mother's Region of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q33 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  33. Mkoa aliozaliwa mama / Mother's Region of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherBirthRegion}
@@ -10529,19 +10578,13 @@ function DashboardContent() {
                                   placeholder="e.g. Mbeya"
                                   className={getPassportInputClass("motherBirthRegion")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherBirthRegion || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q34 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                34. Wilaya aliyozaliwa mama / Mother's District of Birth <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q34 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  34. Wilaya aliyozaliwa mama / Mother's District of Birth <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherBirthDistrict}
@@ -10549,19 +10592,13 @@ function DashboardContent() {
                                   placeholder="e.g. Mbeya Urban"
                                   className={getPassportInputClass("motherBirthDistrict")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherBirthDistrict || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q35 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                35. Kata/Shehia aliyozaliwa mama / Mother's Birth Ward/Shehia <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q35 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  35. Kata/Shehia aliyozaliwa mama / Mother's Birth Ward/Shehia <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherBirthWardShehia}
@@ -10569,19 +10606,13 @@ function DashboardContent() {
                                   placeholder="e.g. Iyunga"
                                   className={getPassportInputClass("motherBirthWardShehia")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherBirthWardShehia || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Q36 */}
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">
-                                36. Kijiji au Mtaa aliozaliwa mama / Mother's Birth Street/Village <span className="text-red-500">*</span>
-                              </label>
-                              {isEditingPassport ? (
+                              {/* Q36 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  36. Kijiji au Mtaa aliozaliwa mama / Mother's Birth Street/Village <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={passportData.motherBirthStreetVillage}
@@ -10589,26 +10620,20 @@ function DashboardContent() {
                                   placeholder="e.g. Mbalizi Street"
                                   className={getPassportInputClass("motherBirthStreetVillage")}
                                 />
-                              ) : (
-                                <p className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-semibold text-slate-800">
-                                  {passportData.motherBirthStreetVillage || <span className="text-slate-400 font-normal italic">Not filled</span>}
-                                </p>
-                              )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Form Action Buttons */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setActiveNav("documents")}
-                            className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto text-center"
-                          >
-                            &larr; View My Documents
-                          </button>
+                          {/* Form Action Buttons */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveNav("documents")}
+                              className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer w-full sm:w-auto text-center"
+                            >
+                              &larr; View My Documents
+                            </button>
 
-                          {isEditingPassport ? (
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                               <button
                                 type="button"
@@ -10635,18 +10660,9 @@ function DashboardContent() {
                                 )}
                               </button>
                             </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setIsEditingPassport(true)}
-                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              <span>Edit Passport Details</span>
-                            </button>
-                          )}
-                        </div>
-                      </form>
+                          </div>
+                        </form>
+                      )}
                     </>
                   )}
                 </div>
