@@ -169,9 +169,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const isPassportPayment =
-        targetPayment.payment_type === "passport_assistance" ||
-        Number(targetPayment.amount) === 300000;
+      const paymentType = targetPayment.payment_type || "file_opening_fee";
+      const isPassportPayment = paymentType === "passport_assistance";
+      const paymentPurpose = isPassportPayment
+        ? "Passport Assistance Fee"
+        : "MtishbiScholar File Opening Fee";
 
       // 6b. Synchronize passport_assistance table if this is a passport payment
       if (isPassportPayment && targetPayment.student_id) {
@@ -190,23 +192,32 @@ export async function POST(req: NextRequest) {
 
       // 6c. Record audit log
       try {
-        await adminClient.from("audit_logs").insert({
+        const { error: auditInsertErr } = await adminClient.from("audit_logs").insert({
           user_id: authenticatedUserId,
-          action: "payment_approved",
+          action: "PAYMENT_APPROVED",
           target_type: "payment",
           target_id: paymentId,
           details: {
-            amount: targetPayment.amount,
-            currency: targetPayment.currency,
-            payment_type: targetPayment.payment_type || (isPassportPayment ? "passport_assistance" : "file_opening_fee"),
+            payment_type: paymentType,
+            purpose: paymentPurpose,
             student_id: targetPayment.student_id,
+            amount: targetPayment.amount,
+            currency: targetPayment.currency || "TZS",
             payment_method: targetPayment.payment_method,
             transaction_ref: targetPayment.transaction_ref,
+            previous_status: targetPayment.status,
+            new_status: "Approved",
+            verified_at: now,
+            officer_name: officerName,
+            officer_role: profile.role || "finance_officer",
             verified_by_name: officerName,
           },
         });
+        if (auditInsertErr) {
+          console.error("[FinancePaymentAction] Audit log insertion error:", auditInsertErr);
+        }
       } catch (auditErr) {
-        console.error("[FinancePaymentAction] Audit log warning:", auditErr);
+        console.error("[FinancePaymentAction] Audit log exception:", auditErr);
       }
 
       // 6d. Send notification to student
@@ -270,9 +281,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const isPassportPayment =
-        targetPayment.payment_type === "passport_assistance" ||
-        Number(targetPayment.amount) === 300000;
+      const paymentType = targetPayment.payment_type || "file_opening_fee";
+      const isPassportPayment = paymentType === "passport_assistance";
+      const paymentPurpose = isPassportPayment
+        ? "Passport Assistance Fee"
+        : "MtishbiScholar File Opening Fee";
 
       // 7b. Synchronize passport_assistance table if this is a passport payment
       if (isPassportPayment && targetPayment.student_id) {
@@ -291,22 +304,34 @@ export async function POST(req: NextRequest) {
 
       // 7c. Record audit log
       try {
-        await adminClient.from("audit_logs").insert({
+        const { error: auditInsertErr } = await adminClient.from("audit_logs").insert({
           user_id: authenticatedUserId,
-          action: "payment_rejected",
+          action: "PAYMENT_REJECTED",
           target_type: "payment",
           target_id: paymentId,
           details: {
-            reason: cleanReason,
-            payment_type: targetPayment.payment_type || (isPassportPayment ? "passport_assistance" : "file_opening_fee"),
+            payment_type: paymentType,
+            purpose: paymentPurpose,
             student_id: targetPayment.student_id,
+            amount: targetPayment.amount,
+            currency: targetPayment.currency || "TZS",
             payment_method: targetPayment.payment_method,
             transaction_ref: targetPayment.transaction_ref,
+            previous_status: targetPayment.status,
+            new_status: "Rejected",
+            rejection_reason: cleanReason,
+            rejected_at: now,
+            officer_name: officerName,
+            officer_role: profile.role || "finance_officer",
             verified_by_name: officerName,
+            reason: cleanReason,
           },
         });
+        if (auditInsertErr) {
+          console.error("[FinancePaymentAction] Audit log insertion error:", auditInsertErr);
+        }
       } catch (auditErr) {
-        console.error("[FinancePaymentAction] Audit log warning:", auditErr);
+        console.error("[FinancePaymentAction] Audit log exception:", auditErr);
       }
 
       // 7d. Send notification to student

@@ -274,8 +274,13 @@ export default function FinanceAuditLogsPage() {
                       "System"
                     : "System";
 
-                  const isApproval = log.action.includes("approved");
-                  const isRejection = log.action.includes("rejected");
+                  const isApproval = (log.action || "").toLowerCase().includes("approve");
+                  const isRejection = (log.action || "").toLowerCase().includes("reject");
+
+                  const formattedActionLabel = (log.action || "")
+                    .replace(/_/g, " ")
+                    .toLowerCase()
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
 
                   return (
                     <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
@@ -286,7 +291,7 @@ export default function FinanceAuditLogsPage() {
                           </div>
                           <div>
                             <p className="font-bold text-slate-800">{officerName}</p>
-                            <p className="text-[10px] text-slate-400">{log.officer?.role || "user"}</p>
+                            <p className="text-[10px] text-slate-400">{log.officer?.role || "finance_officer"}</p>
                           </div>
                         </div>
                       </td>
@@ -301,7 +306,7 @@ export default function FinanceAuditLogsPage() {
                               : "bg-blue-100 text-blue-800"
                           }`}
                         >
-                          {log.action}
+                          {formattedActionLabel || log.action}
                         </span>
                       </td>
 

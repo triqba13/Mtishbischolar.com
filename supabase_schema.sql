@@ -249,6 +249,9 @@ CREATE POLICY "Users view own notifications" ON public.notifications FOR SELECT 
 CREATE POLICY "Users update own notifications" ON public.notifications FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users delete own notifications" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
+-- Audit Logs RLS (Append-only historical records, staff view only)
+CREATE POLICY "Staff can view audit logs" ON public.audit_logs FOR SELECT TO authenticated USING (public.get_auth_user_role() IN ('finance_officer', 'admission_officer', 'super_admin'));
+
 
 -- ----------------------------------------------------------------------------
 -- 12. AUTOMATIC USER CREATION TRIGGER
