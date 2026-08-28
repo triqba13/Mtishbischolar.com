@@ -182,7 +182,7 @@ function LoginContent() {
 
       setSuccessMessage("Login successful! Redirecting to student portal...");
       setTimeout(() => {
-        window.location.href = `/student/dashboard?welcome=true&email=${encodeURIComponent(form.email.trim())}`;
+        window.location.href = "/student/dashboard?welcome=true";
       }, 800);
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred during sign in. Please try again.");

@@ -105,7 +105,7 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/admin/super/dashboard`);
       }
 
-      return NextResponse.redirect(`${origin}${next}?welcome=true&email=${encodeURIComponent(user.email || "")}`);
+      return NextResponse.redirect(`${origin}${next}?welcome=true`);
     }
   }
 

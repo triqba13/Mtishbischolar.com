@@ -155,6 +155,13 @@ function DashboardContent() {
     }
   }, [activeNav]);
 
+  // Clean up URL query parameters (e.g. ?welcome=true) smoothly without full page reload
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const clearProfileError = (field: string) => {

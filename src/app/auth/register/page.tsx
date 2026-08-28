@@ -258,8 +258,7 @@ export default function RegisterPage() {
       setStep("verified_success");
 
       // Redirect directly to Student Dashboard
-      const studentName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim() || "Student";
-      const targetUrl = `/student/dashboard?welcome=true&email=${encodeURIComponent(form.email)}&name=${encodeURIComponent(studentName)}`;
+      const targetUrl = "/student/dashboard?welcome=true";
       setTimeout(() => {
         window.location.href = targetUrl;
       }, 1200);
@@ -735,7 +734,7 @@ export default function RegisterPage() {
 
             <div className="pt-4">
               <Link
-                href={`/student/dashboard?welcome=true&email=${encodeURIComponent(form.email)}&name=${encodeURIComponent(`${form.firstName} ${form.lastName}`.trim())}`}
+                href="/student/dashboard?welcome=true"
                 className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4AF37] via-[#E8C84A] to-[#B8960C] text-[#0F172A] font-extrabold py-3.5 px-6 rounded-xl hover:shadow-xl hover:shadow-[#D4AF37]/25 transition-all duration-300 text-xs uppercase tracking-wider"
               >
                 <span>Enter Student Dashboard &rarr;</span>
