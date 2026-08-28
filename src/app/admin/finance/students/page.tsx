@@ -27,10 +27,13 @@ export interface StudentProfileFinancial {
     id: string;
     amount: number;
     currency: string;
+    payment_type?: string | null;
     payment_method: string;
     transaction_ref?: string | null;
     status: string;
     created_at: string;
+    verified_at?: string | null;
+    rejection_reason?: string | null;
   }>;
 }
 
@@ -53,57 +56,25 @@ export default function FinanceStudentsPage() {
     setError(null);
 
     try {
-      // Fetch student profiles and payments in parallel
-      const [profilesRes, paymentsFetchRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, first_name, last_name, email, phone, created_at")
-          .eq("role", "student")
-          .order("created_at", { ascending: false }),
-        fetch("/api/admin/finance/payments")
-          .then((r) => r.json())
-          .catch((err) => ({ success: false, error: err.message })),
-      ]);
+      // Fetch only students with actual financial activity from dedicated API route
+      const res = await fetch("/api/admin/finance/students");
+      const json = await res.json();
 
-      if (profilesRes.error) {
-        console.error("Finance Students Profiles Supabase Error:", {
-          message: profilesRes.error.message,
-          details: profilesRes.error.details,
-          hint: profilesRes.error.hint,
-          code: profilesRes.error.code,
-        });
-        throw profilesRes.error;
+      if (!json.success) {
+        throw new Error(json.error || "Failed to load student financial records.");
       }
 
-      const profilesData = profilesRes.data || [];
-      const paymentsData = (paymentsFetchRes.success ? paymentsFetchRes.data : []) || [];
-
-      // Map payments to their respective students
-      const paymentsByStudent = new Map<string, any[]>();
-      paymentsData.forEach((p: any) => {
-        const list = paymentsByStudent.get(p.student_id) || [];
-        list.push(p);
-        paymentsByStudent.set(p.student_id, list);
-      });
-
-      const merged: StudentProfileFinancial[] = profilesData.map((prof) => ({
-        ...prof,
-        payments: paymentsByStudent.get(prof.id) || [],
-      }));
-
-      setStudents(merged);
+      setStudents(json.data || []);
     } catch (err: any) {
       console.error("Finance Students Error:", {
         message: err?.message || "Unknown error",
         details: err?.details || null,
-        hint: err?.hint || null,
-        code: err?.code || null,
       });
       setError("Unable to load student financial records.");
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     loadStudents(true);
@@ -132,11 +103,13 @@ export default function FinanceStudentsPage() {
         const st = (p.status || "").toLowerCase();
         return st === "pending" || st === "submitted" || st === "under review";
       });
-      const isUnpaid = s.payments.length === 0;
+      const hasRejected = s.payments.some(
+        (p) => (p.status || "").toLowerCase() === "rejected"
+      );
 
       if (statusFilter === "approved" && !hasApproved) return false;
       if (statusFilter === "pending" && !hasPending) return false;
-      if (statusFilter === "unpaid" && !isUnpaid) return false;
+      if (statusFilter === "rejected" && !hasRejected) return false;
 
       return true;
     });
@@ -195,7 +168,7 @@ export default function FinanceStudentsPage() {
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Students</p>
           <p className="text-2xl font-black text-slate-800 mt-1">{totalStudentsCount}</p>
-          <p className="text-xs text-slate-400 mt-1">Registered student accounts</p>
+          <p className="text-xs text-slate-400 mt-1">Students with payment records</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
@@ -251,7 +224,7 @@ export default function FinanceStudentsPage() {
               <option value="all">All Payment Statuses</option>
               <option value="approved">Paid &amp; Approved</option>
               <option value="pending">Pending Verification</option>
-              <option value="unpaid">Unpaid (No Records)</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
         </div>
@@ -372,10 +345,13 @@ export default function FinanceStudentsPage() {
                         {latestPayment ? (
                           <div>
                             <p className="font-semibold text-slate-800">
-                              {latestPayment.currency || "TSh"} {Number(latestPayment.amount || 50000).toLocaleString()}
+                              {latestPayment.currency || "TSh"} {Number(latestPayment.amount || 0).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                              {latestPayment.payment_type === "passport_assistance" ? "Passport Fee" : "File Opening Fee"} • {latestPayment.payment_method}
                             </p>
                             <p className="text-[10px] text-slate-400">
-                              {new Date(latestPayment.created_at).toLocaleDateString()} • {latestPayment.payment_method}
+                              {new Date(latestPayment.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         ) : (
@@ -504,6 +480,7 @@ export default function FinanceStudentsPage() {
                       <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px]">
                         <tr>
                           <th className="py-2.5 px-3">Date</th>
+                          <th className="py-2.5 px-3">Fee Type</th>
                           <th className="py-2.5 px-3">Amount</th>
                           <th className="py-2.5 px-3">Method</th>
                           <th className="py-2.5 px-3">Ref</th>
@@ -515,14 +492,18 @@ export default function FinanceStudentsPage() {
                           const s = (p.status || "").toLowerCase();
                           const isApproved = s === "approved";
                           const isRejected = s === "rejected";
+                          const feeName = p.payment_type === "passport_assistance" ? "Passport Assistance" : "File Opening Fee";
 
                           return (
                             <tr key={p.id} className="hover:bg-slate-50/60">
                               <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
                                 {new Date(p.created_at).toLocaleDateString()}
                               </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">
+                                {feeName}
+                              </td>
                               <td className="py-2.5 px-3 font-bold text-slate-900">
-                                {p.currency || "TSh"} {Number(p.amount || 50000).toLocaleString()}
+                                {p.currency || "TSh"} {Number(p.amount || 0).toLocaleString()}
                               </td>
                               <td className="py-2.5 px-3 text-slate-600">{p.payment_method}</td>
                               <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">
