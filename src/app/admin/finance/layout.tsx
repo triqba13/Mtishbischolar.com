@@ -1,3 +1,5 @@
+"use client";
+
 import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
 import AdminLayoutShell from "@/components/admin/AdminLayoutShell";
 import FinanceSidebar from "@/components/admin/finance/Sidebar";

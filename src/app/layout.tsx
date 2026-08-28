@@ -121,35 +121,24 @@ export default function RootLayout({
       className={`${outfit.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        <link
-          rel="preload"
-          as="image"
-          href="/videos/hero_poster.webp"
-          fetchPriority="high"
-          type="image/webp"
-        />
+      <body className="antialiased bg-white text-slate-900 font-sans">
         <Script
           id="theme-init"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              (function() {
-                try {
-                  var t = localStorage.getItem('mtb_theme') || 'light';
-                  var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                  if (isDark) {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {}
-              })();
+              try {
+                var t = localStorage.getItem('mtb_theme') || 'light';
+                var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
             `,
           }}
         />
-      </head>
-      <body className="antialiased bg-white text-slate-900 font-sans">
         <GoogleAnalytics />
         {children}
         <CookieConsentBanner />

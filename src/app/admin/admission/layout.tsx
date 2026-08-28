@@ -1,3 +1,5 @@
+"use client";
+
 import Sidebar from "@/components/admin/admission/Sidebar";
 import AdminLayoutShell from "@/components/admin/AdminLayoutShell";
 import { AdminAuthProvider } from "@/components/admin/AdminAuthProvider";
