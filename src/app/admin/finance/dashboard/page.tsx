@@ -17,6 +17,7 @@ import {
   FileText,
   AlertCircle,
   Calendar,
+  Plane,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
@@ -47,6 +48,7 @@ export default function FinanceOverviewDashboard() {
     pending: 0,
     approved: 0,
     rejected: 0,
+    passport: 0,
     approvedAmount: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -75,9 +77,12 @@ export default function FinanceOverviewDashboard() {
       if (!res.ok || !result.success) {
         console.error("Finance Dashboard Supabase Error:", {
           message: result.error || "Failed to load financial data",
+          details: result.details || null,
+          hint: result.hint || null,
+          code: result.code || null,
           status: res.status,
         });
-        setError("Unable to load financial data. Please try again.");
+        setError(result.error || "Unable to load financial data. Please try again.");
       } else {
         setPayments((result.data as DbPaymentItem[]) || []);
         if (result.counts) {
@@ -121,6 +126,7 @@ export default function FinanceOverviewDashboard() {
   const pendingPaymentsCount = counts.pending;
   const approvedPaymentsCount = counts.approved;
   const rejectedPaymentsCount = counts.rejected;
+  const passportPaymentsCount = counts.passport;
   const totalAmountReceived = counts.approvedAmount || 0;
 
   const pendingPayments = useMemo(() => {
@@ -275,8 +281,8 @@ export default function FinanceOverviewDashboard() {
         </div>
       </div>
 
-      {/* Revenue & Volume Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Revenue & Volume Cards Row (4 Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Amount Received */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between">
@@ -315,6 +321,18 @@ export default function FinanceOverviewDashboard() {
           </div>
           <p className="text-2xl font-black text-indigo-700 mt-2">{todaysPaymentsCount}</p>
           <p className="text-xs text-slate-400 mt-1">Submissions received today</p>
+        </div>
+
+        {/* Passport Payments */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Passport Payments</p>
+            <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
+              <Plane className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-sky-700 mt-2">{passportPaymentsCount}</p>
+          <p className="text-xs text-slate-400 mt-1">TZS 300,000 fee submissions</p>
         </div>
       </div>
 

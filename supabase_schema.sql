@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   student_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   application_id UUID REFERENCES public.applications(id) ON DELETE CASCADE,
+  payment_type TEXT DEFAULT 'file_opening_fee' NOT NULL,
   amount NUMERIC(10,2) NOT NULL,
   currency TEXT DEFAULT 'USD' NOT NULL,
   payment_method public.payment_method DEFAULT 'Bank Transfer'::public.payment_method NOT NULL,
@@ -245,6 +246,8 @@ CREATE POLICY "Students submit own payments" ON public.payments FOR INSERT WITH 
 
 -- Notifications RLS
 CREATE POLICY "Users view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users update own notifications" ON public.notifications FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users delete own notifications" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
 
 -- ----------------------------------------------------------------------------

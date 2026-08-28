@@ -108,6 +108,7 @@ export async function GET(req: NextRequest) {
       { count: pendingCount },
       { count: approvedCount },
       { count: rejectedCount },
+      { count: passportCount },
       { data: approvedRows },
     ] = await Promise.all([
       adminClient.from("payments").select("*", { count: "exact", head: true }),
@@ -125,6 +126,10 @@ export async function GET(req: NextRequest) {
         .eq("status", "Rejected"),
       adminClient
         .from("payments")
+        .select("*", { count: "exact", head: true })
+        .eq("payment_type", "passport_assistance"),
+      adminClient
+        .from("payments")
         .select("amount")
         .eq("status", "Approved"),
     ]);
@@ -138,7 +143,7 @@ export async function GET(req: NextRequest) {
     let query = adminClient
       .from("payments")
       .select(
-        "id, student_id, application_id, amount, currency, payment_method, transaction_ref, payment_proof_url, status, verified_by, verified_at, rejection_reason, created_at, student:profiles!payments_student_id_fkey(id, first_name, last_name, email, phone)",
+        "id, student_id, application_id, amount, currency, payment_method, transaction_ref, payment_proof_url, payment_type, status, verified_by, verified_at, rejection_reason, created_at, student:profiles!payments_student_id_fkey(id, first_name, last_name, email, phone)",
         { count: "exact" }
       );
 
@@ -213,17 +218,32 @@ export async function GET(req: NextRequest) {
         code: payError.code,
       });
       return NextResponse.json(
-        { success: false, error: "Database error retrieving payments." },
+        {
+          success: false,
+          error: payError.message || "Database error retrieving payments.",
+          details: payError.details,
+          hint: payError.hint,
+          code: payError.code,
+        },
         { status: 500 }
       );
     }
+
+    const mappedPayments = (payments || []).map((p: any) => ({
+      ...p,
+      payment_type: p.payment_type || (Number(p.amount) === 300000 ? "passport_assistance" : "file_opening_fee"),
+      purpose_display:
+        p.payment_type === "passport_assistance" || Number(p.amount) === 300000
+          ? "Passport Assistance Fee"
+          : "MtishbiScholar File Opening Fee",
+    }));
 
     const total = totalCount || 0;
     const totalPages = Math.ceil(total / pageSize) || 1;
 
     return NextResponse.json({
       success: true,
-      data: payments || [],
+      data: mappedPayments,
       pagination: {
         page,
         pageSize,
@@ -237,6 +257,7 @@ export async function GET(req: NextRequest) {
         pending: pendingCount || 0,
         approved: approvedCount || 0,
         rejected: rejectedCount || 0,
+        passport: passportCount || 0,
         approvedAmount: approvedAmount || 0,
       },
       metrics: {
@@ -244,9 +265,18 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("Finance Payments Route Error:", err);
+    console.error("Finance Payments Route Error:", {
+      message: err?.message,
+      details: err?.details,
+      hint: err?.hint,
+      code: err?.code,
+    });
     return NextResponse.json(
-      { success: false, error: err.message || "Failed to load payments." },
+      {
+        success: false,
+        error: err.message || "Failed to load payments.",
+        details: err?.details || null,
+      },
       { status: 500 }
     );
   }

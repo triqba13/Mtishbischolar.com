@@ -358,12 +358,17 @@ export default function FinancePaymentsPage() {
         throw new Error(json.error || "Failed to process payment verification.");
       }
 
+      const isPassport = selectedPayment.payment_type === "passport_assistance";
       setActionFeedback({
         type: "success",
         text:
           action === "approve"
-            ? "Payment successfully approved! The student can now start university applications."
-            : "Payment has been marked as Rejected.",
+            ? isPassport
+              ? "Passport Assistance Fee successfully approved! The student's Passport Assistance section is now unlocked."
+              : "Payment successfully approved! The student can now start university applications."
+            : isPassport
+              ? "Passport Assistance Fee has been marked as Rejected."
+              : "Payment has been marked as Rejected.",
       });
 
       // Refresh payment list immediately
@@ -640,6 +645,9 @@ export default function FinancePaymentsPage() {
                   const isApproved = s === "approved" || s === "verified" || s === "completed";
                   const isPending = s === "pending" || s === "submitted" || s === "under review";
 
+                  const isPassport = p.payment_type === "passport_assistance" || Number(p.amount) === 300000;
+                  const displayPurpose = isPassport ? "Passport Assistance Fee" : (p.payment_type || "MtishbiScholar File Opening Fee");
+
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
@@ -649,7 +657,7 @@ export default function FinancePaymentsPage() {
                         </p>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-slate-700">
-                        {p.payment_type || "MtishbiScholar File Opening Fee"}
+                        {displayPurpose}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">
                         {p.currency || "TSh"} {Number(p.amount || 50000).toLocaleString()}
@@ -848,7 +856,9 @@ export default function FinancePaymentsPage() {
                   <div>
                     <span className="text-slate-400 block text-[11px]">Purpose</span>
                     <span className="font-bold text-slate-900">
-                      {selectedPayment.payment_type || "MtishbiScholar File Opening Fee"}
+                      {selectedPayment.payment_type === "passport_assistance" || Number(selectedPayment.amount) === 300000
+                        ? "Passport Assistance Fee"
+                        : (selectedPayment.payment_type || "MtishbiScholar File Opening Fee")}
                     </span>
                   </div>
 

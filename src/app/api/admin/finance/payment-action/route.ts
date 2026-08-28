@@ -169,7 +169,26 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 6b. Record audit log
+      const isPassportPayment =
+        targetPayment.payment_type === "passport_assistance" ||
+        Number(targetPayment.amount) === 300000;
+
+      // 6b. Synchronize passport_assistance table if this is a passport payment
+      if (isPassportPayment && targetPayment.student_id) {
+        try {
+          await adminClient
+            .from("passport_assistance")
+            .update({
+              payment_status: "verified",
+              updated_at: now,
+            })
+            .eq("student_id", targetPayment.student_id);
+        } catch (passErr) {
+          console.warn("[FinancePaymentAction] Passport assistance sync warning:", passErr);
+        }
+      }
+
+      // 6c. Record audit log
       try {
         await adminClient.from("audit_logs").insert({
           user_id: authenticatedUserId,
@@ -179,6 +198,7 @@ export async function POST(req: NextRequest) {
           details: {
             amount: targetPayment.amount,
             currency: targetPayment.currency,
+            payment_type: targetPayment.payment_type || (isPassportPayment ? "passport_assistance" : "file_opening_fee"),
             student_id: targetPayment.student_id,
             payment_method: targetPayment.payment_method,
             transaction_ref: targetPayment.transaction_ref,
@@ -189,13 +209,14 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Audit log warning:", auditErr);
       }
 
-      // 6c. Send notification to student
+      // 6d. Send notification to student
       try {
         await adminClient.from("notifications").insert({
           user_id: targetPayment.student_id,
-          title: "Payment Approved",
-          message:
-            "Your MtishbiScholar Application File Opening Fee (TSh 50,000) has been approved. You may now apply to partner universities.",
+          title: isPassportPayment ? "Passport Fee Approved" : "Payment Approved",
+          message: isPassportPayment
+            ? "Your Passport Assistance Fee of TSh 300,000 has been approved. Your Passport section is now unlocked."
+            : "Your MtishbiScholar Application File Opening Fee (TSh 50,000) has been approved. You may now apply to partner universities.",
           type: "payment",
           is_read: false,
         });
@@ -203,7 +224,7 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Notification warning:", notifErr);
       }
 
-      // 6d. Synchronize corresponding Payment_Receipt in documents table
+      // 6e. Synchronize corresponding Payment_Receipt in documents table
       if (targetPayment.student_id) {
         try {
           await adminClient
@@ -221,7 +242,9 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Payment successfully approved.",
+        message: isPassportPayment
+          ? "Passport Assistance Fee successfully approved! The student's Passport Assistance section is now unlocked."
+          : "Payment successfully approved! The student can now start university applications.",
         payment: updatedPayment,
       });
     } else {
@@ -247,7 +270,26 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 7b. Record audit log
+      const isPassportPayment =
+        targetPayment.payment_type === "passport_assistance" ||
+        Number(targetPayment.amount) === 300000;
+
+      // 7b. Synchronize passport_assistance table if this is a passport payment
+      if (isPassportPayment && targetPayment.student_id) {
+        try {
+          await adminClient
+            .from("passport_assistance")
+            .update({
+              payment_status: "rejected",
+              updated_at: now,
+            })
+            .eq("student_id", targetPayment.student_id);
+        } catch (passErr) {
+          console.warn("[FinancePaymentAction] Passport rejection sync warning:", passErr);
+        }
+      }
+
+      // 7c. Record audit log
       try {
         await adminClient.from("audit_logs").insert({
           user_id: authenticatedUserId,
@@ -256,6 +298,7 @@ export async function POST(req: NextRequest) {
           target_id: paymentId,
           details: {
             reason: cleanReason,
+            payment_type: targetPayment.payment_type || (isPassportPayment ? "passport_assistance" : "file_opening_fee"),
             student_id: targetPayment.student_id,
             payment_method: targetPayment.payment_method,
             transaction_ref: targetPayment.transaction_ref,
@@ -266,12 +309,14 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Audit log warning:", auditErr);
       }
 
-      // 7c. Send notification to student
+      // 7d. Send notification to student
       try {
         await adminClient.from("notifications").insert({
           user_id: targetPayment.student_id,
-          title: "Payment Verification Rejected",
-          message: `Your payment verification was rejected: ${cleanReason}. Please re-submit your receipt or contact support.`,
+          title: isPassportPayment ? "Passport Fee Verification Rejected" : "Payment Verification Rejected",
+          message: isPassportPayment
+            ? `Your Passport Assistance Fee verification was rejected: ${cleanReason}. Please review the payment issue and re-submit your receipt or contact Finance support.`
+            : `Your payment verification was rejected: ${cleanReason}. Please re-submit your receipt or contact support.`,
           type: "payment",
           is_read: false,
         });
@@ -279,7 +324,7 @@ export async function POST(req: NextRequest) {
         console.error("[FinancePaymentAction] Notification warning:", notifErr);
       }
 
-      // 7d. Synchronize corresponding Payment_Receipt in documents table
+      // 7e. Synchronize corresponding Payment_Receipt in documents table
       if (targetPayment.student_id) {
         try {
           await adminClient

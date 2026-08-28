@@ -528,6 +528,7 @@ export interface DbPayment {
   id: string;
   student_id: string;
   application_id?: string | null;
+  payment_type?: "file_opening_fee" | "passport_assistance" | string;
   status?: string;
   amount?: number;
   currency?: string;
@@ -562,6 +563,7 @@ export async function submitPaymentToSupabase(payload: {
         {
           student_id: payload.student_id,
           application_id: null,
+          payment_type: "file_opening_fee",
           amount: payload.amount,
           currency: payload.currency || "TZS",
           payment_method: payload.payment_method,
@@ -575,6 +577,21 @@ export async function submitPaymentToSupabase(payload: {
     if (error) {
       console.error("Error submitting payment to Supabase:", error);
       return { success: false, error: error.message };
+    }
+
+    // Record student notification for submission under review
+    try {
+      await supabase.from("notifications").insert([
+        {
+          user_id: payload.student_id,
+          title: "File Opening Fee Submitted",
+          message: `Your MtishbiScholar Application File Opening Fee (${payload.currency || "TZS"} ${Number(payload.amount).toLocaleString()}) payment proof has been submitted and is currently under review by our Finance team.`,
+          type: "payment",
+          is_read: false,
+        },
+      ]);
+    } catch (notifErr) {
+      console.warn("Could not insert payment submission notification:", notifErr);
     }
 
     const insertedPayment = Array.isArray(data) ? data[0] : (data as DbPayment | null);
@@ -1959,12 +1976,23 @@ export async function submitPassportPaymentProof(
 
     // Also record in public.payments table for finance desk visibility
     try {
+      const rawMethod = (payload.paymentMethod || "").toLowerCase();
+      let normalizedMethod: "Mobile Money" | "Bank Transfer" | "Cash Office" | "Selcom Gateway" = "Mobile Money";
+      if (rawMethod.includes("bank") || rawMethod.includes("transfer") || rawMethod.includes("crdb") || rawMethod.includes("nmb")) {
+        normalizedMethod = "Bank Transfer";
+      } else if (rawMethod.includes("cash") || rawMethod.includes("office")) {
+        normalizedMethod = "Cash Office";
+      } else if (rawMethod.includes("selcom")) {
+        normalizedMethod = "Selcom Gateway";
+      }
+
       await supabase.from("payments").insert([
         {
           student_id: studentId,
           amount: payload.amount || 300000,
           currency: "TZS",
-          payment_method: payload.paymentMethod,
+          payment_type: "passport_assistance",
+          payment_method: normalizedMethod,
           transaction_ref: cleanRef || `PP-${Date.now()}`,
           payment_proof_url: fileUrl || null,
           status: "Pending",
@@ -1972,6 +2000,21 @@ export async function submitPassportPaymentProof(
       ]);
     } catch (payErr) {
       console.warn("Could not mirror passport payment to payments table:", payErr);
+    }
+
+    // Record student notification for submission under review
+    try {
+      await supabase.from("notifications").insert([
+        {
+          user_id: studentId,
+          title: "Passport Fee Submitted",
+          message: "Your Passport Assistance Fee (TSh 300,000) payment proof has been submitted and is currently under review by our Finance team.",
+          type: "payment",
+          is_read: false,
+        },
+      ]);
+    } catch (notifErr) {
+      console.warn("Could not insert passport submission notification:", notifErr);
     }
 
     return { success: true, data: updatedRecord || undefined };
@@ -1982,7 +2025,7 @@ export async function submitPassportPaymentProof(
 }
 
 /**
- * Single source of truth helper for student payment approval status
+ * Single source of truth helper for student payment approval status (File Opening Fee)
  */
 export function checkHasApprovedPayment(
   dashData: StudentDashboardData | null | undefined
@@ -1991,7 +2034,13 @@ export function checkHasApprovedPayment(
   if (dashData.hasApprovedPayment) return true;
   return Boolean(
     dashData.payments &&
-    dashData.payments.some((p) => (p.status || "").toLowerCase() === "approved")
+    dashData.payments.some(
+      (p) =>
+        (p.status || "").toLowerCase() === "approved" &&
+        (p.payment_type === "file_opening_fee" ||
+         !p.payment_type ||
+         Number(p.amount) === 50000)
+    )
   );
 }
 

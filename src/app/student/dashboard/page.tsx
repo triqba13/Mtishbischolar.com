@@ -466,8 +466,15 @@ function DashboardContent() {
 
     const refreshDashboard = async () => {
       try {
-        const liveData = await fetchStudentDashboardData(currentUser.id);
+        if (!currentUser?.id) return;
+        const [liveData, notifs, docs] = await Promise.all([
+          fetchStudentDashboardData(currentUser.id),
+          fetchStudentNotifications(currentUser.id),
+          fetchStudentDocuments(currentUser.id),
+        ]);
         setDashData(liveData);
+        if (notifs) setNotificationsList(notifs);
+        if (docs) setStudentDocs(docs);
       } catch (err) {
         console.warn("Realtime sync warning:", err);
       }
@@ -500,16 +507,20 @@ function DashboardContent() {
         {
           event: "*",
           schema: "public",
+          table: "passport_assistance",
+          filter: `student_id=eq.${currentUser.id}`,
+        },
+        () => refreshDashboard()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
           table: "notifications",
           filter: `user_id=eq.${currentUser.id}`,
         },
-        async () => {
-          refreshDashboard();
-          if (currentUser?.id) {
-            const notifs = await fetchStudentNotifications(currentUser.id);
-            setNotificationsList(notifs || []);
-          }
-        }
+        () => refreshDashboard()
       )
       .on(
         "postgres_changes",
@@ -519,12 +530,7 @@ function DashboardContent() {
           table: "documents",
           filter: `student_id=eq.${currentUser.id}`,
         },
-        async () => {
-          if (currentUser?.id) {
-            const docs = await fetchStudentDocuments(currentUser.id);
-            setStudentDocs(docs || []);
-          }
-        }
+        () => refreshDashboard()
       )
       .on(
         "postgres_changes",
@@ -1976,20 +1982,36 @@ function DashboardContent() {
 
   const handleMarkOneAsRead = async (notificationId: string) => {
     if (!currentUser?.id) return;
-    setNotificationsList((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-    );
-    await markNotificationAsRead(notificationId, currentUser.id);
+    try {
+      const res = await markNotificationAsRead(notificationId, currentUser.id);
+      if (res.success) {
+        setNotificationsList((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+        );
+      } else {
+        console.error("Failed to mark notification as read:", res.error);
+        alert(res.error || "Failed to mark notification as read.");
+      }
+    } catch (err: any) {
+      console.error("Error marking notification as read:", err);
+      alert(err.message || "Failed to mark notification as read.");
+    }
   };
 
   const handleMarkAllAsRead = async () => {
     if (!currentUser?.id || unreadNotifCount === 0) return;
     try {
       setMarkingAllRead(true);
-      setNotificationsList((prev) => prev.map((n) => ({ ...n, is_read: true })));
-      await markAllNotificationsAsRead(currentUser.id);
-    } catch (err) {
+      const res = await markAllNotificationsAsRead(currentUser.id);
+      if (res.success) {
+        setNotificationsList((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      } else {
+        console.error("Failed to mark all notifications as read:", res.error);
+        alert(res.error || "Failed to mark all notifications as read. Please try again.");
+      }
+    } catch (err: any) {
       console.error("Error marking all read:", err);
+      alert(err.message || "Failed to mark all notifications as read.");
     } finally {
       setMarkingAllRead(false);
     }
@@ -1997,8 +2019,18 @@ function DashboardContent() {
 
   const handleDeleteNotification = async (notificationId: string) => {
     if (!currentUser?.id) return;
-    setNotificationsList((prev) => prev.filter((n) => n.id !== notificationId));
-    await deleteNotificationFromSupabase(notificationId, currentUser.id);
+    try {
+      const res = await deleteNotificationFromSupabase(notificationId, currentUser.id);
+      if (res.success) {
+        setNotificationsList((prev) => prev.filter((n) => n.id !== notificationId));
+      } else {
+        console.error("Failed to delete notification:", res.error);
+        alert(res.error || "Failed to delete notification.");
+      }
+    } catch (err: any) {
+      console.error("Error deleting notification:", err);
+      alert(err.message || "Failed to delete notification.");
+    }
   };
 
   const getNotificationVisual = (type?: string) => {
@@ -2534,7 +2566,7 @@ function DashboardContent() {
     dashData?.payments?.some(
       (p) =>
         (p.status === "Approved" || p.status === "Paid" || p.status === "verified") &&
-        (p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport") || (p as any).payment_type === "passport")
+        (p.payment_type === "passport_assistance" || (p as any).payment_type === "passport" || p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport"))
     )
   );
 
@@ -2545,7 +2577,7 @@ function DashboardContent() {
      dashData?.payments?.some(
        (p) =>
          (p.status === "Submitted" || p.status === "Pending" || p.status === "under_review") &&
-         (p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport") || (p as any).payment_type === "passport")
+         (p.payment_type === "passport_assistance" || (p as any).payment_type === "passport" || p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport"))
      ))
   );
 
@@ -6522,12 +6554,12 @@ function DashboardContent() {
                             <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider">
                               Passport Processing Service
                             </span>
-                            {dashData?.passportAssistance?.payment_status === "paid" ? (
+                            {isPassportPaymentVerified ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex items-center gap-1 border border-emerald-200">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Payment Successful
+                                Payment Verified
                               </span>
-                            ) : dashData?.passportAssistance?.payment_status === "pending_verification" ? (
+                            ) : isPassportPaymentPending ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold flex items-center gap-1 border border-amber-200">
                                 <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
                                 Payment Under Review
@@ -6552,7 +6584,7 @@ function DashboardContent() {
                         </div>
                       </div>
 
-                      {dashData?.passportAssistance?.payment_status === "paid" ? (
+                      {isPassportPaymentVerified ? (
                         <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
@@ -6561,27 +6593,37 @@ function DashboardContent() {
                             <div>
                               <p className="font-extrabold text-sm text-emerald-950">Passport Fee Verified &bull; Active</p>
                               <p className="text-xs text-emerald-800 mt-0.5">
-                                Your TSh 300,000 passport fee payment is confirmed. Your passport assistance application is being processed by the admissions &amp; immigration desk.
+                                Your TSh 300,000 passport fee payment has been verified by the Mtishbi Finance Desk. Your passport assistance section is unlocked.
                               </p>
-                              {dashData.passportAssistance.payment_ref && (
+                              {dashData?.passportAssistance?.payment_ref && (
                                 <p className="text-[11px] font-mono font-bold text-emerald-700 mt-1">
                                   Ref: {dashData.passportAssistance.payment_ref}
                                 </p>
                               )}
                             </div>
                           </div>
-                          {dashData.passportAssistance.payment_proof_url && (
+                          <div className="flex items-center gap-2">
+                            {dashData?.passportAssistance?.payment_proof_url && (
+                              <button
+                                type="button"
+                                onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span>View Receipt</span>
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
-                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                              onClick={() => setActiveNav("passport")}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
                             >
-                              <Eye className="w-4 h-4" />
-                              <span>View Receipt</span>
+                              <Plane className="w-4 h-4" />
+                              <span>Go to Passport &rarr;</span>
                             </button>
-                          )}
+                          </div>
                         </div>
-                      ) : dashData?.passportAssistance?.payment_status === "pending_verification" ? (
+                      ) : isPassportPaymentPending ? (
                         <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
@@ -6592,14 +6634,14 @@ function DashboardContent() {
                               <p className="text-xs text-amber-800 mt-0.5">
                                 Your payment proof of TSh 300,000 has been received and is currently being verified by the Mtishbi Finance Desk.
                               </p>
-                              {dashData.passportAssistance.payment_ref && (
+                              {dashData?.passportAssistance?.payment_ref && (
                                 <p className="text-[11px] font-mono font-bold text-amber-700 mt-1">
                                   Ref: {dashData.passportAssistance.payment_ref}
                                 </p>
                               )}
                             </div>
                           </div>
-                          {dashData.passportAssistance.payment_proof_url && (
+                          {dashData?.passportAssistance?.payment_proof_url && (
                             <button
                               type="button"
                               onClick={() => handleViewReceipt(dashData.passportAssistance!.payment_proof_url!, "Passport Fee")}
