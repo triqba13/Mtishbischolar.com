@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Outfit, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -128,7 +129,9 @@ export default function RootLayout({
           fetchPriority="high"
           type="image/webp"
         />
-        <script
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
