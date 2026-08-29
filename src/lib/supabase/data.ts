@@ -1212,6 +1212,60 @@ export async function deleteStudentPaymentReceipt(
 }
 
 /**
+ * Delete unapproved Passport Assistance payment receipt and reconcile database & storage.
+ * Strictly scoped to authenticated student.
+ */
+export async function deleteStudentPassportReceipt(
+  studentId: string,
+  targetDetails?: {
+    documentId?: string;
+    paymentId?: string;
+    fileUrl?: string;
+  }
+): Promise<{ success: boolean; error?: string; remainingTransactionRef?: string | null }> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const response = await fetch("/api/student/delete-passport-receipt", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        documentId: targetDetails?.documentId,
+        paymentId: targetDetails?.paymentId,
+        fileUrl: targetDetails?.fileUrl,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to remove passport payment receipt.",
+      };
+    }
+
+    return {
+      success: true,
+      remainingTransactionRef: resData.remainingTransactionRef || null,
+    };
+  } catch (err: any) {
+    console.error("Error in deleteStudentPassportReceipt:", err);
+    return { success: false, error: err.message || "Failed to remove passport payment receipt." };
+  }
+}
+
+/**
  * Fetch all notifications for a specific student, ordered newest first
  */
 export async function fetchStudentNotifications(userId: string): Promise<DbNotification[]> {
@@ -2046,18 +2100,40 @@ export async function submitPassportPaymentProof(
         normalizedMethod = "Selcom Gateway";
       }
 
-      await supabase.from("payments").insert([
-        {
-          student_id: studentId,
-          amount: payload.amount || 300000,
-          currency: "TZS",
-          payment_type: "passport_assistance",
-          payment_method: normalizedMethod,
-          transaction_ref: cleanRef || `PP-${Date.now()}`,
-          payment_proof_url: fileUrl || null,
-          status: "Pending",
-        },
-      ]);
+      const { data: existingPay } = await supabase
+        .from("payments")
+        .select("id, status")
+        .eq("student_id", studentId)
+        .or("payment_type.eq.passport_assistance,amount.eq.300000")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPay?.id && !["approved", "paid", "verified", "rejected"].includes((existingPay.status || "").toLowerCase().trim())) {
+        await supabase
+          .from("payments")
+          .update({
+            amount: payload.amount || 300000,
+            payment_method: normalizedMethod,
+            transaction_ref: cleanRef || `PP-${Date.now()}`,
+            payment_proof_url: fileUrl || undefined,
+            status: "Pending",
+          })
+          .eq("id", existingPay.id);
+      } else {
+        await supabase.from("payments").insert([
+          {
+            student_id: studentId,
+            amount: payload.amount || 300000,
+            currency: "TZS",
+            payment_type: "passport_assistance",
+            payment_method: normalizedMethod,
+            transaction_ref: cleanRef || `PP-${Date.now()}`,
+            payment_proof_url: fileUrl || null,
+            status: "Pending",
+          },
+        ]);
+      }
     } catch (payErr) {
       console.warn("Could not mirror passport payment to payments table:", payErr);
     }
