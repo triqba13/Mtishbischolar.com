@@ -1132,8 +1132,8 @@ function DashboardContent() {
     }
   };
 
-  const handlePassportPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePassportPaymentSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!currentUser?.id) return;
     if (!passportReceiptFile && !passportPayRef.trim()) {
       setPassportPayErrorMsg("Please either upload a payment receipt file or enter your transaction reference number.");
@@ -1145,8 +1145,9 @@ function DashboardContent() {
     setPassportPaySuccessMsg("");
 
     try {
+      const payMethod = paymentMethod === "LipaNamba" ? "Mobile Money" : "Bank Transfer";
       const res = await submitPassportPaymentProof(currentUser.id, {
-        paymentMethod: passportPayMethod,
+        paymentMethod: payMethod,
         transactionRef: passportPayRef.trim() || undefined,
         receiptFile: passportReceiptFile,
         amount: 300000,
@@ -6293,8 +6294,46 @@ function DashboardContent() {
                         </div>
                       </div>
 
-                      {/* Bottom Card: Either Settled Payment Confirmation (when verified) OR Proof Submission Form */}
-                      {stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
+                      {/* ── FILE OPENING FEE (TZS 50,000) PROOF / STATUS SECTION ── */}
+                      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider">
+                                Application Processing Service
+                              </span>
+                              {dashData?.hasApprovedPayment || stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" ? (
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex items-center gap-1 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Payment Verified
+                                </span>
+                              ) : stage === "payment_pending" ? (
+                                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold flex items-center gap-1 border border-amber-200">
+                                  <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                                  Payment Under Review
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold border border-blue-200">
+                                  Payment Required
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight mt-1.5 flex items-center gap-2">
+                              <FolderCheck className="w-5 h-5 text-blue-600" />
+                              <span>File Opening Fee: TSh 50,000</span>
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              One-time fee to open and activate your application file, document verification, and university application processing.
+                            </p>
+                          </div>
+                          <div className="text-right sm:text-right shrink-0">
+                            <p className="text-2xl font-black text-slate-900">TSh 50,000</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">Official Service Fee</p>
+                          </div>
+                        </div>
+
+                        {/* Bottom Card: Either Settled Payment Confirmation (when verified) OR Proof Submission Form */}
+                        {stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
                         /* PAYMENT SETTLEMENT CONFIRMATION CARD */
                         <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/70 border-2 border-emerald-300 shadow-xs space-y-4">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/80 pb-3">
@@ -6446,34 +6485,34 @@ function DashboardContent() {
                                 activePaymentProofDoc?.file_url ||
                                 null;
                               const hasUploadedReceipt = Boolean(activeFileReceiptUrl || receiptFile);
-
-                              if (!hasUploadedReceipt) return null;
+                              const rawRef = fileOpeningFeePayment?.transaction_ref;
+                              const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
 
                               return (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const rawRef = fileOpeningFeePayment?.transaction_ref;
-                                      const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
-                                      if (activeFileReceiptUrl) {
-                                        handleViewReceipt(activeFileReceiptUrl, displayRef);
-                                      } else if (receiptFile) {
-                                        const localUrl = URL.createObjectURL(receiptFile);
-                                        setPreviewReceiptModal({
-                                          isOpen: true,
-                                          url: localUrl,
-                                          title: displayRef ? `Payment Receipt (${displayRef})` : "Payment Receipt Proof",
-                                          isPdf: receiptFile.name.toLowerCase().endsWith(".pdf"),
-                                          loading: false,
-                                        });
-                                      }
-                                    }}
-                                    className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    <span>View Receipt</span>
-                                  </button>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {hasUploadedReceipt && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (activeFileReceiptUrl) {
+                                          handleViewReceipt(activeFileReceiptUrl, displayRef);
+                                        } else if (receiptFile) {
+                                          const localUrl = URL.createObjectURL(receiptFile);
+                                          setPreviewReceiptModal({
+                                            isOpen: true,
+                                            url: localUrl,
+                                            title: displayRef ? `Payment Receipt (${displayRef})` : "Payment Receipt Proof",
+                                            isPdf: receiptFile.name.toLowerCase().endsWith(".pdf"),
+                                            loading: false,
+                                          });
+                                        }
+                                      }}
+                                      className="px-3.5 sm:px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      <span>View Receipt</span>
+                                    </button>
+                                  )}
 
                                   <button
                                     type="button"
@@ -6488,6 +6527,7 @@ function DashboardContent() {
                                           documentId: activePaymentProofDoc?.id,
                                           paymentId: fileOpeningFeePayment?.id,
                                           fileUrl: activeFileReceiptUrl || undefined,
+                                          clearReference: true,
                                         });
 
                                         if (!res.success) {
@@ -6496,8 +6536,8 @@ function DashboardContent() {
                                         }
 
                                         setReceiptFile(null);
-                                        if (res.remainingTransactionRef) {
-                                          setTransactionRef(res.remainingTransactionRef);
+                                        if (displayRef) {
+                                          setTransactionRef(displayRef);
                                         } else {
                                           setTransactionRef("");
                                         }
@@ -6531,17 +6571,26 @@ function DashboardContent() {
                                         setIsRemovingReceipt(false);
                                       }
                                     }}
-                                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="px-3.5 sm:px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
                                   >
                                     {isRemovingReceipt ? (
                                       <>
                                         <div className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                                        <span>Removing current receipt...</span>
+                                        <span>{hasUploadedReceipt ? "Removing receipt..." : "Removing reference..."}</span>
                                       </>
                                     ) : (
                                       <>
-                                        <Upload className="w-4 h-4" />
-                                        <span>Re-upload Receipt</span>
+                                        {hasUploadedReceipt ? (
+                                          <>
+                                            <Upload className="w-4 h-4" />
+                                            <span>Re-upload Receipt</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Edit3 className="w-4 h-4" />
+                                            <span>Edit Reference</span>
+                                          </>
+                                        )}
                                       </>
                                     )}
                                   </button>
@@ -6553,18 +6602,18 @@ function DashboardContent() {
                       ) : (
                         /* STATE 1 & 3: PAYMENT PROOF SUBMISSION / RE-UPLOAD FORM */
                         <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-3">
                             <div>
                               <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                                 <Upload className="w-4 h-4 text-blue-600" />
-                                <span>{isReuploadingPayment ? "Re-upload / Replace Payment Proof" : "Provide Payment Proof"}</span>
+                                <span>{isReuploadingPayment ? "Re-upload / Replace File Opening Fee Proof" : "Provide File Opening Fee Payment Proof"}</span>
                                 <span className="text-red-500 font-bold">*</span>
                               </h3>
                               <p className="text-xs text-slate-500 mt-0.5">
                                 Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt / screenshot.
                               </p>
                             </div>
-                            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase shrink-0">
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase shrink-0 self-start sm:self-auto">
                               At least 1 proof required
                             </span>
                           </div>
@@ -6709,7 +6758,7 @@ function DashboardContent() {
                               ) : (
                                 <>
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span>{isReuploadingPayment ? "Update Payment Proof &rarr;" : "Submit Payment Receipt for Approval &rarr;"}</span>
+                                  <span>{isReuploadingPayment ? "Update Payment Proof →" : "Submit Payment"}</span>
                                 </>
                               )}
                             </button>
@@ -6726,6 +6775,7 @@ function DashboardContent() {
                           </div>
                         </div>
                       )}
+                      </div>
                     </div>
 
                   {/* ── PASSPORT ASSISTANCE FEE (TZS 300,000) SECTION ── */}
@@ -6807,18 +6857,27 @@ function DashboardContent() {
                           </div>
                         </div>
                       ) : isPassportPaymentPending && !isReuploadingPassportPayment ? (
-                        <div className="p-6 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-amber-900 space-y-4">
+                        <div className="p-5 sm:p-6 rounded-2xl bg-amber-50/70 border-2 border-amber-200 text-amber-950 shadow-xs space-y-4">
                           <div className="flex items-start gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
-                              <Clock className="w-5 h-5 animate-pulse" />
+                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                              <Clock className="w-5 h-5 animate-spin" />
                             </div>
-                            <div className="space-y-1">
-                              <p className="font-extrabold text-sm sm:text-base text-amber-950">
-                                Waiting for Finance Approval
-                              </p>
-                              <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
-                                Your 300,000 TSH payment receipt has been submitted to Mtishbi Finance Desk. Once approved, your Passport Assistance application access will unlock automatically.
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-base text-slate-900">Waiting for Finance Approval</h4>
+                              {(() => {
+                                const passportPayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "passport_assistance" || p.amount === 300000) &&
+                                    !["approved", "paid", "verified", "rejected"].includes((p.status || "").toLowerCase().trim())
+                                );
+                                const rawRef = dashData?.passportAssistance?.payment_ref || passportPayment?.transaction_ref;
+                                const displayRef = rawRef && !/^PP-\d{12,}$/.test(rawRef.trim()) && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "";
+                                return (
+                                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                    Your 300,000 TSH payment {displayRef ? <>receipt (Reference: <span className="font-mono font-bold text-slate-800">{displayRef}</span>)</> : <>receipt</>} has been submitted to Mtishbi Finance Desk. Once approved, your Passport Assistance application access will unlock automatically.
+                                  </p>
+                                );
+                              })()}
                             </div>
                           </div>
 
@@ -6848,34 +6907,34 @@ function DashboardContent() {
                                 activePassportProofDoc?.file_url ||
                                 null;
                               const hasUploadedPassportReceipt = Boolean(activePassportReceiptUrl || passportReceiptFile);
-
-                              if (!hasUploadedPassportReceipt) return null;
+                              const rawRef = dashData?.passportAssistance?.payment_ref || passportPayment?.transaction_ref;
+                              const displayRef = rawRef && !/^PP-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
 
                               return (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const rawRef = dashData?.passportAssistance?.payment_ref || passportPayment?.transaction_ref;
-                                      const displayRef = rawRef && !/^PP-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
-                                      if (activePassportReceiptUrl) {
-                                        handleViewReceipt(activePassportReceiptUrl, displayRef || "Passport Fee");
-                                      } else if (passportReceiptFile) {
-                                        const localUrl = URL.createObjectURL(passportReceiptFile);
-                                        setPreviewReceiptModal({
-                                          isOpen: true,
-                                          url: localUrl,
-                                          title: displayRef ? `Passport Fee Receipt (${displayRef})` : "Passport Payment Receipt Proof",
-                                          isPdf: passportReceiptFile.name.toLowerCase().endsWith(".pdf"),
-                                          loading: false,
-                                        });
-                                      }
-                                    }}
-                                    className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    <span>View Receipt</span>
-                                  </button>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {hasUploadedPassportReceipt && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (activePassportReceiptUrl) {
+                                          handleViewReceipt(activePassportReceiptUrl, displayRef || "Passport Fee");
+                                        } else if (passportReceiptFile) {
+                                          const localUrl = URL.createObjectURL(passportReceiptFile);
+                                          setPreviewReceiptModal({
+                                            isOpen: true,
+                                            url: localUrl,
+                                            title: displayRef ? `Passport Fee Receipt (${displayRef})` : "Passport Payment Receipt Proof",
+                                            isPdf: passportReceiptFile.name.toLowerCase().endsWith(".pdf"),
+                                            loading: false,
+                                          });
+                                        }
+                                      }}
+                                      className="px-3.5 sm:px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      <span>View Receipt</span>
+                                    </button>
+                                  )}
 
                                   <button
                                     type="button"
@@ -6890,6 +6949,7 @@ function DashboardContent() {
                                           documentId: activePassportProofDoc?.id,
                                           paymentId: passportPayment?.id,
                                           fileUrl: activePassportReceiptUrl || undefined,
+                                          clearReference: true,
                                         });
 
                                         if (!res.success) {
@@ -6898,8 +6958,10 @@ function DashboardContent() {
                                         }
 
                                         setPassportReceiptFile(null);
-                                        if (res.remainingTransactionRef) {
-                                          setPassportPayRef(res.remainingTransactionRef);
+                                        setPassportPaySuccessMsg("");
+                                        setPassportPayErrorMsg("");
+                                        if (displayRef) {
+                                          setPassportPayRef(displayRef);
                                         } else {
                                           setPassportPayRef("");
                                         }
@@ -6918,17 +6980,26 @@ function DashboardContent() {
                                         setIsRemovingPassportReceipt(false);
                                       }
                                     }}
-                                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="px-3.5 sm:px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
                                   >
                                     {isRemovingPassportReceipt ? (
                                       <>
                                         <div className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                                        <span>Removing current receipt...</span>
+                                        <span>{hasUploadedPassportReceipt ? "Removing receipt..." : "Removing reference..."}</span>
                                       </>
                                     ) : (
                                       <>
-                                        <Upload className="w-4 h-4" />
-                                        <span>Re-upload Receipt</span>
+                                        {hasUploadedPassportReceipt ? (
+                                          <>
+                                            <Upload className="w-4 h-4" />
+                                            <span>Re-upload Receipt</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Edit3 className="w-4 h-4" />
+                                            <span>Edit Reference</span>
+                                          </>
+                                        )}
                                       </>
                                     )}
                                   </button>
@@ -6938,7 +7009,24 @@ function DashboardContent() {
                           </div>
                         </div>
                       ) : (
-                        <form onSubmit={handlePassportPaymentSubmit} className="space-y-4">
+                        /* PASSPORT ASSISTANCE PAYMENT PROOF SUBMISSION / RE-UPLOAD FORM */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-3">
+                            <div>
+                              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                                <Upload className="w-4 h-4 text-blue-600" />
+                                <span>{isReuploadingPassportPayment ? "Re-upload / Replace Passport Fee Proof" : "Provide Passport Assistance Fee Payment Proof"}</span>
+                                <span className="text-red-500 font-bold">*</span>
+                              </h3>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt / screenshot.
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase shrink-0 self-start sm:self-auto">
+                              At least 1 proof required
+                            </span>
+                          </div>
+
                           {passportPayErrorMsg && (
                             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
                               <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -6953,45 +7041,30 @@ function DashboardContent() {
                             </div>
                           )}
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block font-bold text-slate-700 text-xs mb-1">
-                                Payment Method <span className="text-red-500">*</span>
-                              </label>
-                              <select
-                                value={passportPayMethod}
-                                onChange={(e) => setPassportPayMethod(e.target.value)}
-                                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold outline-none focus:border-blue-600 cursor-pointer"
-                              >
-                                <option value="Lipa Namba / M-Pesa">Lipa Namba (114535008 - Vodacom / M-Pesa)</option>
-                                <option value="Mixx by Yas">Mixx by Yas (114535008)</option>
-                                <option value="Airtel Money">Airtel Money (114535008)</option>
-                                <option value="CRDB Bank TZS">CRDB Bank TZS (10458426886)</option>
-                                <option value="CRDB Bank USD">CRDB Bank USD (10458961889)</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block font-bold text-slate-700 text-xs mb-1">
-                                Option A: Transaction Ref / Reference No.
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* 1. Transaction Reference */}
+                            <div className="space-y-1.5">
+                              <label className="font-bold text-xs text-slate-700 block">
+                                Transaction Reference Number
                               </label>
                               <input
                                 type="text"
                                 value={passportPayRef}
                                 onChange={(e) => setPassportPayRef(e.target.value)}
-                                placeholder="e.g. 9B76A54321 or Bank Slip Ref"
-                                className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs outline-none focus:border-blue-600"
+                                placeholder="e.g. 987654321 or CRDB-TXN-123"
+                                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                               />
+                              <p className="text-[11px] text-slate-400">Found in your M-Pesa, Mixx by Yas, Airtel Money SMS or bank confirmation.</p>
                             </div>
 
-                            <div>
-                              <label className="block font-bold text-slate-700 text-xs mb-1">
-                                Option B: Upload Receipt / Screenshot
+                            {/* 2. Upload Receipt */}
+                            <div className="space-y-1.5">
+                              <label className="font-bold text-xs text-slate-700 block">
+                                Upload Payment Receipt / Screenshot
                               </label>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <label className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors shrink-0 flex items-center gap-1.5 border border-slate-200">
-                                  <Upload className="w-3.5 h-3.5" />
-                                  <span>{passportReceiptFile ? "Change Receipt" : "Choose Receipt"}</span>
+                              <div className="flex items-center gap-3">
+                                <label className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-xs">
+                                  Choose File
                                   <input
                                     type="file"
                                     accept="image/*,.pdf"
@@ -7003,77 +7076,50 @@ function DashboardContent() {
                                     }}
                                   />
                                 </label>
-
-                                {passportReceiptFile ? (
-                                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-xl max-w-full">
-                                    <span className="text-[11px] font-semibold text-blue-900 truncate max-w-[140px] sm:max-w-[200px]">
-                                      {passportReceiptFile.name}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const localUrl = URL.createObjectURL(passportReceiptFile);
-                                        setPreviewReceiptModal({
-                                          isOpen: true,
-                                          url: localUrl,
-                                          title: `Passport Fee Receipt (${passportReceiptFile.name})`,
-                                          isPdf: passportReceiptFile.name.toLowerCase().endsWith(".pdf") || passportReceiptFile.type === "application/pdf",
-                                          loading: false,
-                                        });
-                                      }}
-                                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
-                                      title="View / Preview selected receipt"
-                                    >
-                                      <Eye className="w-3 h-3" />
-                                      <span>View</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setPassportReceiptFile(null)}
-                                      className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer shrink-0"
-                                      title="Remove file"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-[11px] text-slate-500 truncate">
-                                    No file chosen
-                                  </span>
-                                )}
+                                <span className="text-xs text-slate-500 truncate">
+                                  {passportReceiptFile ? passportReceiptFile.name : "No file chosen"}
+                                </span>
                               </div>
+                              {passportReceiptFile && (
+                                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Attached: {passportReceiptFile.name}</span>
+                                </p>
+                              )}
                             </div>
                           </div>
 
-                          <div className="pt-2 flex items-center justify-end gap-3">
-                            {isReuploadingPassportPayment && (
-                              <button
-                                type="button"
-                                onClick={() => setIsReuploadingPassportPayment(false)}
-                                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                            )}
+                          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <button
-                              type="submit"
+                              type="button"
                               disabled={submittingPassportPay}
-                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                              onClick={handlePassportPaymentSubmit}
+                              className="w-full sm:w-auto px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 cursor-pointer disabled:opacity-50"
                             >
                               {submittingPassportPay ? (
                                 <>
                                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                  <span>Submitting...</span>
+                                  <span>Submitting Payment...</span>
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle2 className="w-4 h-4" />
-                                  <span>Submit Passport Payment Proof (TSh 300,000) &rarr;</span>
+                                  <span>{isReuploadingPassportPayment ? "Update Payment Proof →" : "Submit Payment"}</span>
                                 </>
                               )}
                             </button>
+
+                            {isReuploadingPassportPayment && (
+                              <button
+                                type="button"
+                                onClick={() => setIsReuploadingPassportPayment(false)}
+                                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            )}
                           </div>
-                        </form>
+                        </div>
                       )}
                     </div>
                   )}

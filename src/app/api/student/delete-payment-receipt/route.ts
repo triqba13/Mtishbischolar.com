@@ -217,15 +217,15 @@ export async function POST(req: NextRequest) {
       const rawRef = (targetPayment.transaction_ref || "").trim();
       const isAutoRef = !rawRef || /^TXN-\d{12,}$/.test(rawRef);
 
-      if (isAutoRef) {
-        // Payment existed ONLY because of this receipt upload -> delete the unapproved payment row
+      if (isAutoRef || body.clearReference) {
+        // Payment existed ONLY because of this receipt upload OR user requested reference reset -> delete the unapproved payment row
         await adminClient
           .from("payments")
           .delete()
           .eq("id", targetPayment.id)
           .eq("student_id", targetUserId);
       } else {
-        // Manual transaction reference exists (e.g. "CRDB-123") -> DO NOT delete payment or reference
+        // Manual transaction reference exists and clearReference is false -> keep reference
         remainingManualRef = rawRef;
         await adminClient
           .from("payments")

@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
       const rawRef = (targetPayment.transaction_ref || "").trim();
       const isAutoRef = !rawRef || /^PP-\d{12,}$/.test(rawRef) || /^TXN-\d{12,}$/.test(rawRef);
 
-      if (isAutoRef) {
+      if (isAutoRef || body.clearReference) {
         await adminClient
           .from("payments")
           .delete()
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
         .update({
           payment_status: "unpaid",
           payment_proof_url: null,
-          payment_ref: remainingManualRef,
+          payment_ref: body.clearReference ? null : remainingManualRef,
           status: "pending",
           updated_at: new Date().toISOString(),
         })

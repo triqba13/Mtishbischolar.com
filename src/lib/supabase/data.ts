@@ -1167,6 +1167,7 @@ export async function deleteStudentPaymentReceipt(
     documentId?: string;
     paymentId?: string;
     fileUrl?: string;
+    clearReference?: boolean;
   }
 ): Promise<{ success: boolean; error?: string; remainingTransactionRef?: string | null }> {
   try {
@@ -1190,6 +1191,7 @@ export async function deleteStudentPaymentReceipt(
         documentId: targetDetails?.documentId,
         paymentId: targetDetails?.paymentId,
         fileUrl: targetDetails?.fileUrl,
+        clearReference: targetDetails?.clearReference,
       }),
     });
 
@@ -1221,6 +1223,7 @@ export async function deleteStudentPassportReceipt(
     documentId?: string;
     paymentId?: string;
     fileUrl?: string;
+    clearReference?: boolean;
   }
 ): Promise<{ success: boolean; error?: string; remainingTransactionRef?: string | null }> {
   try {
@@ -1244,6 +1247,7 @@ export async function deleteStudentPassportReceipt(
         documentId: targetDetails?.documentId,
         paymentId: targetDetails?.paymentId,
         fileUrl: targetDetails?.fileUrl,
+        clearReference: targetDetails?.clearReference,
       }),
     });
 
@@ -2115,9 +2119,9 @@ export async function submitPassportPaymentProof(
           .update({
             amount: payload.amount || 300000,
             payment_method: normalizedMethod,
-            transaction_ref: cleanRef || `PP-${Date.now()}`,
+            transaction_ref: cleanRef || null,
             payment_proof_url: fileUrl || undefined,
-            status: "Pending",
+            status: "Submitted",
           })
           .eq("id", existingPay.id);
       } else {
@@ -2128,9 +2132,9 @@ export async function submitPassportPaymentProof(
             currency: "TZS",
             payment_type: "passport_assistance",
             payment_method: normalizedMethod,
-            transaction_ref: cleanRef || `PP-${Date.now()}`,
+            transaction_ref: cleanRef || null,
             payment_proof_url: fileUrl || null,
-            status: "Pending",
+            status: "Submitted",
           },
         ]);
       }
