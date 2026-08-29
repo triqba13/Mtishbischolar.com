@@ -612,13 +612,14 @@ export async function updateOrResubmitPaymentProof(payload: {
   student_id: string;
   payment_method?: string;
   transaction_ref?: string | null;
+  payment_proof_url?: string | null;
   file?: File | null;
 }): Promise<{ success: boolean; data?: DbPayment; error?: string }> {
   try {
     const supabase = createClient();
-    let paymentProofUrl: string | undefined = undefined;
+    let paymentProofUrl: string | undefined = payload.payment_proof_url || undefined;
 
-    if (payload.file) {
+    if (payload.file && !paymentProofUrl) {
       const fileExt = payload.file.name.split(".").pop();
       const filePath = `${payload.student_id}/payment_proof_${Date.now()}.${fileExt}`;
       const bucketName = "student-documents";
@@ -1153,6 +1154,60 @@ export async function deleteStudentDocument(
   } catch (err: any) {
     console.error("Error in deleteStudentDocument:", err);
     return { success: false, error: err.message || "Failed to delete document." };
+  }
+}
+
+/**
+ * Delete unapproved File Opening Fee payment receipt and reconcile database & storage.
+ * Strictly scoped to authenticated student.
+ */
+export async function deleteStudentPaymentReceipt(
+  studentId: string,
+  targetDetails?: {
+    documentId?: string;
+    paymentId?: string;
+    fileUrl?: string;
+  }
+): Promise<{ success: boolean; error?: string; remainingTransactionRef?: string | null }> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const response = await fetch("/api/student/delete-payment-receipt", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        documentId: targetDetails?.documentId,
+        paymentId: targetDetails?.paymentId,
+        fileUrl: targetDetails?.fileUrl,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to remove payment receipt.",
+      };
+    }
+
+    return {
+      success: true,
+      remainingTransactionRef: resData.remainingTransactionRef || null,
+    };
+  } catch (err: any) {
+    console.error("Error in deleteStudentPaymentReceipt:", err);
+    return { success: false, error: err.message || "Failed to remove payment receipt." };
   }
 }
 
@@ -1797,9 +1852,14 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
 
   const assignedOfficer: DbProfile | null = applications[0]?.admission_officer || null;
 
-  const hasApprovedPayment = payments.some(
-    (p) => (p.status || "").toLowerCase() === "approved"
-  );
+  const hasApprovedPayment = payments.some((p) => {
+    const isFileFee =
+      (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+      p.payment_type !== "passport_assistance" &&
+      p.amount !== 300000;
+    const st = (p.status || "").toLowerCase().trim();
+    return isFileFee && (st === "approved" || st === "paid" || st === "verified");
+  });
 
   const { progressPercentage, currentMilestoneStage, isOnboardingCompleted, journeyStep } = calculateStudentProgress(profile, applications, payments);
 

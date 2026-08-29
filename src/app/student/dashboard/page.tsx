@@ -22,6 +22,7 @@ import {
   fetchStudentContacts,
   uploadStudentDocument,
   deleteStudentDocument,
+  deleteStudentPaymentReceipt,
   fetchStudentDocuments,
   getStudentDocumentSignedUrl,
   deleteStudentProfileAndAccount,
@@ -282,6 +283,7 @@ function DashboardContent() {
 
   // ── RE-UPLOAD RECEIPT STATE ──
   const [isReuploadingPayment, setIsReuploadingPayment] = useState<boolean>(false);
+  const [isRemovingReceipt, setIsRemovingReceipt] = useState<boolean>(false);
 
   // Profile Header Dropdown State & Listener
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
@@ -435,8 +437,12 @@ function DashboardContent() {
               return st.includes("submitted") || st.includes("review") || st.includes("processing");
             });
             const hasPendingPayment = liveData.payments.some((p) => {
+              const isFileFee =
+                (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                p.payment_type !== "passport_assistance" &&
+                p.amount !== 300000;
               const st = (p.status || "").toLowerCase();
-              return st === "submitted" || st === "under review" || st === "pending";
+              return isFileFee && (st === "submitted" || st === "under review" || st === "pending");
             });
 
             if (hasOfferOrVisa) {
@@ -482,6 +488,38 @@ function DashboardContent() {
         setDashData(liveData);
         if (notifs) setNotificationsList(notifs);
         if (docs) setStudentDocs(docs);
+
+        if (liveData.profile?.is_profile_completed) {
+          const officialApps = liveData.applications || [];
+          const hasOfferOrVisa = officialApps.some((a) => {
+            const st = (a.status || "").toLowerCase();
+            return st.includes("offer") || st.includes("visa") || st.includes("ready to fly") || st.includes("enrolled");
+          });
+          const hasSubmittedApp = officialApps.some((a) => {
+            const st = (a.status || "").toLowerCase();
+            return st.includes("submitted") || st.includes("review") || st.includes("processing");
+          });
+          const hasPendingPayment = (liveData.payments || []).some((p) => {
+            const isFileFee =
+              (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+              p.payment_type !== "passport_assistance" &&
+              p.amount !== 300000;
+            const st = (p.status || "").toLowerCase();
+            return isFileFee && (st === "submitted" || st === "under review" || st === "pending");
+          });
+
+          if (hasOfferOrVisa) {
+            setStage("offer_letter_uploaded");
+          } else if (hasSubmittedApp) {
+            setStage("application_submitted");
+          } else if (liveData.hasApprovedPayment) {
+            setStage("payment_approved");
+          } else if (hasPendingPayment) {
+            setStage("payment_pending");
+          } else {
+            setStage("profile_submitted");
+          }
+        }
       } catch (err) {
         console.warn("Realtime sync warning:", err);
       }
@@ -5853,91 +5891,8 @@ function DashboardContent() {
               {/* ── STAGE 2 & 3: PAYMENTS SECTION (ONLY VISIBLE UNDER PAYMENTS TAB) ── */}
               {activeNav === "payments" && (
                 <div className="space-y-4">
-                  {/* Top Status Banner: Pending vs Approved */}
-                  {stage === "payment_pending" && !isReuploadingPayment ? (
-                    /* STAGE 3: PAYMENT PENDING FINANCE APPROVAL */
-                    <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm shadow-slate-200/60 space-y-4">
-                      <div className="flex items-center gap-3 text-amber-600">
-                        <Clock className="w-6 h-6 animate-spin shrink-0" />
-                        <div>
-                          <h3 className="font-bold text-base text-slate-900">Waiting for Finance Approval</h3>
-                          {(() => {
-                            const rawRef = dashData?.payments?.[0]?.transaction_ref;
-                            const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "";
-                            return (
-                              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                Your 50,000 TSH payment {displayRef ? <>receipt (Reference: <span className="font-mono font-bold text-slate-800">{displayRef}</span>)</> : <>receipt</>} has been submitted to Mtishbi Finance Desk. Once approved, your University Application access will unlock automatically.
-                              </p>
-                            );
-                          })()}
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                            Status: Pending Verification
-                          </span>
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            Under Review by Mtishbi Finance Desk
-                          </span>
-                        </div>
-
-                        {/* Front / Bottom action area: ONLY View Receipt and Re-upload Receipt */}
-                        <div className="flex items-center gap-2">
-                          {(dashData?.payments?.[0]?.payment_proof_url || receiptFile) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const fileUrl = dashData?.payments?.[0]?.payment_proof_url;
-                                const rawRef = dashData?.payments?.[0]?.transaction_ref;
-                                const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
-                                if (fileUrl) {
-                                  handleViewReceipt(fileUrl, displayRef);
-                                } else if (receiptFile) {
-                                  const localUrl = URL.createObjectURL(receiptFile);
-                                  setPreviewReceiptModal({
-                                    isOpen: true,
-                                    url: localUrl,
-                                    title: "Payment Receipt Proof",
-                                    isPdf: receiptFile.name.toLowerCase().endsWith(".pdf"),
-                                    loading: false,
-                                  });
-                                }
-                              }}
-                              className="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4" />
-                              <span>View Receipt</span>
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const latest = dashData?.payments?.[0];
-                              if (latest) {
-                                if (latest.payment_method === "Bank Transfer" || latest.payment_method === "BankTransfer") {
-                                  setPaymentMethod("BankTransfer");
-                                } else {
-                                  setPaymentMethod("LipaNamba");
-                                }
-                                const rawRef = latest.transaction_ref;
-                                const cleanRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "";
-                                setTransactionRef(cleanRef);
-                              }
-                              setReceiptFile(null);
-                              setIsReuploadingPayment(true);
-                            }}
-                            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-4 h-4" />
-                            <span>Re-upload Receipt</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment) ? (
+                  {/* Top Status Banner: Approved only */}
+                  {(stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment) ? (
                     /* ALREADY PAID & APPROVED TOP BANNER */
                     <div className="p-6 sm:p-7 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 shadow-sm space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -5982,593 +5937,790 @@ function DashboardContent() {
                     </div>
                   ) : null}
 
-                  {/* ── APPLICATION FEE PAYMENT METHODS & ACCOUNTS (ALWAYS VISIBLE) ── */}
+                  {/* ── APPLICATION FEE PAYMENT METHODS & ACCOUNTS (ALWAYS PERSISTENT) ── */}
                   <div className="space-y-4">
-                    {/* Top Row: Two Cards Side-by-Side */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                      {/* Card 1: Official Fee Banner */}
-                      <div className="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white shadow-md border border-blue-500/30 flex flex-col justify-between gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-extrabold uppercase tracking-wider">
-                              Official Fee
-                            </span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-extrabold">
-                              {dashData?.hasApprovedPayment ? "Payment Settled" : "Application Processing"}
-                            </span>
-                          </div>
-                          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                            MtishbiScholar Application File Fee: TSh 50,000
-                          </h2>
-                          <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
-                            One-time fee to open and activate your application file with MtishbiScholar.
-                          </p>
-                          <p className="text-[11px] text-blue-200/90 font-normal leading-normal italic">
-                            This fee does not cover university application fees or other university-specific charges. Those are separate.
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
-                          <div>
-                            <p className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">
-                              {dashData?.hasApprovedPayment ? "Amount Paid" : "Amount Due"}
-                            </p>
-                            <p className="text-xl font-black text-white font-mono mt-0.5">TSh 50,000</p>
-                          </div>
-                          <span className="text-[11px] text-blue-100 font-medium bg-white/10 px-2.5 py-1 rounded-lg">
-                            {dashData?.hasApprovedPayment ? "Verified by Finance" : "One-time processing fee"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Card 2: Select Payment Method */}
-                      <div className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-3">
-                        <div className="border-b border-slate-100 pb-2">
-                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900">Select Payment Method</h3>
-                          <p className="text-xs text-slate-500">Choose your preferred payment method:</p>
-                        </div>
-
-                        <div className="space-y-2.5 flex-1 flex flex-col justify-center">
-                          {/* Option 1: Mobile Money / Lipa Namba */}
-                          <button
-                            type="button"
-                            onClick={() => setPaymentMethod("LipaNamba")}
-                            className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
-                              paymentMethod === "LipaNamba"
-                                ? "border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-2xs"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            <div
-                              className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
-                                paymentMethod === "LipaNamba"
-                                  ? "bg-emerald-600 text-white shadow-xs"
-                                  : "bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              <Smartphone className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1.5">
-                                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                                  Mobile Money / Lipa Namba
-                                </h4>
-                                {paymentMethod === "LipaNamba" && (
-                                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-[10px]">
-                                    <Check className="w-3 h-3" />
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                                M-Pesa &bull; Mixx by Yas &bull; Airtel Money
-                              </p>
-                            </div>
-                          </button>
-
-                          {/* Option 2: Bank Transfer */}
-                          <button
-                            type="button"
-                            onClick={() => setPaymentMethod("BankTransfer")}
-                            className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
-                              paymentMethod === "BankTransfer"
-                                ? "border-blue-600 bg-blue-50/80 text-blue-950 ring-2 ring-blue-500/20 shadow-2xs"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            <div
-                              className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
-                                paymentMethod === "BankTransfer"
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : "bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              <Building2 className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1.5">
-                                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">Bank Transfer</h4>
-                                {paymentMethod === "BankTransfer" && (
-                                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 text-[10px]">
-                                    <Check className="w-3 h-3" />
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] font-semibold text-blue-700 mt-0.5">CRDB TZS &bull; CRDB USD</p>
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Dynamic Payment Content Card */}
-                    <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                      {/* Mobile Money Details */}
-                      {paymentMethod === "LipaNamba" && (
-                        <div className="space-y-4 pt-1">
-                          <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white text-slate-900 shadow-sm border-2 border-emerald-300 flex flex-col md:flex-row items-center justify-between gap-5">
-                            <div className="space-y-3.5 flex-1 w-full min-w-0">
-                              <div className="flex items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-2xs">
-                                  CRDB TIPS / TANQR
-                                </span>
-                                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  Instant Confirmation
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
-                                  <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Lipa Namba</p>
-                                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <p className="font-mono text-xl sm:text-2xl font-black text-slate-900 tracking-wider">
-                                      114535008
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopy("114535008", "lipa")}
-                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                      <span>{copiedField === "lipa" ? "Copied!" : "Copy"}</span>
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
-                                  <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Beneficiary Name</p>
-                                  <p className="text-xs sm:text-sm font-black text-slate-900 truncate mt-1">
-                                    MTISHBI COMPANY LIMITED
-                                  </p>
-                                  <p className="text-[10px] font-bold text-emerald-700 mt-0.5">Verified Business Merchant</p>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-700 bg-white/90 p-2.5 rounded-xl border border-emerald-200">
-                                <span className="font-extrabold text-slate-900">Supported Networks:</span>
-                                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-bold text-[10px]">Vodacom M-Pesa</span>
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold text-[10px]">Mixx by Yas</span>
-                                <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">Airtel Money</span>
-                              </div>
-                            </div>
-
-                            <div className="shrink-0 flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border-2 border-emerald-200 shadow-xs text-center">
-                              <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100">
-                                <img
-                                  src="/images/lipa_namba_qr.png"
-                                  alt="Lipa Namba CRDB TIPS TANQR 114535008"
-                                  className="w-full h-full object-contain rounded-lg"
-                                />
-                              </div>
-                              <p className="text-[11px] font-extrabold text-slate-900 mt-1.5 flex items-center gap-1">
-                                <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Scan to Pay</span>
-                              </p>
-                              <p className="text-[9px] text-slate-500">M-Pesa • Mixx • Airtel App</p>
-                            </div>
-                          </div>
-
-                          {/* Mobile USSD Instructions */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {/* 1. M-Pesa */}
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                    <img src="/images/mpesa_logo.png" alt="Vodacom M-Pesa" className="w-full h-full object-contain" />
-                                  </div>
-                                  <div>
-                                    <h5 className="font-extrabold text-xs text-slate-900">Vodacom M-Pesa</h5>
-                                    <p className="text-[10px] text-slate-500 font-mono">*150*00#</p>
-                                  </div>
-                                </div>
-                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*00#</span></li>
-                                  <li>2. Select <span className="font-bold text-slate-900">4 (Lipa kwa M-Pesa)</span></li>
-                                  <li>3. Select <span className="font-bold text-slate-900">1 (Lipa kwa Simu / Namba)</span></li>
-                                  <li>4. Enter <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                  <li>6. Confirm name: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                </ol>
-                              </div>
-                            </div>
-
-                            {/* 2. Mixx by Yas */}
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                    <img src="/images/mixx_logo.png" alt="Mixx by Yas (Tigo / Halopesa)" className="w-full h-full object-contain" />
-                                  </div>
-                                  <div>
-                                    <h5 className="font-extrabold text-xs text-slate-900">Mixx by Yas</h5>
-                                    <p className="text-[10px] text-slate-500 font-mono">*150*01# / *150*88#</p>
-                                  </div>
-                                </div>
-                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*01#</span> au <span className="font-mono font-bold text-slate-900">*150*88#</span></li>
-                                  <li>2. Select <span className="font-bold text-slate-900">Lipa kwa Simu</span></li>
-                                  <li>3. Select <span className="font-bold text-slate-900">Kwenda Mitandao Mingine / CRDB TIPS</span></li>
-                                  <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                  <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                </ol>
-                              </div>
-                            </div>
-
-                            {/* 3. Airtel Money */}
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
-                                    <img src="/images/airtel_logo.svg" alt="Airtel Money" className="w-full h-full object-contain" />
-                                  </div>
-                                  <div>
-                                    <h5 className="font-extrabold text-xs text-slate-900">Airtel Money</h5>
-                                    <p className="text-[10px] text-slate-500 font-mono">*150*60#</p>
-                                  </div>
-                                </div>
-                                <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
-                                  <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*60#</span></li>
-                                  <li>2. Select <span className="font-bold text-slate-900">5 (Lipa kwa Simu / Merchant)</span></li>
-                                  <li>3. Select <span className="font-bold text-slate-900">Kwenda CRDB TIPS / Mitandao Mingine</span></li>
-                                  <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
-                                  <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
-                                  <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
-                                </ol>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bank Transfer Details */}
-                      {paymentMethod === "BankTransfer" && (
-                        <div className="space-y-4 pt-1">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* CRDB TZS */}
-                            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white text-slate-900 shadow-sm border-2 border-emerald-300 space-y-3">
-                              <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-                                <div>
-                                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
-                                    TZS Account
-                                  </span>
-                                  <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; Tanzanian Shillings</h4>
-                                </div>
-                                <Building2 className="w-5 h-5 text-emerald-700" />
-                              </div>
-                              <div className="space-y-2 text-xs">
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
-                                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <p className="font-mono text-lg font-black text-slate-900">10458426886</p>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopy("10458426886", "crdb_tzs")}
-                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                      <span>{copiedField === "crdb_tzs" ? "Copied!" : "Copy"}</span>
-                                    </button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
-                                  <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Amount Due:</span>
-                                  <p className="font-black text-emerald-800 text-sm">TSh 50,000</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* CRDB USD */}
-                            <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/40 to-white text-slate-900 shadow-sm border-2 border-blue-300 space-y-3">
-                              <div className="flex items-center justify-between border-b border-blue-200 pb-2">
-                                <div>
-                                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase">
-                                    USD Account
-                                  </span>
-                                  <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; US Dollars</h4>
-                                </div>
-                                <Building2 className="w-5 h-5 text-blue-700" />
-                              </div>
-                              <div className="space-y-2 text-xs">
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
-                                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <p className="font-mono text-lg font-black text-slate-900">10458961889</p>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopy("10458961889", "crdb_usd")}
-                                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                      <span>{copiedField === "crdb_usd" ? "Copied!" : "Copy"}</span>
-                                    </button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
-                                  <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-500">Swift Code:</span>
-                                  <p className="font-mono font-bold text-slate-900">CORUTZTZ</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Universal Safety Note */}
-                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="leading-relaxed">
-                          <span className="font-extrabold">Important:</span> Always verify that the recipient name displays <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span> before confirming payment.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bottom Card: Either Settled Payment Confirmation (when verified) OR Proof Submission Form */}
-                    {stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
-                      /* PAYMENT SETTLEMENT CONFIRMATION CARD */
-                      <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/70 border-2 border-emerald-300 shadow-xs space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/80 pb-3">
-                          <div>
+                      {/* Top Row: Two Cards Side-by-Side */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                        {/* Card 1: Official Fee Banner */}
+                        <div className="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white shadow-md border border-blue-500/30 flex flex-col justify-between gap-4">
+                          <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                              <h3 className="font-extrabold text-sm sm:text-base text-emerald-950 flex items-center gap-2">
-                                <span>Official Payment Proof Settled</span>
-                              </h3>
+                              <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[10px] font-extrabold uppercase tracking-wider">
+                                Official Fee
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-extrabold">
+                                {dashData?.hasApprovedPayment ? "Payment Settled" : "Application Processing"}
+                              </span>
                             </div>
-                            <p className="text-xs text-emerald-800/90 mt-0.5">
-                              Your TSh 50,000 Application File Fee was approved and verified by Mtishbi Finance.
+                            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                              MtishbiScholar Application File Fee: TSh 50,000
+                            </h2>
+                            <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
+                              One-time fee to open and activate your application file with MtishbiScholar.
+                            </p>
+                            <p className="text-[11px] text-blue-200/90 font-normal leading-normal italic">
+                              This fee does not cover university application fees or other university-specific charges. Those are separate.
                             </p>
                           </div>
-                          <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider self-start sm:self-auto shadow-2xs">
-                            Verified &amp; Settled
-                          </span>
+
+                          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
+                            <div>
+                              <p className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">
+                                {dashData?.hasApprovedPayment ? "Amount Paid" : "Amount Due"}
+                              </p>
+                              <p className="text-xl font-black text-white font-mono mt-0.5">TSh 50,000</p>
+                            </div>
+                            <span className="text-[11px] text-blue-100 font-medium bg-white/10 px-2.5 py-1 rounded-lg">
+                              {dashData?.hasApprovedPayment ? "Verified by Finance" : "One-time processing fee"}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
-                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Amount Paid</p>
-                            <p className="text-sm font-black text-emerald-900 font-mono mt-0.5">TSh 50,000</p>
+                        {/* Card 2: Select Payment Method */}
+                        <div className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-3">
+                          <div className="border-b border-slate-100 pb-2">
+                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">Select Payment Method</h3>
+                            <p className="text-xs text-slate-500">Choose your preferred payment method:</p>
                           </div>
 
-                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
-                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Payment Method</p>
-                            <p className="text-xs font-extrabold text-slate-900 mt-0.5">
-                              {dashData?.payments?.[0]?.payment_method || "Mobile Money / Bank Transfer"}
-                            </p>
+                          <div className="space-y-2.5 flex-1 flex flex-col justify-center">
+                            {/* Option 1: Mobile Money / Lipa Namba */}
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethod("LipaNamba")}
+                              className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
+                                paymentMethod === "LipaNamba"
+                                  ? "border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-2xs"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div
+                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                                  paymentMethod === "LipaNamba"
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                <Smartphone className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                                    Mobile Money / Lipa Namba
+                                  </h4>
+                                  {paymentMethod === "LipaNamba" && (
+                                    <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-[10px]">
+                                      <Check className="w-3 h-3" />
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+                                  M-Pesa &bull; Mixx by Yas &bull; Airtel Money
+                                </p>
+                              </div>
+                            </button>
+
+                            {/* Option 2: Bank Transfer */}
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethod("BankTransfer")}
+                              className={`w-full p-3 rounded-xl border-2 text-left transition-all flex items-center gap-3 cursor-pointer ${
+                                paymentMethod === "BankTransfer"
+                                  ? "border-blue-600 bg-blue-50/80 text-blue-950 ring-2 ring-blue-500/20 shadow-2xs"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div
+                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                                  paymentMethod === "BankTransfer"
+                                    ? "bg-blue-600 text-white shadow-xs"
+                                    : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                <Building2 className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">Bank Transfer</h4>
+                                  {paymentMethod === "BankTransfer" && (
+                                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 text-[10px]">
+                                      <Check className="w-3 h-3" />
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] font-semibold text-blue-700 mt-0.5">CRDB TZS &bull; CRDB USD</p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Payment Content Card */}
+                      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                        {/* Mobile Money Details */}
+                        {paymentMethod === "LipaNamba" && (
+                          <div className="space-y-4 pt-1">
+                            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white text-slate-900 shadow-sm border-2 border-emerald-300 flex flex-col md:flex-row items-center justify-between gap-5">
+                              <div className="space-y-3.5 flex-1 w-full min-w-0">
+                                <div className="flex items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                    CRDB TIPS / TANQR
+                                  </span>
+                                  <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    Instant Confirmation
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
+                                    <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Lipa Namba</p>
+                                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                                      <p className="font-mono text-xl sm:text-2xl font-black text-slate-900 tracking-wider">
+                                        114535008
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy("114535008", "lipa")}
+                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                        <span>{copiedField === "lipa" ? "Copied!" : "Copy"}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="p-3.5 rounded-xl bg-white border-2 border-emerald-200 shadow-2xs">
+                                    <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Beneficiary Name</p>
+                                    <p className="text-xs sm:text-sm font-black text-slate-900 truncate mt-1">
+                                      MTISHBI COMPANY LIMITED
+                                    </p>
+                                    <p className="text-[10px] font-bold text-emerald-700 mt-0.5">Verified Business Merchant</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-700 bg-white/90 p-2.5 rounded-xl border border-emerald-200">
+                                  <span className="font-extrabold text-slate-900">Supported Networks:</span>
+                                  <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-bold text-[10px]">Vodacom M-Pesa</span>
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-bold text-[10px]">Mixx by Yas</span>
+                                  <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">Airtel Money</span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border-2 border-emerald-200 shadow-xs text-center">
+                                <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100">
+                                  <img
+                                    src="/images/lipa_namba_qr.png"
+                                    alt="Lipa Namba CRDB TIPS TANQR 114535008"
+                                    className="w-full h-full object-contain rounded-lg"
+                                  />
+                                </div>
+                                <p className="text-[11px] font-extrabold text-slate-900 mt-1.5 flex items-center gap-1">
+                                  <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Scan to Pay</span>
+                                </p>
+                                <p className="text-[9px] text-slate-500">M-Pesa • Mixx • Airtel App</p>
+                              </div>
+                            </div>
+
+                            {/* Mobile USSD Instructions */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {/* 1. M-Pesa */}
+                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                      <img src="/images/mpesa_logo.png" alt="Vodacom M-Pesa" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-extrabold text-xs text-slate-900">Vodacom M-Pesa</h5>
+                                      <p className="text-[10px] text-slate-500 font-mono">*150*00#</p>
+                                    </div>
+                                  </div>
+                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*00#</span></li>
+                                    <li>2. Select <span className="font-bold text-slate-900">4 (Lipa kwa M-Pesa)</span></li>
+                                    <li>3. Select <span className="font-bold text-slate-900">1 (Lipa kwa Simu / Namba)</span></li>
+                                    <li>4. Enter <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                    <li>6. Confirm name: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                  </ol>
+                                </div>
+                              </div>
+
+                              {/* 2. Mixx by Yas */}
+                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                      <img src="/images/mixx_logo.png" alt="Mixx by Yas (Tigo / Halopesa)" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-extrabold text-xs text-slate-900">Mixx by Yas</h5>
+                                      <p className="text-[10px] text-slate-500 font-mono">*150*01# / *150*88#</p>
+                                    </div>
+                                  </div>
+                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*01#</span> au <span className="font-mono font-bold text-slate-900">*150*88#</span></li>
+                                    <li>2. Select <span className="font-bold text-slate-900">Lipa kwa Simu</span></li>
+                                    <li>3. Select <span className="font-bold text-slate-900">Kwenda Mitandao Mingine / CRDB TIPS</span></li>
+                                    <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                    <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                  </ol>
+                                </div>
+                              </div>
+
+                              {/* 3. Airtel Money */}
+                              <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                    <div className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                      <img src="/images/airtel_logo.svg" alt="Airtel Money" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-extrabold text-xs text-slate-900">Airtel Money</h5>
+                                      <p className="text-[10px] text-slate-500 font-mono">*150*60#</p>
+                                    </div>
+                                  </div>
+                                  <ol className="text-[11px] text-slate-600 space-y-1 mt-2 font-medium">
+                                    <li>1. Dial <span className="font-mono font-bold text-slate-900">*150*60#</span></li>
+                                    <li>2. Select <span className="font-bold text-slate-900">5 (Lipa kwa Simu / Merchant)</span></li>
+                                    <li>3. Select <span className="font-bold text-slate-900">Kwenda CRDB TIPS / Mitandao Mingine</span></li>
+                                    <li>4. Enter Merchant: <span className="font-mono font-extrabold text-emerald-800">114535008</span></li>
+                                    <li>5. Enter Amount: <span className="font-bold text-slate-900">50,000</span></li>
+                                    <li>6. Confirm: <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span></li>
+                                  </ol>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bank Transfer Details */}
+                        {paymentMethod === "BankTransfer" && (
+                          <div className="space-y-4 pt-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* CRDB TZS */}
+                              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white text-slate-900 shadow-sm border-2 border-emerald-300 space-y-3">
+                                <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                                  <div>
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
+                                      TZS Account
+                                    </span>
+                                    <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; Tanzanian Shillings</h4>
+                                  </div>
+                                  <Building2 className="w-5 h-5 text-emerald-700" />
+                                </div>
+                                <div className="space-y-2 text-xs">
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
+                                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                                      <p className="font-mono text-lg font-black text-slate-900">10458426886</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy("10458426886", "crdb_tzs")}
+                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                        <span>{copiedField === "crdb_tzs" ? "Copied!" : "Copy"}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
+                                    <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Amount Due:</span>
+                                    <p className="font-black text-emerald-800 text-sm">TSh 50,000</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* CRDB USD */}
+                              <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50/40 to-white text-slate-900 shadow-sm border-2 border-blue-300 space-y-3">
+                                <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                                  <div>
+                                    <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase">
+                                      USD Account
+                                    </span>
+                                    <h4 className="font-extrabold text-sm text-slate-900 mt-1">CRDB Bank &bull; US Dollars</h4>
+                                  </div>
+                                  <Building2 className="w-5 h-5 text-blue-700" />
+                                </div>
+                                <div className="space-y-2 text-xs">
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Number:</span>
+                                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                                      <p className="font-mono text-lg font-black text-slate-900">10458961889</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopy("10458961889", "crdb_usd")}
+                                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                        <span>{copiedField === "crdb_usd" ? "Copied!" : "Copy"}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Account Name:</span>
+                                    <p className="font-black text-slate-900">MTISHBI COMPANY LIMITED</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold text-slate-500">Swift Code:</span>
+                                    <p className="font-mono font-bold text-slate-900">CORUTZTZ</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Universal Safety Note */}
+                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="leading-relaxed">
+                            <span className="font-extrabold">Important:</span> Always verify that the recipient name displays <span className="font-bold text-slate-900">MTISHBI COMPANY LIMITED</span> before confirming payment.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Bottom Card: Either Settled Payment Confirmation (when verified) OR Proof Submission Form */}
+                      {stage === "payment_approved" || stage === "application_submitted" || stage === "offer_letter_uploaded" || dashData?.hasApprovedPayment ? (
+                        /* PAYMENT SETTLEMENT CONFIRMATION CARD */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50/70 border-2 border-emerald-300 shadow-xs space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/80 pb-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <h3 className="font-extrabold text-sm sm:text-base text-emerald-950 flex items-center gap-2">
+                                  <span>Official Payment Proof Settled</span>
+                                </h3>
+                              </div>
+                              <p className="text-xs text-emerald-800/90 mt-0.5">
+                                Your TSh 50,000 Application File Fee was approved and verified by Mtishbi Finance.
+                              </p>
+                            </div>
+                            <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider self-start sm:self-auto shadow-2xs">
+                              Verified &amp; Settled
+                            </span>
                           </div>
 
-                          <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
-                            <p className="text-[10px] text-slate-400 uppercase font-extrabold">Transaction Reference</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                              <p className="text-[10px] text-slate-400 uppercase font-extrabold">Amount Paid</p>
+                              <p className="text-sm font-black text-emerald-900 font-mono mt-0.5">TSh 50,000</p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                              <p className="text-[10px] text-slate-400 uppercase font-extrabold">Payment Method</p>
+                              {(() => {
+                                const approvedFilePayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                    p.payment_type !== "passport_assistance" &&
+                                    p.amount !== 300000 &&
+                                    ["approved", "paid", "verified"].includes((p.status || "").toLowerCase().trim())
+                                );
+                                return (
+                                  <p className="text-xs font-extrabold text-slate-900 mt-0.5">
+                                    {approvedFilePayment?.payment_method || "Mobile Money / Bank Transfer"}
+                                  </p>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-white border border-emerald-200">
+                              <p className="text-[10px] text-slate-400 uppercase font-extrabold">Transaction Reference</p>
+                              {(() => {
+                                const approvedFilePayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                    p.payment_type !== "passport_assistance" &&
+                                    p.amount !== 300000 &&
+                                    ["approved", "paid", "verified"].includes((p.status || "").toLowerCase().trim())
+                                );
+                                const rawRef = approvedFilePayment?.transaction_ref;
+                                const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "Verified";
+                                return <p className="text-xs font-mono font-bold text-slate-900 mt-0.5">{displayRef}</p>;
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const approvedFilePayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                    p.payment_type !== "passport_assistance" &&
+                                    p.amount !== 300000 &&
+                                    ["approved", "paid", "verified"].includes((p.status || "").toLowerCase().trim())
+                                );
+                                const approvedProofUrl = approvedFilePayment?.payment_proof_url;
+                                if (!approvedProofUrl) return null;
+
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleViewReceipt(approvedProofUrl, approvedFilePayment?.transaction_ref || undefined);
+                                    }}
+                                    className="px-4 py-2.5 bg-white hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-xl border border-emerald-300 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    <span>View Uploaded Receipt Proof</span>
+                                  </button>
+                                );
+                              })()}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setActiveNav("application")}
+                              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <Building2 className="w-4 h-4" />
+                              <span>Go to My University Application &rarr;</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : stage === "payment_pending" && !isReuploadingPayment ? (
+                        /* STATE 2: WAITING FOR FINANCE APPROVAL */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-amber-50/70 border-2 border-amber-200 text-amber-950 shadow-xs space-y-4">
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                              <Clock className="w-5 h-5 animate-spin" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-base text-slate-900">Waiting for Finance Approval</h4>
+                              {(() => {
+                                const fileOpeningFeePayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                    p.payment_type !== "passport_assistance" &&
+                                    p.amount !== 300000
+                                );
+                                const rawRef = fileOpeningFeePayment?.transaction_ref;
+                                const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "";
+                                return (
+                                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                    Your 50,000 TSH payment {displayRef ? <>receipt (Reference: <span className="font-mono font-bold text-slate-800">{displayRef}</span>)</> : <>receipt</>} has been submitted to Mtishbi Finance Desk. Once approved, your University Application access will unlock automatically.
+                                  </p>
+                                );
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-amber-800 bg-white border border-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                Status: Pending Verification
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                Under Review by Mtishbi Finance Desk
+                              </span>
+                            </div>
+
                             {(() => {
-                              const rawRef = dashData?.payments?.[0]?.transaction_ref;
-                              const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : "Verified";
-                              return <p className="text-xs font-mono font-bold text-slate-900 mt-0.5">{displayRef}</p>;
+                              const fileOpeningFeePayment = dashData?.payments?.find(
+                                (p) =>
+                                  (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                  p.payment_type !== "passport_assistance" &&
+                                  p.amount !== 300000
+                              );
+                              const activePaymentProofDoc = studentDocs.find(
+                                (d) => d.document_type === "Payment_Receipt" && Boolean(d.file_url)
+                              );
+                              const activeFileReceiptUrl =
+                                fileOpeningFeePayment?.payment_proof_url ||
+                                activePaymentProofDoc?.file_url ||
+                                null;
+                              const hasUploadedReceipt = Boolean(activeFileReceiptUrl || receiptFile);
+
+                              if (!hasUploadedReceipt) return null;
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const rawRef = fileOpeningFeePayment?.transaction_ref;
+                                      const displayRef = rawRef && !/^TXN-\d{12,}$/.test(rawRef.trim()) ? rawRef.trim() : undefined;
+                                      if (activeFileReceiptUrl) {
+                                        handleViewReceipt(activeFileReceiptUrl, displayRef);
+                                      } else if (receiptFile) {
+                                        const localUrl = URL.createObjectURL(receiptFile);
+                                        setPreviewReceiptModal({
+                                          isOpen: true,
+                                          url: localUrl,
+                                          title: displayRef ? `Payment Receipt (${displayRef})` : "Payment Receipt Proof",
+                                          isPdf: receiptFile.name.toLowerCase().endsWith(".pdf"),
+                                          loading: false,
+                                        });
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    <span>View Receipt</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isRemovingReceipt}
+                                    onClick={async () => {
+                                      const studentId = currentUser?.id || dashData?.profile?.id;
+                                      if (!studentId || isRemovingReceipt) return;
+
+                                      try {
+                                        setIsRemovingReceipt(true);
+                                        const res = await deleteStudentPaymentReceipt(studentId, {
+                                          documentId: activePaymentProofDoc?.id,
+                                          paymentId: fileOpeningFeePayment?.id,
+                                          fileUrl: activeFileReceiptUrl || undefined,
+                                        });
+
+                                        if (!res.success) {
+                                          alert(`Could not remove receipt: ${res.error || "Please try again."}`);
+                                          return;
+                                        }
+
+                                        setReceiptFile(null);
+                                        if (res.remainingTransactionRef) {
+                                          setTransactionRef(res.remainingTransactionRef);
+                                        } else {
+                                          setTransactionRef("");
+                                        }
+
+                                        const [liveData, updatedDocs] = await Promise.all([
+                                          fetchStudentDashboardData(studentId),
+                                          fetchStudentDocuments(studentId),
+                                        ]);
+                                        setDashData(liveData);
+                                        setStudentDocs(updatedDocs || []);
+
+                                        setIsReuploadingPayment(false);
+                                        const hasPendingFilePayment = (liveData.payments || []).some((p) => {
+                                           const isFileFee =
+                                             (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                             p.payment_type !== "passport_assistance" &&
+                                             p.amount !== 300000;
+                                           const st = (p.status || "").toLowerCase();
+                                           return isFileFee && ["submitted", "pending", "under review"].includes(st);
+                                        });
+
+                                        if (!hasPendingFilePayment) {
+                                          setStage("profile_submitted");
+                                        } else {
+                                          setStage("payment_pending");
+                                        }
+                                      } catch (err: any) {
+                                        console.error("Re-upload receipt error:", err);
+                                        alert(`Error preparing re-upload: ${err.message || "Failed to remove receipt."}`);
+                                      } finally {
+                                        setIsRemovingReceipt(false);
+                                      }
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    {isRemovingReceipt ? (
+                                      <>
+                                        <div className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+                                        <span>Removing current receipt...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-4 h-4" />
+                                        <span>Re-upload Receipt</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              );
                             })()}
                           </div>
                         </div>
-
-                        <div className="pt-3 border-t border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            {dashData?.payments?.[0]?.payment_proof_url && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleViewReceipt(dashData.payments[0].payment_proof_url!, dashData.payments[0].transaction_ref || undefined);
-                                }}
-                                className="px-4 py-2.5 bg-white hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-xl border border-emerald-300 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Eye className="w-4 h-4" />
-                                <span>View Uploaded Receipt Proof</span>
-                              </button>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setActiveNav("application")}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Building2 className="w-4 h-4" />
-                            <span>Go to My University Application &rarr;</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Payment Proof Submission Card */
-                      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <div>
-                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
-                              <Upload className="w-4 h-4 text-blue-600" />
-                              <span>Provide Payment Proof</span>
-                              <span className="text-red-500 font-bold">*</span>
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt / screenshot.
-                            </p>
-                          </div>
-                          <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase shrink-0">
-                            At least 1 proof required
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* 1. Transaction Reference */}
-                          <div className="space-y-1.5">
-                            <label className="font-bold text-xs text-slate-700 block">
-                              Transaction Reference Number
-                            </label>
-                            <input
-                              type="text"
-                              value={transactionRef}
-                              onChange={(e) => setTransactionRef(e.target.value)}
-                              placeholder="e.g. 987654321 or CRDB-TXN-123"
-                              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                            />
-                            <p className="text-[11px] text-slate-400">Found in your M-Pesa, Mixx by Yas, Airtel Money SMS or bank confirmation.</p>
-                          </div>
-
-                          {/* 2. Upload Receipt */}
-                          <div className="space-y-1.5">
-                            <label className="font-bold text-xs text-slate-700 block">
-                              Upload Payment Receipt / Screenshot
-                            </label>
-                            <div className="flex items-center gap-3">
-                              <label className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-xs">
-                                Choose File
-                                <input
-                                  type="file"
-                                  accept="image/*,.pdf"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                      setReceiptFile(e.target.files[0]);
-                                    }
-                                  }}
-                                />
-                              </label>
-                              <span className="text-xs text-slate-500 truncate">
-                                {receiptFile ? receiptFile.name : "No file chosen"}
-                              </span>
-                            </div>
-                            {receiptFile && (
-                              <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Attached: {receiptFile.name}</span>
+                      ) : (
+                        /* STATE 1 & 3: PAYMENT PROOF SUBMISSION / RE-UPLOAD FORM */
+                        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                              <h3 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                                <Upload className="w-4 h-4 text-blue-600" />
+                                <span>{isReuploadingPayment ? "Re-upload / Replace Payment Proof" : "Provide Payment Proof"}</span>
+                                <span className="text-red-500 font-bold">*</span>
+                              </h3>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt / screenshot.
                               </p>
-                            )}
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase shrink-0">
+                              At least 1 proof required
+                            </span>
                           </div>
-                        </div>
 
-                        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            disabled={submittingPayment}
-                            onClick={async () => {
-                              const existingUnapprovedPayment = dashData?.payments?.[0];
-                              const hasExistingReceipt = Boolean(existingUnapprovedPayment?.payment_proof_url);
-                              const hasEnteredRef = Boolean(transactionRef.trim());
-                              const hasNewReceipt = Boolean(receiptFile);
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* 1. Transaction Reference */}
+                            <div className="space-y-1.5">
+                              <label className="font-bold text-xs text-slate-700 block">
+                                Transaction Reference Number
+                              </label>
+                              <input
+                                type="text"
+                                value={transactionRef}
+                                onChange={(e) => setTransactionRef(e.target.value)}
+                                placeholder="e.g. 987654321 or CRDB-TXN-123"
+                                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                              />
+                              <p className="text-[11px] text-slate-400">Found in your M-Pesa, Mixx by Yas, Airtel Money SMS or bank confirmation.</p>
+                            </div>
 
-                              // Strict validation: At least one proof (reference or receipt file) is required
-                              if (!hasEnteredRef && !hasNewReceipt && !hasExistingReceipt) {
-                                alert("Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt.");
-                                return;
-                              }
+                            {/* 2. Upload Receipt */}
+                            <div className="space-y-1.5">
+                              <label className="font-bold text-xs text-slate-700 block">
+                                Upload Payment Receipt / Screenshot
+                              </label>
+                              <div className="flex items-center gap-3">
+                                <label className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-xs">
+                                  Choose File
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        setReceiptFile(e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                <span className="text-xs text-slate-500 truncate">
+                                  {receiptFile ? receiptFile.name : "No file chosen"}
+                                </span>
+                              </div>
+                              {receiptFile && (
+                                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Attached: {receiptFile.name}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
 
-                              try {
-                                setSubmittingPayment(true);
-                                const studentId = currentUser?.id || "00000000-0000-0000-0000-000000000000";
-                                let uploadedFileUrl: string | undefined = undefined;
+                          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              disabled={submittingPayment}
+                              onClick={async () => {
+                                const existingUnapprovedPayment = dashData?.payments?.find(
+                                  (p) =>
+                                    (p.payment_type === "file_opening_fee" || p.amount === 50000 || !p.payment_type) &&
+                                    p.payment_type !== "passport_assistance" &&
+                                    p.amount !== 300000 &&
+                                    !["approved", "paid", "verified", "rejected"].includes((p.status || "").toLowerCase().trim())
+                                );
+                                const hasExistingReceipt = Boolean(existingUnapprovedPayment?.payment_proof_url);
+                                const hasEnteredRef = Boolean(transactionRef.trim());
+                                const hasNewReceipt = Boolean(receiptFile);
 
-                                if (receiptFile && currentUser?.id) {
-                                  const docRes = await uploadStudentDocument(currentUser.id, receiptFile, "Payment_Receipt");
-                                  if (docRes.success && docRes.fileUrl) {
-                                    uploadedFileUrl = docRes.fileUrl;
-                                  }
-                                } else if (hasExistingReceipt && !receiptFile) {
-                                  uploadedFileUrl = existingUnapprovedPayment?.payment_proof_url || undefined;
-                                }
-
-                                const payMethod = paymentMethod === "LipaNamba" ? "Mobile Money" : "Bank Transfer";
-                                const txnRef = hasEnteredRef ? transactionRef.trim() : null;
-
-                                let payRes;
-                                if (existingUnapprovedPayment?.id && !dashData?.hasApprovedPayment) {
-                                  payRes = await updateOrResubmitPaymentProof({
-                                    payment_id: existingUnapprovedPayment.id,
-                                    student_id: studentId,
-                                    payment_method: payMethod,
-                                    transaction_ref: txnRef,
-                                    file: receiptFile,
-                                  });
-                                } else {
-                                  payRes = await submitPaymentToSupabase({
-                                    student_id: studentId,
-                                    amount: 50000,
-                                    currency: "TZS",
-                                    payment_method: payMethod,
-                                    transaction_ref: txnRef,
-                                    payment_proof_url: uploadedFileUrl,
-                                  });
-                                }
-
-                                if (!payRes.success) {
-                                  alert(`Payment notice: ${payRes.error || "Payment submission failed."}`);
+                                if (!hasEnteredRef && !hasNewReceipt && !hasExistingReceipt) {
+                                  alert("Please provide at least one payment proof: enter your transaction reference number or upload your payment receipt.");
                                   return;
                                 }
 
-                                if (currentUser?.id) {
-                                  const liveData = await fetchStudentDashboardData(currentUser.id);
-                                  setDashData(liveData);
+                                try {
+                                  setSubmittingPayment(true);
+                                  const studentId = currentUser?.id || "00000000-0000-0000-0000-000000000000";
+                                  let uploadedFileUrl: string | undefined = undefined;
+
+                                  if (receiptFile && currentUser?.id) {
+                                    const docRes = await uploadStudentDocument(currentUser.id, receiptFile, "Payment_Receipt");
+                                    if (docRes.success && docRes.fileUrl) {
+                                      uploadedFileUrl = docRes.fileUrl;
+                                    }
+                                  } else if (hasExistingReceipt && !receiptFile) {
+                                    uploadedFileUrl = existingUnapprovedPayment?.payment_proof_url || undefined;
+                                  }
+
+                                  const payMethod = paymentMethod === "LipaNamba" ? "Mobile Money" : "Bank Transfer";
+                                  const txnRef = hasEnteredRef ? transactionRef.trim() : null;
+
+                                  let payRes;
+                                  if (existingUnapprovedPayment?.id && !dashData?.hasApprovedPayment) {
+                                    payRes = await updateOrResubmitPaymentProof({
+                                      payment_id: existingUnapprovedPayment.id,
+                                      student_id: studentId,
+                                      payment_method: payMethod,
+                                      transaction_ref: txnRef,
+                                      payment_proof_url: uploadedFileUrl,
+                                      file: receiptFile,
+                                    });
+                                  } else {
+                                    payRes = await submitPaymentToSupabase({
+                                      student_id: studentId,
+                                      amount: 50000,
+                                      currency: "TZS",
+                                      payment_method: payMethod,
+                                      transaction_ref: txnRef,
+                                      payment_proof_url: uploadedFileUrl,
+                                    });
+                                  }
+
+                                  if (!payRes.success) {
+                                    alert(`Payment notice: ${payRes.error || "Payment submission failed."}`);
+                                    return;
+                                  }
+
+                                  if (currentUser?.id) {
+                                    const [liveData, updatedDocs] = await Promise.all([
+                                      fetchStudentDashboardData(currentUser.id),
+                                      fetchStudentDocuments(currentUser.id),
+                                    ]);
+                                    setDashData(liveData);
+                                    setStudentDocs(updatedDocs || []);
+                                  }
+
+                                  setIsReuploadingPayment(false);
+                                  setStage("payment_pending");
+                                } catch (err: any) {
+                                  console.error("Payment submit error:", err);
+                                  alert(`Payment submission error: ${err.message || "Failed to process payment."}`);
+                                } finally {
+                                  setSubmittingPayment(false);
                                 }
-
-                                setIsReuploadingPayment(false);
-                                setStage("payment_pending");
-                              } catch (err: any) {
-                                console.error("Payment submit error:", err);
-                                alert(`Payment submission error: ${err.message || "Failed to process payment."}`);
-                              } finally {
-                                setSubmittingPayment(false);
-                              }
-                            }}
-                            className="w-full sm:w-auto px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 cursor-pointer disabled:opacity-50"
-                          >
-                            {submittingPayment ? (
-                              <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                <span>Submitting Payment...</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>Submit Payment Receipt for Approval &rarr;</span>
-                              </>
-                            )}
-                          </button>
-
-                          {isReuploadingPayment && (
-                            <button
-                              type="button"
-                              onClick={() => setIsReuploadingPayment(false)}
-                              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                              }}
+                              className="w-full sm:w-auto px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 cursor-pointer disabled:opacity-50"
                             >
-                              Cancel
+                              {submittingPayment ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  <span>Submitting Payment...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>{isReuploadingPayment ? "Update Payment Proof &rarr;" : "Submit Payment Receipt for Approval &rarr;"}</span>
+                                </>
+                              )}
                             </button>
-                          )}
+
+                            {isReuploadingPayment && (
+                              <button
+                                type="button"
+                                onClick={() => setIsReuploadingPayment(false)}
+                                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
                   {/* ── PASSPORT ASSISTANCE FEE (TZS 300,000) SECTION ── */}
                   {needsPassportAssistance && (
