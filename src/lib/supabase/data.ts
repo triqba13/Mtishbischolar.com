@@ -169,52 +169,41 @@ export async function submitApplicationToSupabase(payload: {
 }): Promise<{ success: boolean; data?: DbApplication; error?: string; paymentRequired?: boolean }> {
   try {
     const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Security check: Student must have an Approved payment
-    const { data: payments, error: payError } = await supabase
-      .from("payments")
-      .select("status")
-      .eq("student_id", payload.student_id);
-
-    if (payError) {
-      console.error("Error verifying payment status:", payError);
-      return { success: false, error: "Unable to verify payment status. Please try again." };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
     }
 
-    const hasApprovedPayment = (payments || []).some(
-      (p) => (p.status || "").toLowerCase() === "approved"
-    );
+    const response = await fetch("/api/student/submit-application", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId: payload.student_id,
+        targetCountry: payload.target_country,
+        universityId: payload.university_id,
+        courseId: payload.course_id,
+        targetIntake: payload.target_intake,
+        preferredCourse: payload.preferred_course,
+        isUnlisted: false,
+      }),
+    });
 
-    if (!hasApprovedPayment) {
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
       return {
         success: false,
-        paymentRequired: true,
-        error: "To apply to partner universities, your one-time MtishbiScholars Application File Opening Fee (TSh 50,000) must be approved first.",
+        paymentRequired: resData.paymentRequired || false,
+        error: resData.error || "Failed to submit application.",
       };
     }
 
-    const { data, error } = await supabase
-      .from("applications")
-      .insert([
-        {
-          student_id: payload.student_id,
-          target_country: payload.target_country,
-          university_id: payload.university_id,
-          course_id: payload.course_id,
-          target_intake: payload.target_intake,
-          preferred_course: payload.preferred_course,
-          status: payload.status || "Submitted to University",
-        },
-      ])
-      .select("*, universities(*), courses(*)")
-      .single();
-
-    if (error) {
-      console.error("Error submitting application to Supabase:", error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data: data as DbApplication };
+    return { success: true, data: resData.data as DbApplication };
   } catch (err: any) {
     console.error("Failed to submit application:", err);
     return { success: false, error: err.message || "Submission failed" };
@@ -234,57 +223,40 @@ export async function requestUnlistedCourseApplication(payload: {
 }): Promise<{ success: boolean; data?: DbApplication; error?: string; paymentRequired?: boolean }> {
   try {
     const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Security check: Student must have an Approved payment
-    const { data: payments, error: payError } = await supabase
-      .from("payments")
-      .select("status")
-      .eq("student_id", payload.student_id);
-
-    if (payError) {
-      console.error("Error verifying payment status:", payError);
-      return { success: false, error: "Unable to verify payment status. Please try again." };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = "Bearer " + session.access_token;
     }
 
-    const hasApprovedPayment = (payments || []).some(
-      (p) => (p.status || "").toLowerCase() === "approved"
-    );
+    const response = await fetch("/api/student/submit-application", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId: payload.student_id,
+        targetCountry: payload.target_country,
+        preferredCourse: payload.preferred_course,
+        targetIntake: payload.target_intake,
+        notes: payload.notes,
+        isUnlisted: true,
+      }),
+    });
 
-    if (!hasApprovedPayment) {
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
       return {
         success: false,
-        paymentRequired: true,
-        error: "To apply to partner universities, your one-time MtishbiScholars Application File Opening Fee (TSh 50,000) must be approved first.",
+        paymentRequired: resData.paymentRequired || false,
+        error: resData.error || "Failed to submit course request.",
       };
     }
 
-    const courseRequestNote = `[UNLISTED COURSE REQUEST]: Student requested "${payload.preferred_course}" for ${payload.target_country
-      } (${payload.target_intake || "Upcoming Intake"})${payload.notes ? `. Notes: ${payload.notes}` : ""
-      }`;
-
-    const { data, error } = await supabase
-      .from("applications")
-      .insert([
-        {
-          student_id: payload.student_id,
-          target_country: payload.target_country,
-          university_id: null,
-          course_id: null,
-          target_intake: payload.target_intake || "September 2026",
-          preferred_course: payload.preferred_course,
-          status: "Under Review",
-          notes: courseRequestNote,
-        },
-      ])
-      .select("*, universities(*), courses(*)")
-      .single();
-
-    if (error) {
-      console.error("Error submitting unlisted course request:", error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data: data as DbApplication };
+    return { success: true, data: resData.data as DbApplication };
   } catch (err: any) {
     console.error("Failed to request unlisted course:", err);
     return { success: false, error: err.message || "Failed to submit course request" };
@@ -555,53 +527,40 @@ export async function submitPaymentToSupabase(payload: {
 }): Promise<{ success: boolean; data?: DbPayment; error?: string }> {
   try {
     const supabase = createClient();
-    const cleanRef = payload.transaction_ref ? payload.transaction_ref.trim() : "";
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    const { data, error } = await supabase
-      .from("payments")
-      .insert([
-        {
-          student_id: payload.student_id,
-          application_id: null,
-          payment_type: "file_opening_fee",
-          amount: payload.amount,
-          currency: payload.currency || "TZS",
-          payment_method: payload.payment_method,
-          transaction_ref: cleanRef,
-          payment_proof_url: payload.payment_proof_url || null,
-          status: "Submitted",
-        },
-      ])
-      .select("*");
-
-    if (error) {
-      console.error("Error submitting payment to Supabase:", error);
-      if (error.code === "23505" || error.message?.includes("unique") || error.message?.includes("transaction_ref")) {
-        return {
-          success: false,
-          error: "This Transaction Reference Number has already been submitted for another payment. Each payment must have its own unique transaction reference.",
-        };
-      }
-      return { success: false, error: error.message };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = "Bearer " + session.access_token;
     }
 
-    // Record student notification for submission under review
-    try {
-      await supabase.from("notifications").insert([
-        {
-          user_id: payload.student_id,
-          title: "File Opening Fee Submitted",
-          message: `Your MtishbiScholar Application File Opening Fee (${payload.currency || "TZS"} ${Number(payload.amount).toLocaleString()}) payment proof has been submitted and is currently under review by our Finance team.`,
-          type: "payment",
-          is_read: false,
-        },
-      ]);
-    } catch (notifErr) {
-      console.warn("Could not insert payment submission notification:", notifErr);
+    const response = await fetch("/api/student/submit-payment", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId: payload.student_id,
+        amount: payload.amount,
+        currency: payload.currency || "TZS",
+        paymentMethod: payload.payment_method,
+        transactionRef: payload.transaction_ref || null,
+        paymentProofUrl: payload.payment_proof_url || null,
+        paymentType: "file_opening_fee",
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to submit payment.",
+      };
     }
 
-    const insertedPayment = Array.isArray(data) ? data[0] : (data as DbPayment | null);
-    return { success: true, data: (insertedPayment || undefined) as DbPayment | undefined };
+    return { success: true, data: resData.data as DbPayment };
   } catch (err: any) {
     console.error("Failed to submit payment:", err);
     return { success: false, error: err.message || "Payment submission failed" };
@@ -627,7 +586,7 @@ export async function updateOrResubmitPaymentProof(payload: {
 
     if (payload.file && !paymentProofUrl) {
       const fileExt = payload.file.name.split(".").pop();
-      const filePath = `${payload.student_id}/payment_proof_${Date.now()}.${fileExt}`;
+      const filePath = payload.student_id + "/payment_proof_" + Date.now() + "." + fileExt;
       const bucketName = "student-documents";
 
       const { error: uploadError } = await supabase.storage
@@ -638,45 +597,46 @@ export async function updateOrResubmitPaymentProof(payload: {
         console.error("Storage upload error for payment proof:", uploadError.message);
         return {
           success: false,
-          error: `Storage upload failed: ${uploadError.message}. Please ensure file is under 10MB.`,
+          error: "Storage upload failed: " + uploadError.message + ". Please ensure file is under 10MB.",
         };
       }
 
-      paymentProofUrl = `student-documents/${filePath}`;
+      paymentProofUrl = "student-documents/" + filePath;
     }
 
-    const updatePayload: Record<string, any> = {
-      status: "Submitted",
-      rejection_reason: null,
-      verified_by: null,
-      verified_at: null,
-      created_at: new Date().toISOString(),
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
-
-    if (payload.payment_method) {
-      updatePayload.payment_method = payload.payment_method;
-    }
-    if (payload.transaction_ref !== undefined) {
-      updatePayload.transaction_ref = payload.transaction_ref ? payload.transaction_ref.trim() : "";
-    }
-    if (paymentProofUrl) {
-      updatePayload.payment_proof_url = paymentProofUrl;
+    if (session?.access_token) {
+      headers["Authorization"] = "Bearer " + session.access_token;
     }
 
-    const { data, error } = await supabase
-      .from("payments")
-      .update(updatePayload)
-      .eq("id", payload.payment_id)
-      .eq("student_id", payload.student_id)
-      .select("*");
+    const response = await fetch("/api/student/submit-payment", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        paymentId: payload.payment_id,
+        studentId: payload.student_id,
+        paymentMethod: payload.payment_method,
+        transactionRef: payload.transaction_ref || null,
+        paymentProofUrl: paymentProofUrl || null,
+        paymentType: "file_opening_fee",
+      }),
+    });
 
-    if (error) {
-      console.error("Error updating payment in database:", error);
-      return { success: false, error: error.message };
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to update payment details.",
+      };
     }
 
-    const updatedPayment = Array.isArray(data) ? data[0] : (data as DbPayment | null);
-    return { success: true, data: (updatedPayment || undefined) as DbPayment | undefined };
+    return { success: true, data: resData.data as DbPayment };
   } catch (err: any) {
     console.error("Failed to update payment proof:", err);
     return { success: false, error: err.message || "Failed to update payment details" };
@@ -741,63 +701,32 @@ export async function saveStudentContact(
   try {
     if (!studentId) return { success: false, error: "Missing student ID" };
     const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Check if an existing primary contact exists for this student
-    const { data: existingContacts } = await supabase
-      .from("student_contacts")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("is_primary", true)
-      .maybeSingle();
-
-    if (existingContacts?.id) {
-      // UPDATE existing primary contact
-      const { data, error } = await supabase
-        .from("student_contacts")
-        .update({
-          relationship_type: payload.relationship_type,
-          first_name: payload.first_name,
-          middle_name: payload.middle_name || null,
-          last_name: payload.last_name,
-          email: payload.email || null,
-          phone: payload.phone,
-          is_primary: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingContacts.id)
-        .select("*")
-        .single();
-
-      if (error) {
-        console.error("Error updating student contact:", error);
-        return { success: false, error: error.message };
-      }
-      return { success: true, data: data as DbStudentContact };
-    } else {
-      // INSERT new primary contact
-      const { data, error } = await supabase
-        .from("student_contacts")
-        .insert([
-          {
-            student_id: studentId,
-            relationship_type: payload.relationship_type,
-            first_name: payload.first_name,
-            middle_name: payload.middle_name || null,
-            last_name: payload.last_name,
-            email: payload.email || null,
-            phone: payload.phone,
-            is_primary: true,
-          },
-        ])
-        .select("*")
-        .single();
-
-      if (error) {
-        console.error("Error inserting student contact:", error);
-        return { success: false, error: error.message };
-      }
-      return { success: true, data: data as DbStudentContact };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = "Bearer " + session.access_token;
     }
+
+    const response = await fetch("/api/student/save-profile", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        primaryContact: payload,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return { success: false, error: resData.error || "Failed to save contact" };
+    }
+
+    return { success: true, data: resData.data?.contact as DbStudentContact };
   } catch (err: any) {
     console.error("Failed to save student contact:", err);
     return { success: false, error: err.message || "Failed to save contact" };
@@ -813,18 +742,30 @@ export async function saveStudentFullProfile(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createClient();
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        ...profilePayload,
-        is_profile_completed: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", studentId);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error) {
-      console.error("Error updating student profile in Supabase:", error);
-      return { success: false, error: error.message };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.access_token) {
+      headers["Authorization"] = "Bearer " + session.access_token;
+    }
+
+    const response = await fetch("/api/student/save-profile", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        profileData: profilePayload,
+        markCompleted: true,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return { success: false, error: resData.error || "Failed to save profile" };
     }
 
     return { success: true };
@@ -1955,48 +1896,32 @@ export async function savePassportAssistance(
   try {
     if (!studentId) return { success: false, error: "Missing student ID" };
     const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    const updatePayload = {
-      ...payload,
-      student_id: studentId,
-      updated_at: new Date().toISOString(),
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
-
-    const { data: existing } = await supabase
-      .from("passport_assistance")
-      .select("id")
-      .eq("student_id", studentId)
-      .maybeSingle();
-
-    let resData: any = null;
-    if (existing?.id) {
-      const { data, error } = await supabase
-        .from("passport_assistance")
-        .update(updatePayload)
-        .eq("id", existing.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error updating passport assistance:", error);
-        return { success: false, error: error.message };
-      }
-      resData = data;
-    } else {
-      const { data, error } = await supabase
-        .from("passport_assistance")
-        .insert([updatePayload])
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error inserting passport assistance:", error);
-        return { success: false, error: error.message };
-      }
-      resData = data;
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
     }
 
-    return { success: true, data: resData as DbPassportAssistance };
+    const response = await fetch("/api/student/save-passport-form", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        formData: payload,
+      }),
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return { success: false, error: resData.error || "Failed to save passport information" };
+    }
+
+    return { success: true, data: resData.data as DbPassportAssistance };
   } catch (err: any) {
     console.error("Failed to save passport assistance:", err);
     return { success: false, error: err.message || "Failed to save passport information" };

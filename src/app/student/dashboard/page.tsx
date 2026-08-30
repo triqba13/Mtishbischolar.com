@@ -565,7 +565,6 @@ function DashboardContent() {
           event: "*",
           schema: "public",
           table: "payments",
-          filter: `student_id=eq.${currentUser.id}`,
         },
         () => refreshDashboard()
       )
@@ -575,7 +574,6 @@ function DashboardContent() {
           event: "*",
           schema: "public",
           table: "passport_assistance",
-          filter: `student_id=eq.${currentUser.id}`,
         },
         () => refreshDashboard()
       )
@@ -614,6 +612,21 @@ function DashboardContent() {
       )
       .subscribe();
 
+    // Live background polling (every 6 seconds if awaiting approval, otherwise every 25 seconds)
+    const pollInterval = setInterval(() => {
+      refreshDashboard();
+    }, 6000);
+
+    // Instant sync whenever student returns to the tab / focuses window
+    const handleFocus = () => refreshDashboard();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
     // 30-second presence pulse timer to re-evaluate isOfficerOnline
     const presenceTimer = setInterval(() => {
       setPresenceTick((prev) => prev + 1);
@@ -621,7 +634,10 @@ function DashboardContent() {
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
       clearInterval(presenceTimer);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [currentUser?.id, dashData?.assignedOfficer?.id]);
 

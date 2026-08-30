@@ -18,21 +18,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { studentId, paymentMethod, transactionRef, fileUrl, amount } = body;
 
+    const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     // 1. Authenticate user strictly from session
     let authenticatedUserId: string | null = null;
 
     const authHeader = req.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "").trim();
-      if (token && supabaseAnonKey) {
+      if (token) {
         try {
-          const clientWithToken = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: `Bearer ${token}` } },
-          });
           const {
             data: { user },
-          } = await clientWithToken.auth.getUser();
-          if (user?.id) {
+            error: tokenErr,
+          } = await adminClient.auth.getUser(token);
+          if (user?.id && !tokenErr) {
             authenticatedUserId = user.id;
           }
         } catch (tokenErr) {
@@ -64,15 +66,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (authenticatedUserId && studentId && authenticatedUserId !== studentId) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden: You cannot modify another student's payments." },
-        { status: 403 }
-      );
-    }
+      const { data: staffProf } = await adminClient
+        .from("profiles")
+        .select("role")
+        .eq("id", authenticatedUserId)
+        .maybeSingle();
 
-    const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+      const isStaff = ["finance_officer", "super_admin", "admission_officer"].includes(
+        staffProf?.role || ""
+      );
+      if (!isStaff) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: You cannot modify another student's payments." },
+          { status: 403 }
+        );
+      }
+    }
 
     const cleanRef = transactionRef && typeof transactionRef === "string" ? transactionRef.trim() : null;
     const paymentAmount = Number(amount) || 300000;
