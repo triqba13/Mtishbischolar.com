@@ -993,7 +993,7 @@ export async function getStudentDocumentSignedUrl(
         success: false,
         notFound: isNotFound,
         error: isNotFound
-          ? "Receipt file is no longer available. Please re-upload your receipt."
+          ? "Document file is no longer available in storage. Please re-upload your document."
           : error?.message || "Failed to generate document view URL.",
       };
     }
@@ -1006,81 +1006,58 @@ export async function getStudentDocumentSignedUrl(
 }
 
 /**
- * Upload student document to Supabase Storage bucket & save metadata to documents table.
- * Strictly requires Storage upload success before writing database metadata.
+ * Upload student document via secure server API & save metadata to documents table.
  */
 export async function uploadStudentDocument(
   studentId: string,
   file: File,
   documentType: string,
   applicationId?: string
-): Promise<{ success: boolean; fileUrl?: string; error?: string }> {
+): Promise<{ success: boolean; fileUrl?: string; error?: string; document?: DbDocument }> {
+  if (file && file.size > 10 * 1024 * 1024) {
+    return {
+      success: false,
+      error: "File size exceeds the 10MB maximum limit. Please upload a smaller file.",
+    };
+  }
   try {
     const supabase = createClient();
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${studentId}/${documentType}_${Date.now()}.${fileExt}`;
-    const bucketName = "student-documents";
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Upload to Supabase Storage: private bucket, requires authenticated session
-    const { error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, file, { upsert: true });
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
 
-    // STRICT VALIDATION: If Storage upload failed, FAIL IMMEDIATELY. Do NOT create DB record!
-    if (uploadError) {
-      console.error("Supabase Storage upload error:", uploadError.message);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("documentType", documentType);
+    formData.append("studentId", studentId);
+    if (applicationId) {
+      formData.append("applicationId", applicationId);
+    }
+
+    const response = await fetch("/api/student/upload-document", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
       return {
         success: false,
-        error: `Storage Upload Failed: ${uploadError.message}. Please ensure you are logged in and the file is under 10MB.`,
+        error: resData.error || "Failed to upload document. Please try again.",
       };
     }
 
-    // Storage object path to be saved in public.documents.file_url: student-documents/{student_id}/{filename}
-    const storagePath = `student-documents/${filePath}`;
-
-    // Check if document row already exists for (student_id, document_type) to prevent duplicates
-    const { data: existingDoc } = await supabase
-      .from("documents")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("document_type", documentType)
-      .maybeSingle();
-
-    if (existingDoc?.id) {
-      const { error: updateError } = await supabase
-        .from("documents")
-        .update({
-          file_name: file.name,
-          file_url: storagePath,
-          file_size: file.size,
-          is_verified: false,
-        })
-        .eq("id", existingDoc.id);
-
-      if (updateError) {
-        console.error("Error updating document record in database:", updateError);
-        return { success: false, error: `Database Metadata Save Failed: ${updateError.message}` };
-      }
-    } else {
-      const { error: insertError } = await supabase.from("documents").insert([
-        {
-          student_id: studentId,
-          application_id: applicationId || null,
-          document_type: documentType,
-          file_name: file.name,
-          file_url: storagePath,
-          file_size: file.size,
-          is_verified: false,
-        },
-      ]);
-
-      if (insertError) {
-        console.error("Error inserting document record in database:", insertError);
-        return { success: false, error: `Database Metadata Save Failed: ${insertError.message}` };
-      }
-    }
-
-    return { success: true, fileUrl: storagePath };
+    return {
+      success: true,
+      fileUrl: resData.fileUrl,
+      document: resData.document,
+    };
   } catch (err: any) {
     console.error("Failed to upload document:", err);
     return { success: false, error: err.message || "Upload failed" };

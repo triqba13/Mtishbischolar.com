@@ -66,6 +66,7 @@ import {
   Bell,
   Search,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   Building2,
   BookOpen,
@@ -165,6 +166,26 @@ function DashboardContent() {
   }, []);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mtb_student_sidebar_collapsed");
+      if (saved !== null) {
+        setSidebarCollapsed(saved === "true");
+      }
+    } catch (e) {}
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("mtb_student_sidebar_collapsed", String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   const clearProfileError = (field: string) => {
     if (profileErrors[field]) {
@@ -1461,7 +1482,20 @@ function DashboardContent() {
       if (res.success && res.signedUrl) {
         window.open(res.signedUrl, "_blank");
       } else {
-        alert(res.error || "Unable to generate preview link for this document.");
+        if (res.notFound) {
+          alert("This document file is no longer available in storage. Your record has been reset so you can upload a fresh copy.");
+          // Auto-clean stale DB record and refresh state
+          const staleDoc = studentDocs.find((d) => d.file_url === fileUrlOrPath || d.document_type === docLabel);
+          if (staleDoc?.id && currentUser?.id) {
+            await deleteStudentDocument(currentUser.id, staleDoc.id, staleDoc.file_url);
+            const updatedDocs = await fetchStudentDocuments(currentUser.id);
+            setStudentDocs(updatedDocs || []);
+            const liveData = await fetchStudentDashboardData(currentUser.id);
+            setDashData(liveData);
+          }
+        } else {
+          alert(res.error || "Unable to generate preview link for this document.");
+        }
       }
     } catch (err: any) {
       console.error("View document error:", err);
@@ -2675,34 +2709,64 @@ function DashboardContent() {
 
       {/* ── LEFT SIDEBAR (Dark Navy #0B192C) ── */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-[#0B192C] text-white flex flex-col justify-between transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#0B192C] text-white flex flex-col justify-between transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${sidebarCollapsed ? "w-64 lg:w-20" : "w-64"}`}
       >
-        <div className="p-5 space-y-6">
+        <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
+            <Link
+              href="/"
+              className={`flex items-center gap-3 transition-all duration-200 ${
+                sidebarCollapsed ? "lg:justify-center lg:w-full" : ""
+              }`}
+              title="MtishbiScholar"
+            >
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/30 shrink-0">
                 <GraduationCap className="w-6 h-6" />
               </div>
-              <div>
-                <h1 className="text-white font-extrabold text-base tracking-tight leading-none">
+              <div className={`${sidebarCollapsed ? "lg:hidden" : "block"} overflow-hidden transition-all duration-200`}>
+                <h1 className="text-white font-extrabold text-base tracking-tight leading-none whitespace-nowrap">
                   MtishbiScholar
                 </h1>
-                <p className="text-[10px] text-blue-200/70 font-medium mt-1">
+                <p className="text-[10px] text-blue-200/70 font-medium mt-1 whitespace-nowrap">
                   Your Pathway to Global Education
                 </p>
               </div>
             </Link>
 
+            {/* Mobile Close Button */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-white"
+              className="lg:hidden text-slate-400 hover:text-white p-1 cursor-pointer"
+              aria-label="Close Mobile Menu"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <nav className="space-y-1 pt-2">
+          {/* Desktop Hide / Show Sidebar Toggle Button (<-- / -->) */}
+          <div className="hidden lg:flex items-center justify-center pt-1">
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              className={`w-full py-2 px-3 rounded-xl bg-slate-800/70 hover:bg-blue-600/30 text-slate-300 hover:text-white border border-slate-700/60 transition-all duration-200 flex items-center cursor-pointer ${
+                sidebarCollapsed ? "justify-center" : "justify-between"
+              }`}
+              title={sidebarCollapsed ? "Show Sidebar (-->)" : "Hide Sidebar (<--)"}
+            >
+              <span className={`text-[11px] font-semibold text-slate-300 ${sidebarCollapsed ? "hidden" : "block"}`}>
+                Hide Sidebar
+              </span>
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-blue-400" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+          </div>
+
+          <nav className="space-y-1.5 pt-1">
             {[
               { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, locked: false },
               { id: "profile", label: "My Profile", icon: UserCheck, locked: false },
@@ -2720,60 +2784,110 @@ function DashboardContent() {
               const Icon = item.icon;
               const isActive = activeNav === item.id;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    if (item.locked) {
-                      if (item.id === "passport") {
-                        setActiveNav("passport");
-                        setSidebarOpen(false);
+                <div key={item.id} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.locked) {
+                        if (item.id === "passport") {
+                          setActiveNav("passport");
+                          setSidebarOpen(false);
+                          return;
+                        }
+                        setPaymentLockMessage(
+                          "Your TSh 50,000 MtishbiScholar Application File Opening Fee must be approved by a Finance Officer before you can access university applications."
+                        );
+                        setShowPaymentLockModal(true);
                         return;
                       }
-                      setPaymentLockMessage(
-                        "Your TSh 50,000 MtishbiScholar Application File Opening Fee must be approved by a Finance Officer before you can access university applications."
-                      );
-                      setShowPaymentLockModal(true);
-                      return;
-                    }
-                    setActiveNav(item.id);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${isActive
-                    ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30"
-                    : item.locked
-                      ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 cursor-pointer"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                      setActiveNav(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center ${
+                      sidebarCollapsed ? "lg:justify-center px-3" : "justify-between px-4"
+                    } py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                      isActive
+                        ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30"
+                        : item.locked
+                          ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 cursor-pointer"
+                          : "text-slate-300 hover:text-white hover:bg-slate-800/60"
                     }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </div>
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0 flex items-center justify-center">
+                        <Icon className="w-4 h-4" />
+                        {sidebarCollapsed && item.badge && (
+                          <span className="hidden lg:flex absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold items-center justify-center border-2 border-[#0B192C]">
+                            {item.badge}
+                          </span>
+                        )}
+                        {sidebarCollapsed && item.locked && (
+                          <span className="hidden lg:flex absolute -top-1.5 -right-2 w-3.5 h-3.5 rounded-full bg-amber-500 text-slate-900 items-center justify-center">
+                            <Lock className="w-2 h-2" />
+                          </span>
+                        )}
+                      </div>
+                      <span className={`${sidebarCollapsed ? "lg:hidden" : "block"} whitespace-nowrap`}>
+                        {item.label}
+                      </span>
+                    </div>
 
-                  {item.locked ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-md border border-amber-400/30">
-                      <Lock className="w-3 h-3" />
-                      <span>Locked</span>
-                    </span>
-                  ) : item.badge ? (
-                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
+                    <div className={`${sidebarCollapsed ? "lg:hidden" : "flex"} items-center`}>
+                      {item.locked ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-md border border-amber-400/30">
+                          <Lock className="w-3 h-3" />
+                          <span>Locked</span>
+                        </span>
+                      ) : item.badge ? (
+                        <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+
+                  {/* Desktop Hover Tooltip when sidebar is collapsed */}
+                  {sidebarCollapsed && (
+                    <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-2 animate-in fade-in duration-150">
+                      <span>{item.label}</span>
+                      {item.locked && (
+                        <span className="text-[10px] text-amber-300 font-bold bg-amber-400/20 px-1.5 py-0.5 rounded border border-amber-400/40 flex items-center gap-0.5">
+                          <Lock className="w-2.5 h-2.5" /> Locked
+                        </span>
+                      )}
+                      {item.badge && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-5 border-t border-slate-800">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
-          </button>
+        <div className="p-4 border-t border-slate-800">
+          <div className="relative group">
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center ${
+                sidebarCollapsed ? "lg:justify-center px-3" : "px-4"
+              } gap-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors`}
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className={`${sidebarCollapsed ? "lg:hidden" : "block"} whitespace-nowrap`}>
+                Logout
+              </span>
+            </button>
+
+            {sidebarCollapsed && (
+              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1 animate-in fade-in duration-150">
+                <span>Logout</span>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -4069,6 +4183,11 @@ function DashboardContent() {
                                         onChange={async (e) => {
                                           if (e.target.files && e.target.files[0] && currentUser?.id) {
                                             const file = e.target.files[0];
+                                            if (file.size > 10 * 1024 * 1024) {
+                                              alert("File size exceeds the 10MB maximum limit. Please upload a smaller file.");
+                                              e.target.value = "";
+                                              return;
+                                            }
                                             setUploadingDoc(docItem.type);
                                             const res = await uploadStudentDocument(currentUser.id, file, docItem.type);
                                             if (res.success) {
@@ -5516,6 +5635,11 @@ function DashboardContent() {
                                         onChange={async (e) => {
                                           if (e.target.files && e.target.files[0] && currentUser?.id) {
                                             const file = e.target.files[0];
+                                            if (file.size > 10 * 1024 * 1024) {
+                                              alert("File size exceeds the 10MB maximum limit. Please upload a smaller file.");
+                                              e.target.value = "";
+                                              return;
+                                            }
                                             setUploadingDoc(docItem.type);
                                             const res = await uploadStudentDocument(currentUser.id, file, docItem.type);
                                             if (res.success) {
@@ -6648,7 +6772,13 @@ function DashboardContent() {
                                     className="hidden"
                                     onChange={(e) => {
                                       if (e.target.files && e.target.files[0]) {
-                                        setReceiptFile(e.target.files[0]);
+                                        const file = e.target.files[0];
+                                        if (file.size > 10 * 1024 * 1024) {
+                                          alert("File size exceeds the 10MB maximum limit. Please upload a smaller file.");
+                                          e.target.value = "";
+                                          return;
+                                        }
+                                        setReceiptFile(file);
                                       }
                                     }}
                                   />
@@ -8358,11 +8488,7 @@ function DashboardContent() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-extrabold uppercase tracking-wider">
-                          Private Document Vault
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>RLS Protected &bull; Encrypted</span>
+                          Official Documents
                         </span>
                       </div>
                       <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-1">
@@ -8431,23 +8557,7 @@ function DashboardContent() {
                     </div>
                   </div>
 
-                  {/* 3. Security Info Banner */}
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">Private Cloud Storage Vault (`student-documents`)</p>
-                        <p className="text-[11px] text-slate-500">
-                          Your uploaded documents are securely protected. Direct storage URLs are never exposed; preview links expire after 5 minutes.
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-mono font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0">
-                      Max: 10MB per file
-                    </span>
-                  </div>
+
 
                   {/* 4. Document Sections Container */}
                   {(() => {
@@ -8537,6 +8647,22 @@ function DashboardContent() {
                     const missingRequiredDocs = Array.from(uniqueRequiredMap.values()).filter(
                       (req) => req.required && !studentDocs.some((d) => d.document_type === req.type)
                     );
+
+                    const hasMissingAcademic = missingRequiredDocs.some(
+                      (d) => d.category !== "Passport Assistance Documents"
+                    );
+                    const hasMissingPassport = missingRequiredDocs.some(
+                      (d) => d.category === "Passport Assistance Documents"
+                    );
+
+                    const missingDocsSubtitle =
+                      hasMissingAcademic && hasMissingPassport
+                        ? "Mandatory academic certificates and passport service documents required for your university admission and travel processing."
+                        : hasMissingPassport
+                        ? "Required official identification and support documents for processing your Tanzania passport application."
+                        : hasMissingAcademic
+                        ? `Required academic certificates and transcripts based on your education level (${studentHighestEd || "Standard Track"}).`
+                        : "All required documents for your profile and application have been submitted.";
 
                     // SECTION 3: Admission & Application Documents
                     const uploadedAdmissionDocs = studentDocs.filter((d) => isOfferDoc(d.document_type));
@@ -8720,7 +8846,7 @@ function DashboardContent() {
                                 <span>Documents You Still Need</span>
                               </h3>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                Based on your education level ({studentHighestEd || "Standard Track"}) and passport service status, these mandatory documents are required.
+                                {missingDocsSubtitle}
                               </p>
                             </div>
                             {missingRequiredDocs.length > 0 && (
