@@ -25,6 +25,8 @@ export interface DbNotificationItem {
   message: string;
   type: string;
   is_read: boolean;
+  time?: string;
+  link?: string;
   created_at: string;
 }
 
@@ -36,28 +38,22 @@ export default function FinanceNotificationsPage() {
   const [filterMode, setFilterMode] = useState<"all" | "unread">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const supabase = useMemo(() => createClient(), []);
-
   const loadNotifications = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      // Fetch notifications
-      const { data, error: notifError } = await supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (notifError) throw notifError;
-      setNotifications((data as DbNotificationItem[]) || []);
+      const res = await fetch("/api/admin/notifications");
+      if (!res.ok) {
+        throw new Error("Failed to retrieve notifications from server.");
+      }
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || "Unable to load notifications.");
+      }
+      setNotifications((json.notifications as DbNotificationItem[]) || []);
     } catch (err: any) {
-      console.error("Finance Notifications Error:", {
-        message: err?.message || "Unknown error",
-        details: err?.details || null,
-        hint: err?.hint || null,
-        code: err?.code || null,
-      });
-      setError("Unable to load notifications.");
+      console.error("Finance Notifications Error:", err);
+      setError(err.message || "Unable to load notifications.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -65,36 +61,23 @@ export default function FinanceNotificationsPage() {
 
   useEffect(() => {
     loadNotifications();
-
-    const channel = supabase
-      .channel("finance-notifications-sync")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => {
-          loadNotifications(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+    const interval = setInterval(() => loadNotifications(false), 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Mark single notification as read
   const handleMarkAsRead = async (id: string) => {
     try {
-      const { error: patchError } = await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("id", id);
-
-      if (patchError) throw patchError;
-
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
+      const res = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_read", id }),
+      });
+      if (res.ok) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        );
+      }
     } catch (err: any) {
       console.error("Error marking notification read:", err);
     }
@@ -102,18 +85,15 @@ export default function FinanceNotificationsPage() {
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
-    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
-    if (unreadIds.length === 0) return;
-
     try {
-      const { error: patchError } = await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .in("id", unreadIds);
-
-      if (patchError) throw patchError;
-
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      const res = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_all_read", userId: user?.id }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      }
     } catch (err: any) {
       console.error("Error marking all read:", err);
     }

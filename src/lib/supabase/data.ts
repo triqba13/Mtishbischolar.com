@@ -576,6 +576,12 @@ export async function submitPaymentToSupabase(payload: {
 
     if (error) {
       console.error("Error submitting payment to Supabase:", error);
+      if (error.code === "23505" || error.message?.includes("unique") || error.message?.includes("transaction_ref")) {
+        return {
+          success: false,
+          error: "This Transaction Reference Number has already been submitted for another payment. Each payment must have its own unique transaction reference.",
+        };
+      }
       return { success: false, error: error.message };
     }
 
@@ -2011,7 +2017,6 @@ export async function submitPassportPaymentProof(
 ): Promise<{ success: boolean; data?: DbPassportAssistance; error?: string }> {
   try {
     if (!studentId) return { success: false, error: "Missing student ID" };
-    const supabase = createClient();
     let fileUrl: string | null = null;
 
     if (payload.receiptFile) {
@@ -2022,135 +2027,44 @@ export async function submitPassportPaymentProof(
       );
       if (docRes.success && docRes.fileUrl) {
         fileUrl = docRes.fileUrl;
+      } else if (!docRes.success) {
+        return { success: false, error: docRes.error || "Failed to upload payment receipt" };
       }
     }
 
-    const cleanRef = payload.transactionRef ? payload.transactionRef.trim() : null;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Check if record exists
-    const { data: existing } = await supabase
-      .from("passport_assistance")
-      .select("id")
-      .eq("student_id", studentId)
-      .maybeSingle();
-
-    const paymentUpdateData: Partial<DbPassportAssistance> = {
-      payment_status: "pending_verification",
-      payment_method: payload.paymentMethod,
-      payment_ref: cleanRef,
-      payment_amount: payload.amount || 300000,
-      payment_currency: "TZS",
-      updated_at: new Date().toISOString(),
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
-
-    if (fileUrl) {
-      paymentUpdateData.payment_proof_url = fileUrl;
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
     }
 
-    let updatedRecord: DbPassportAssistance | null = null;
-    if (existing?.id) {
-      const { data, error } = await supabase
-        .from("passport_assistance")
-        .update(paymentUpdateData)
-        .eq("id", existing.id)
-        .select()
-        .single();
+    const response = await fetch("/api/student/submit-passport-payment", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        studentId,
+        paymentMethod: payload.paymentMethod,
+        transactionRef: payload.transactionRef || null,
+        fileUrl,
+        amount: payload.amount || 300000,
+      }),
+    });
 
-      if (error) return { success: false, error: error.message };
-      updatedRecord = data as DbPassportAssistance;
-    } else {
-      const { data, error } = await supabase
-        .from("passport_assistance")
-        .insert([{ ...paymentUpdateData, student_id: studentId }])
-        .select()
-        .single();
-
-      if (error) return { success: false, error: error.message };
-      updatedRecord = data as DbPassportAssistance;
+    const resData = await response.json();
+    if (!response.ok || !resData.success) {
+      return {
+        success: false,
+        error: resData.error || "Failed to submit passport payment proof.",
+      };
     }
 
-    // Also record in public.payments table for finance desk visibility
-    try {
-      const rawMethod = (payload.paymentMethod || "").toLowerCase();
-      let normalizedMethod: "Mobile Money" | "Bank Transfer" | "Cash Office" | "Selcom Gateway" = "Mobile Money";
-      if (rawMethod.includes("bank") || rawMethod.includes("transfer") || rawMethod.includes("crdb") || rawMethod.includes("nmb")) {
-        normalizedMethod = "Bank Transfer";
-      } else if (rawMethod.includes("cash") || rawMethod.includes("office")) {
-        normalizedMethod = "Cash Office";
-      } else if (rawMethod.includes("selcom")) {
-        normalizedMethod = "Selcom Gateway";
-      }
-
-      const { data: existingPay } = await supabase
-        .from("payments")
-        .select("id, status")
-        .eq("student_id", studentId)
-        .or("payment_type.eq.passport_assistance,amount.eq.300000")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingPay?.id && !["approved", "paid", "verified", "rejected"].includes((existingPay.status || "").toLowerCase().trim())) {
-        await supabase
-          .from("payments")
-          .update({
-            amount: payload.amount || 300000,
-            payment_method: normalizedMethod,
-            transaction_ref: cleanRef || null,
-            payment_proof_url: fileUrl || undefined,
-            status: "Submitted",
-          })
-          .eq("id", existingPay.id);
-      } else {
-        const { error: insertErr } = await supabase.from("payments").insert([
-          {
-            student_id: studentId,
-            amount: payload.amount || 300000,
-            currency: "TZS",
-            payment_type: "passport_assistance",
-            payment_method: normalizedMethod,
-            transaction_ref: cleanRef || null,
-            payment_proof_url: fileUrl || null,
-            status: "Submitted",
-          },
-        ]);
-
-        if (insertErr && (insertErr.code === "23505" || insertErr.message?.includes("unique")) && cleanRef) {
-          // If transaction_ref already exists (e.g. shared ref with file fee), insert with suffix
-          await supabase.from("payments").insert([
-            {
-              student_id: studentId,
-              amount: payload.amount || 300000,
-              currency: "TZS",
-              payment_type: "passport_assistance",
-              payment_method: normalizedMethod,
-              transaction_ref: `${cleanRef}-PASSPORT`,
-              payment_proof_url: fileUrl || null,
-              status: "Submitted",
-            },
-          ]);
-        }
-      }
-    } catch (payErr) {
-      console.warn("Could not mirror passport payment to payments table:", payErr);
-    }
-
-    // Record student notification for submission under review
-    try {
-      await supabase.from("notifications").insert([
-        {
-          user_id: studentId,
-          title: "Passport Fee Submitted",
-          message: "Your Passport Assistance Fee (TSh 300,000) payment proof has been submitted and is currently under review by our Finance team.",
-          type: "payment",
-          is_read: false,
-        },
-      ]);
-    } catch (notifErr) {
-      console.warn("Could not insert passport submission notification:", notifErr);
-    }
-
-    return { success: true, data: updatedRecord || undefined };
+    return { success: true, data: resData.data };
   } catch (err: any) {
     console.error("Failed to submit passport payment:", err);
     return { success: false, error: err.message || "Failed to submit payment proof" };

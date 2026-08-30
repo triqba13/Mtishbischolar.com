@@ -9,9 +9,10 @@ import { createClient } from "@/lib/supabase/client";
 interface HeaderProps {
   title?: string;
   onMenuClick?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export default function Header({ title, onMenuClick }: HeaderProps) {
+export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderProps) {
   const [searchValue, setSearchValue] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -21,20 +22,27 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
   useEffect(() => {
     async function fetchUnreadCount() {
       try {
-        const supabase = createClient();
-        const { count, error } = await supabase
-          .from("notifications")
-          .select("*", { count: "exact", head: true })
-          .eq("is_read", false);
-        if (!error && count !== null) {
-          setUnreadCount(count);
+        const res = await fetch("/api/admin/notifications");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && typeof json.unreadCount === "number") {
+            setUnreadCount(json.unreadCount);
+          }
         }
       } catch (err) {
         console.warn("Failed to fetch notification count:", err);
       }
     }
     fetchUnreadCount();
+
+    const interval = setInterval(fetchUnreadCount, 15000);
+    return () => clearInterval(interval);
   }, []);
+
+  const notificationsHref =
+    profile?.role === "finance_officer"
+      ? "/admin/finance/notifications"
+      : "/admin/admission/notifications";
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -48,7 +56,11 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 lg:left-[220px] right-0 h-16 bg-white border-b border-slate-200 flex items-center px-3 sm:px-6 gap-2.5 sm:gap-4 z-40">
+    <header
+      className={`fixed top-0 left-0 ${
+        sidebarCollapsed ? "lg:left-20" : "lg:left-[220px]"
+      } right-0 h-16 bg-white border-b border-slate-200 flex items-center px-3 sm:px-6 gap-2.5 sm:gap-4 z-40 transition-all duration-300 ease-in-out`}
+    >
       {/* Mobile Menu Button */}
       {onMenuClick && (
         <button
@@ -77,12 +89,12 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
 
       {/* Notifications */}
       <Link
-        href="/admin/admission/notifications"
+        href={notificationsHref}
         className="relative w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer shrink-0"
       >
         <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}

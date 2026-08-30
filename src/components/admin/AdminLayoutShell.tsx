@@ -19,7 +19,32 @@ export default function AdminLayoutShell({
   sidebar,
 }: AdminLayoutShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
+
+  // Load persisted collapse state
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mtb_admin_sidebar_collapsed");
+      if (saved === "true") {
+        setSidebarCollapsed(true);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("mtb_admin_sidebar_collapsed", String(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  };
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -45,6 +70,8 @@ export default function AdminLayoutShell({
         ? React.cloneElement(sidebar as React.ReactElement<any>, {
             mobileOpen: sidebarOpen,
             onClose: () => setSidebarOpen(false),
+            collapsed: sidebarCollapsed,
+            onToggleCollapse: toggleSidebarCollapsed,
           })
         : sidebar}
 
@@ -52,10 +79,15 @@ export default function AdminLayoutShell({
       <Header
         title={headerTitle}
         onMenuClick={() => setSidebarOpen(true)}
+        sidebarCollapsed={sidebarCollapsed}
       />
 
       {/* Main Content */}
-      <main className="ml-0 lg:ml-[220px] pt-16 min-h-screen">
+      <main
+        className={`transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? "lg:ml-20" : "lg:ml-[220px]"
+        } pt-16 min-h-screen`}
+      >
         <div className="p-3 sm:p-5 md:p-6 max-w-full">
           {children}
         </div>
