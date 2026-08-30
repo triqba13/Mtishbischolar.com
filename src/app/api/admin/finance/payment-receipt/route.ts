@@ -16,36 +16,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 1. Authenticate user strictly from verified session (cookie or Authorization header)
+    const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // 1. Authenticate user strictly from verified session (Authorization header or cookie)
     let authenticatedUserId: string | null = null;
 
-    try {
-      const serverClient = await createServerClient();
-      const {
-        data: { user },
-      } = await serverClient.auth.getUser();
-      if (user?.id) {
-        authenticatedUserId = user.id;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      if (token) {
+        try {
+          const {
+            data: { user },
+            error: tokenErr,
+          } = await adminClient.auth.getUser(token);
+          if (user?.id && !tokenErr) {
+            authenticatedUserId = user.id;
+          }
+        } catch (tokenErr) {
+          console.warn("[PaymentReceiptAPI] Bearer auth error:", tokenErr);
+        }
       }
-    } catch {
-      // Ignore cookie parsing error and check Authorization header fallback
     }
 
     if (!authenticatedUserId) {
-      const authHeader = req.headers.get("Authorization");
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.replace("Bearer ", "").trim();
-        if (token && supabaseAnonKey) {
-          const clientWithToken = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: `Bearer ${token}` } },
-          });
-          const {
-            data: { user },
-          } = await clientWithToken.auth.getUser();
-          if (user?.id) {
-            authenticatedUserId = user.id;
-          }
+      try {
+        const serverClient = await createServerClient();
+        const {
+          data: { user },
+        } = await serverClient.auth.getUser();
+        if (user?.id) {
+          authenticatedUserId = user.id;
         }
+      } catch (cookieErr) {
+        console.warn("[PaymentReceiptAPI] Cookie auth error:", cookieErr);
       }
     }
 
@@ -55,11 +61,6 @@ export async function GET(req: NextRequest) {
         { status: 401 }
       );
     }
-
-    // 2. Create privileged service-role admin client
-    const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
 
     // 3. Verify user's role in public.profiles (Must be finance_officer or super_admin)
     const { data: profile, error: profileErr } = await adminClient
