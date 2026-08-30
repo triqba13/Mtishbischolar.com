@@ -2102,7 +2102,7 @@ export async function submitPassportPaymentProof(
           })
           .eq("id", existingPay.id);
       } else {
-        await supabase.from("payments").insert([
+        const { error: insertErr } = await supabase.from("payments").insert([
           {
             student_id: studentId,
             amount: payload.amount || 300000,
@@ -2114,6 +2114,22 @@ export async function submitPassportPaymentProof(
             status: "Submitted",
           },
         ]);
+
+        if (insertErr && (insertErr.code === "23505" || insertErr.message?.includes("unique")) && cleanRef) {
+          // If transaction_ref already exists (e.g. shared ref with file fee), insert with suffix
+          await supabase.from("payments").insert([
+            {
+              student_id: studentId,
+              amount: payload.amount || 300000,
+              currency: "TZS",
+              payment_type: "passport_assistance",
+              payment_method: normalizedMethod,
+              transaction_ref: `${cleanRef}-PASSPORT`,
+              payment_proof_url: fileUrl || null,
+              status: "Submitted",
+            },
+          ]);
+        }
       }
     } catch (payErr) {
       console.warn("Could not mirror passport payment to payments table:", payErr);
