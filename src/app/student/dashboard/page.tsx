@@ -1492,15 +1492,32 @@ function DashboardContent() {
   }, [currentUser?.id]);
 
   const handleViewDocument = async (fileUrlOrPath: string, docLabel?: string) => {
+    if (!fileUrlOrPath) {
+      alert("No document file attached.");
+      return;
+    }
     try {
       setViewingDoc(docLabel || fileUrlOrPath);
-      const res = await getStudentDocumentSignedUrl(fileUrlOrPath);
+      setPreviewReceiptModal({
+        isOpen: true,
+        url: "",
+        title: docLabel || "Document Preview",
+        isPdf: fileUrlOrPath.toLowerCase().includes(".pdf"),
+        loading: true,
+      });
+      const res = await getStudentDocumentSignedUrl(fileUrlOrPath, 60 * 15);
       if (res.success && res.signedUrl) {
-        window.open(res.signedUrl, "_blank");
+        setPreviewReceiptModal({
+          isOpen: true,
+          url: res.signedUrl,
+          title: docLabel || "Document Preview",
+          isPdf: res.signedUrl.toLowerCase().includes(".pdf") || fileUrlOrPath.toLowerCase().includes(".pdf"),
+          loading: false,
+        });
       } else {
+        setPreviewReceiptModal((prev) => ({ ...prev, isOpen: false, loading: false }));
         if (res.notFound) {
           alert("This document file is no longer available in storage. Your record has been reset so you can upload a fresh copy.");
-          // Auto-clean stale DB record and refresh state
           const staleDoc = studentDocs.find((d) => d.file_url === fileUrlOrPath || d.document_type === docLabel);
           if (staleDoc?.id && currentUser?.id) {
             await deleteStudentDocument(currentUser.id, staleDoc.id, staleDoc.file_url);
@@ -1515,6 +1532,7 @@ function DashboardContent() {
       }
     } catch (err: any) {
       console.error("View document error:", err);
+      setPreviewReceiptModal((prev) => ({ ...prev, isOpen: false, loading: false }));
       alert(err.message || "Failed to view document.");
     } finally {
       setViewingDoc("");
