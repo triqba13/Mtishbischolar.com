@@ -172,18 +172,45 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 4. Section B: Existing Passports (STRICTLY students who selected has_passport = 'Yes' and have a valid passport_number)
-    const { data: existingProfiles, error: existErr } = await adminClient
-      .from("profiles")
-      .select("id, first_name, middle_name, last_name, email, phone, nationality, has_passport, passport_number, passport_issue_date, passport_expiry_date, created_at, avatar_url")
-      .eq("role", "student")
-      .eq("has_passport", "Yes")
-      .not("passport_number", "is", null)
-      .neq("passport_number", "")
-      .order("created_at", { ascending: false });
+    // 4. Section B: Existing Passports (STRICTLY students who already had their own passport WITHOUT requesting assistance)
+    const { data: allAssistData } = await adminClient
+      .from("passport_assistance")
+      .select("student_id");
 
-    if (existErr) {
-      console.error("[PassportAPI] Existing passports fetch error:", existErr);
+    const allAssistanceStudentIds = Array.from(
+      new Set((allAssistData || []).map((r) => r.student_id).filter(Boolean))
+    );
+
+    let existingProfiles: any[] = [];
+    if (allAssistanceStudentIds.length > 0) {
+      const { data, error: existErr } = await adminClient
+        .from("profiles")
+        .select(
+          "id, first_name, middle_name, last_name, email, phone, nationality, has_passport, passport_number, passport_issue_date, passport_expiry_date, created_at, avatar_url"
+        )
+        .eq("role", "student")
+        .eq("has_passport", "Yes")
+        .not("passport_number", "is", null)
+        .neq("passport_number", "")
+        .not("id", "in", `(${allAssistanceStudentIds.join(",")})`)
+        .order("created_at", { ascending: false });
+
+      if (existErr) console.error("[PassportAPI] Existing error:", existErr);
+      existingProfiles = data || [];
+    } else {
+      const { data, error: existErr } = await adminClient
+        .from("profiles")
+        .select(
+          "id, first_name, middle_name, last_name, email, phone, nationality, has_passport, passport_number, passport_issue_date, passport_expiry_date, created_at, avatar_url"
+        )
+        .eq("role", "student")
+        .eq("has_passport", "Yes")
+        .not("passport_number", "is", null)
+        .neq("passport_number", "")
+        .order("created_at", { ascending: false });
+
+      if (existErr) console.error("[PassportAPI] Existing error:", existErr);
+      existingProfiles = data || [];
     }
 
     const existingStudentIds = (existingProfiles || []).map((p) => p.id);

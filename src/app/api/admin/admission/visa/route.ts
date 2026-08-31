@@ -74,7 +74,6 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Find students who have a valid, completed passport:
-    // A. Students with has_passport = 'Yes' and valid passport_number
     const { data: profilesWithPassport } = await adminClient
       .from("profiles")
       .select("id, passport_number")
@@ -83,7 +82,6 @@ export async function GET(req: NextRequest) {
       .not("passport_number", "is", null)
       .neq("passport_number", "");
 
-    // B. Students whose passport_assistance is 'completed'
     const { data: completedAssistance } = await adminClient
       .from("passport_assistance")
       .select("student_id")
@@ -99,7 +97,7 @@ export async function GET(req: NextRequest) {
     if (validPassportStudentIds.length === 0) {
       return NextResponse.json({
         success: true,
-        requests: [],
+        students: [],
         counts: { All: 0, Pending: 0, Processing: 0, Completed: 0 },
       });
     }
@@ -125,6 +123,7 @@ export async function GET(req: NextRequest) {
           last_name,
           email,
           phone,
+          avatar_url,
           has_passport,
           passport_number,
           passport_issue_date,
@@ -148,22 +147,50 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: appErr.message }, { status: 500 });
     }
 
-    const requests = (appData || []).map((app: any) => {
+    // 5. Group applications by Student
+    const studentMap: Record<string, any> = {};
+
+    (appData || []).forEach((app: any) => {
+      const sId = app.student_id;
+      if (!sId) return;
+
       const studentObj = Array.isArray(app.profiles) ? app.profiles[0] : app.profiles;
       const studentName = studentObj
         ? `${studentObj.first_name || ""} ${studentObj.last_name || ""}`.trim() || studentObj.email || "Student"
         : "Student";
 
+      if (!studentMap[sId]) {
+        studentMap[sId] = {
+          id: sId,
+          studentId: sId,
+          studentName,
+          studentEmail: studentObj?.email || "N/A",
+          studentPhone: studentObj?.phone || "N/A",
+          avatarUrl: studentObj?.avatar_url || null,
+          passportNumber: studentObj?.passport_number || "On File",
+          passportIssueDate: studentObj?.passport_issue_date || null,
+          passportExpiryDate: studentObj?.passport_expiry_date || null,
+          applications: [],
+          totalApplications: 0,
+          pendingApplications: 0,
+          processingApplications: 0,
+          completedApplications: 0,
+          lastRequestedOn: app.created_at,
+        };
+      }
+
       const universityName = app.universities?.name || (app.target_country ? `University (${app.target_country})` : "Partner University");
       const courseName = app.courses?.title || app.preferred_course || "Degree Programme";
 
       let tabStatus = "Pending";
-      if (app.status === "Visa Approved") {
+      if (app.status === "Visa Approved" || app.status === "Completed") {
         tabStatus = "Completed";
+        studentMap[sId].completedApplications += 1;
       } else if (app.status === "Visa Processing") {
         tabStatus = "Processing";
-      } else if (app.status === "Completed") {
-        tabStatus = "Completed";
+        studentMap[sId].processingApplications += 1;
+      } else {
+        studentMap[sId].pendingApplications += 1;
       }
 
       const requestedOn = app.created_at
@@ -174,17 +201,14 @@ export async function GET(req: NextRequest) {
           })
         : "Recent";
 
-      return {
+      studentMap[sId].applications.push({
         id: app.id,
         applicationId: app.id,
         appId: `APP-${app.id.slice(0, 6).toUpperCase()}`,
-        studentId: app.student_id,
-        student: studentName,
+        studentId: sId,
+        studentName,
         studentEmail: studentObj?.email || "N/A",
-        studentPhone: studentObj?.phone || "N/A",
         passportNumber: studentObj?.passport_number || "On File",
-        passportIssueDate: studentObj?.passport_issue_date || null,
-        passportExpiryDate: studentObj?.passport_expiry_date || null,
         university: universityName,
         course: courseName,
         targetCountry: app.target_country || app.universities?.country || "International",
@@ -194,19 +218,64 @@ export async function GET(req: NextRequest) {
         requestedOn,
         createdAt: app.created_at,
         updatedAt: app.updated_at,
+      });
+
+      studentMap[sId].totalApplications += 1;
+      if (new Date(app.created_at) > new Date(studentMap[sId].lastRequestedOn)) {
+        studentMap[sId].lastRequestedOn = app.created_at;
+      }
+    });
+
+    // Generate signed avatar URLs for students
+    await Promise.all(
+      Object.values(studentMap).map(async (s: any) => {
+        if (s.avatarUrl && !s.avatarUrl.startsWith("http")) {
+          try {
+            let cleanPath = s.avatarUrl.replace(/^student-documents\//, "");
+            const { data } = await adminClient.storage
+              .from("student-documents")
+              .createSignedUrl(cleanPath, 60 * 60 * 24 * 7);
+            if (data?.signedUrl) {
+              s.avatarUrl = data.signedUrl;
+            }
+          } catch (avatarErr) {
+            console.warn("[VisaAPI] Avatar signed URL error:", avatarErr);
+          }
+        }
+      })
+    );
+
+    const students = Object.values(studentMap).map((s: any) => {
+      let overallStatus = "Pending Review";
+      if (s.completedApplications > 0) {
+        overallStatus = "Visa Approved";
+      } else if (s.processingApplications > 0) {
+        overallStatus = "Visa Processing";
+      }
+
+      return {
+        ...s,
+        overallStatus,
+        lastRequestedFormatted: s.lastRequestedOn
+          ? new Date(s.lastRequestedOn).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "N/A",
       };
     });
 
     const counts = {
-      All: requests.length,
-      Pending: requests.filter((r) => r.status === "Pending").length,
-      Processing: requests.filter((r) => r.status === "Processing").length,
-      Completed: requests.filter((r) => r.status === "Completed").length,
+      All: students.length,
+      Pending: students.filter((s) => s.pendingApplications > 0 && s.completedApplications === 0 && s.processingApplications === 0).length,
+      Processing: students.filter((s) => s.processingApplications > 0 && s.completedApplications === 0).length,
+      Completed: students.filter((s) => s.completedApplications > 0).length,
     };
 
     return NextResponse.json({
       success: true,
-      requests,
+      students,
       counts,
     });
   } catch (err: any) {
@@ -273,7 +342,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing applicationId." }, { status: 400 });
     }
 
-    // 1. Fetch current application details
     const { data: application, error: appFetchErr } = await adminClient
       .from("applications")
       .select("*, universities(*), courses(*)")
@@ -288,7 +356,6 @@ export async function PATCH(req: NextRequest) {
     const uniName = application.universities?.name || application.target_country || "University";
     const courseName = application.courses?.title || application.preferred_course || "Degree Program";
 
-    // 2. Handle Action Type: Send Comment/Instructions
     if (actionType === "send_comment" && notes) {
       const updatedNotes = application.notes ? `${application.notes}\n\n[Admission Note]: ${notes}` : notes;
       await adminClient
@@ -296,7 +363,6 @@ export async function PATCH(req: NextRequest) {
         .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
         .eq("id", applicationId);
 
-      // Insert notification for student
       await adminClient.from("notifications").insert([
         {
           user_id: studentId,
@@ -311,7 +377,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Visa instruction sent to student successfully." });
     }
 
-    // 3. Handle Status Update (Visa Processing / Visa Approved)
     if (newStatus) {
       const { data: updatedApp, error: updateErr } = await adminClient
         .from("applications")
@@ -327,7 +392,6 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ success: false, error: updateErr.message }, { status: 500 });
       }
 
-      // Send appropriate notification to student
       if (newStatus === "Visa Processing") {
         await adminClient.from("notifications").insert([
           {

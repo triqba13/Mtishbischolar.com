@@ -23,48 +23,89 @@ import {
   AlertCircle,
   Clock,
   ShieldCheck,
+  Plane,
 } from "lucide-react";
-import StatusBadge from "@/components/admin/admission/StatusBadge";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
-export interface VisaRequestItem {
+export interface StudentVisaApp {
   id: string;
   applicationId: string;
   appId: string;
   studentId: string;
-  student: string;
+  studentName: string;
   studentEmail: string;
-  studentPhone: string;
   passportNumber: string;
-  passportIssueDate?: string | null;
-  passportExpiryDate?: string | null;
   university: string;
   course: string;
   targetCountry: string;
   appStatus: string;
-  status: string; // Pending, Processing, Completed
+  status: string; // "Pending", "Processing", "Completed"
   notes?: string;
   requestedOn: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
-const TABS = ["All", "Pending", "Processing", "Completed"];
+export interface StudentWithVisaApps {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  studentPhone: string;
+  avatarUrl: string | null;
+  passportNumber: string;
+  passportIssueDate?: string | null;
+  passportExpiryDate?: string | null;
+  applications: StudentVisaApp[];
+  totalApplications: number;
+  pendingApplications: number;
+  processingApplications: number;
+  completedApplications: number;
+  overallStatus: string; // "Visa Approved", "Visa Processing", "Pending Review"
+  lastRequestedOn: string;
+  lastRequestedFormatted: string;
+}
+
+const TABS = ["All Students", "Pending Review", "In Processing", "Visa Approved"];
+
+function StudentAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  const [imgError, setImgError] = useState(false);
+  const initials = (name || "ST").slice(0, 2).toUpperCase();
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setImgError(true)}
+        className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-2xs shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-extrabold flex items-center justify-center text-xs border border-blue-200 shrink-0">
+      {initials}
+    </div>
+  );
+}
 
 export default function VisaPage() {
   const { loading: authLoading } = useAdminAuth();
-  const [requests, setRequests] = useState<VisaRequestItem[]>([]);
+  const [students, setStudents] = useState<StudentWithVisaApps[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState("All Students");
   const [search, setSearch] = useState("");
 
-  // Selected Visa Request Modal State
-  const [selectedRequest, setSelectedRequest] = useState<VisaRequestItem | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
+  // Selected Student ID (cleanly derived without re-render loop)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [activeAppIdForNote, setActiveAppIdForNote] = useState<string | null>(null);
   const [officerNote, setOfficerNote] = useState<string>("");
   const [isSendingNote, setIsSendingNote] = useState<boolean>(false);
+  const [actionLoadingAppId, setActionLoadingAppId] = useState<string | null>(null);
   const [modalFeedback, setModalFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const loadVisaRequests = useCallback(async () => {
@@ -92,7 +133,7 @@ export default function VisaPage() {
         throw new Error(json.error || "Failed to load visa applications.");
       }
 
-      setRequests(json.requests || []);
+      setStudents(json.students || []);
       setCounts(json.counts || {});
     } catch (err: any) {
       console.error("[VisaPage] Error fetching visa requests:", err);
@@ -108,26 +149,40 @@ export default function VisaPage() {
     }
   }, [authLoading, loadVisaRequests]);
 
-  const filtered = useMemo(() => {
-    return requests.filter((r) => {
-      const matchTab = activeTab === "All" || r.status === activeTab;
+  // Derive active selected student
+  const selectedStudent = useMemo(() => {
+    if (!selectedStudentId) return null;
+    return students.find((s) => s.id === selectedStudentId) || null;
+  }, [students, selectedStudentId]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const matchTab =
+        activeTab === "All Students" ||
+        (activeTab === "Pending Review" && s.pendingApplications > 0 && s.completedApplications === 0 && s.processingApplications === 0) ||
+        (activeTab === "In Processing" && s.processingApplications > 0 && s.completedApplications === 0) ||
+        (activeTab === "Visa Approved" && s.completedApplications > 0);
+
       const matchSearch =
         !search.trim() ||
-        r.student.toLowerCase().includes(search.toLowerCase()) ||
-        r.studentEmail.toLowerCase().includes(search.toLowerCase()) ||
-        r.appId.toLowerCase().includes(search.toLowerCase()) ||
-        r.targetCountry.toLowerCase().includes(search.toLowerCase()) ||
-        r.passportNumber.toLowerCase().includes(search.toLowerCase());
+        s.studentName.toLowerCase().includes(search.toLowerCase()) ||
+        s.studentEmail.toLowerCase().includes(search.toLowerCase()) ||
+        s.passportNumber.toLowerCase().includes(search.toLowerCase()) ||
+        s.applications.some(
+          (a) =>
+            a.university.toLowerCase().includes(search.toLowerCase()) ||
+            a.targetCountry.toLowerCase().includes(search.toLowerCase()) ||
+            a.appId.toLowerCase().includes(search.toLowerCase())
+        );
 
       return matchTab && matchSearch;
     });
-  }, [requests, activeTab, search]);
+  }, [students, activeTab, search]);
 
   // Handle status update
-  const handleUpdateStatus = async (newStatus: "Visa Processing" | "Visa Approved") => {
-    if (!selectedRequest) return;
+  const handleUpdateStatus = async (applicationId: string, newStatus: "Visa Processing" | "Visa Approved") => {
     try {
-      setIsUpdatingStatus(true);
+      setActionLoadingAppId(applicationId);
       setModalFeedback(null);
 
       const supabase = createClient();
@@ -140,7 +195,7 @@ export default function VisaPage() {
         method: "PATCH",
         headers,
         body: JSON.stringify({
-          applicationId: selectedRequest.applicationId,
+          applicationId,
           newStatus,
         }),
       });
@@ -150,20 +205,6 @@ export default function VisaPage() {
         throw new Error(json.error || "Failed to update visa status.");
       }
 
-      const tabStatus = newStatus === "Visa Approved" ? "Completed" : "Processing";
-
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.applicationId === selectedRequest.applicationId
-            ? { ...r, appStatus: newStatus, status: tabStatus }
-            : r
-        )
-      );
-
-      setSelectedRequest((prev) =>
-        prev ? { ...prev, appStatus: newStatus, status: tabStatus } : null
-      );
-
       setModalFeedback({
         type: "success",
         message:
@@ -171,16 +212,18 @@ export default function VisaPage() {
             ? "Marked as Processing with Embassy! Notification sent to student."
             : "Visa Approved! Real-time student portal updated and congratulatory notification sent.",
       });
+
+      await loadVisaRequests();
     } catch (err: any) {
       setModalFeedback({ type: "error", message: err.message || "Failed to update status." });
     } finally {
-      setIsUpdatingStatus(false);
+      setActionLoadingAppId(null);
     }
   };
 
   // Handle sending note/comment to student
-  const handleSendNote = async () => {
-    if (!selectedRequest || !officerNote.trim()) return;
+  const handleSendNote = async (applicationId: string) => {
+    if (!officerNote.trim()) return;
     try {
       setIsSendingNote(true);
       setModalFeedback(null);
@@ -196,7 +239,7 @@ export default function VisaPage() {
         headers,
         body: JSON.stringify({
           actionType: "send_comment",
-          applicationId: selectedRequest.applicationId,
+          applicationId,
           notes: officerNote.trim(),
         }),
       });
@@ -207,12 +250,20 @@ export default function VisaPage() {
       }
 
       setOfficerNote("");
+      setActiveAppIdForNote(null);
       setModalFeedback({ type: "success", message: "Visa instruction sent to student portal notification!" });
+      await loadVisaRequests();
     } catch (err: any) {
       setModalFeedback({ type: "error", message: err.message || "Failed to send note." });
     } finally {
       setIsSendingNote(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedStudentId(null);
+    setModalFeedback(null);
+    setActiveAppIdForNote(null);
   };
 
   return (
@@ -236,7 +287,7 @@ export default function VisaPage() {
               <span>Visa Processing Desk</span>
             </h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">
-              Track and process student visas with embassies for students with completed passports.
+              Track and process student visas with embassies grouped by applicant with verified passports.
             </p>
           </div>
 
@@ -270,7 +321,15 @@ export default function VisaPage() {
       <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {TABS.map((tab) => {
-            const count = counts[tab] ?? (tab === "All" ? requests.length : 0);
+            const count =
+              tab === "All Students"
+                ? counts.All || students.length
+                : tab === "Pending Review"
+                ? counts.Pending || 0
+                : tab === "In Processing"
+                ? counts.Processing || 0
+                : counts.Completed || 0;
+
             return (
               <button
                 key={tab}
@@ -300,13 +359,13 @@ export default function VisaPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search student, country, passport..."
+            placeholder="Search student, passport, country..."
             className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none transition-colors"
           />
         </div>
       </div>
 
-      {/* Applications Table */}
+      {/* Students Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -314,9 +373,9 @@ export default function VisaPage() {
               <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Student</th>
                 <th className="py-3.5 px-4">Passport No</th>
-                <th className="py-3.5 px-4">Destination &amp; University</th>
-                <th className="py-3.5 px-4">Visa Status</th>
-                <th className="py-3.5 px-4">Requested On</th>
+                <th className="py-3.5 px-4">Applications</th>
+                <th className="py-3.5 px-4">Visa Progress</th>
+                <th className="py-3.5 px-4">Last Requested</th>
                 <th className="py-3.5 px-4 text-right">Action</th>
               </tr>
             </thead>
@@ -325,58 +384,65 @@ export default function VisaPage() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                    Loading visa applications...
+                    Loading eligible visa students...
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    No eligible visa applications found for students with completed passports.
+                    No eligible students with verified passports found.
                   </td>
                 </tr>
               ) : (
-                filtered.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
+                filteredStudents.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{row.student}</div>
-                      <div className="text-[11px] text-slate-500">{row.studentEmail}</div>
+                      <div className="flex items-center gap-3">
+                        <StudentAvatar name={s.studentName} avatarUrl={s.avatarUrl} />
+                        <div>
+                          <div className="font-bold text-slate-900 text-sm">{s.studentName}</div>
+                          <div className="text-[11px] text-slate-500">{s.studentEmail}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                        {row.passportNumber}
+                      <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                        {s.passportNumber}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-800">{row.university}</div>
-                      <div className="text-[11px] text-slate-500">{row.course} • ({row.targetCountry})</div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200/80">
+                        <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{s.totalApplications} Applications</span>
+                      </span>
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${
-                          row.appStatus === "Visa Approved"
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${
+                          s.overallStatus === "Visa Approved"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : row.appStatus === "Visa Processing"
+                            : s.overallStatus === "Visa Processing"
                             ? "bg-blue-50 text-blue-700 border-blue-200"
                             : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}
                       >
-                        {row.appStatus || "Pending"}
+                        {s.overallStatus}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">{row.requestedOn}</td>
+                    <td className="py-3.5 px-4 text-slate-500 font-medium">{s.lastRequestedFormatted}</td>
                     <td className="py-3.5 px-4 text-right">
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedRequest(row);
+                          setSelectedStudentId(s.id);
                           setModalFeedback(null);
-                          setOfficerNote(row.notes || "");
+                          setActiveAppIdForNote(null);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>View Details</span>
+                        <span>View Applications</span>
                       </button>
                     </td>
                   </tr>
@@ -388,16 +454,16 @@ export default function VisaPage() {
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* MODAL: VISA DETAILS & ACTIONS                                 */}
+      {/* MODAL: STUDENT VISA APPLICATIONS HUB                          */}
       {/* ───────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {selectedRequest && (
+        {selectedStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
+              className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
             >
               {/* Modal Header */}
               <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 flex items-center justify-between">
@@ -407,20 +473,17 @@ export default function VisaPage() {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-base text-slate-900">
-                      Visa Application Review &ndash; {selectedRequest.student}
+                      Visa Applications &ndash; {selectedStudent.studentName}
                     </h3>
-                    <p className="text-[11px] text-slate-500">
-                      {selectedRequest.appId} • Target Country: {selectedRequest.targetCountry}
+                    <p className="text-[11px] text-slate-500 font-mono">
+                      Passport No: <span className="font-bold text-blue-700">{selectedStudent.passportNumber}</span> • {selectedStudent.totalApplications} University Applications
                     </p>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedRequest(null);
-                    setModalFeedback(null);
-                  }}
+                  onClick={handleCloseModal}
                   className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
                 >
                   <X className="w-4 h-4" />
@@ -454,130 +517,152 @@ export default function VisaPage() {
                 </div>
               )}
 
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
-                {/* 1. Student & University Details */}
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
-                  <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    <span>Student &amp; Verified Passport Information</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Student Name</span>
-                      <p className="font-bold text-slate-900">{selectedRequest.student}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Passport Number</span>
-                      <p className="font-mono font-bold text-blue-700">{selectedRequest.passportNumber}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Contact Email</span>
-                      <p className="font-bold text-slate-800 truncate">{selectedRequest.studentEmail}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">University</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.university}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Degree Program</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.course}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Current Status</span>
-                      <p className="font-extrabold text-blue-600">{selectedRequest.appStatus}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Visa Action Controls */}
-                <div className="p-4.5 bg-blue-50/70 rounded-2xl border border-blue-200 space-y-3">
-                  <h4 className="font-extrabold text-xs text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileCheck2 className="w-4 h-4 text-blue-600" />
-                    <span>Embassy Processing Action</span>
-                  </h4>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Processing Button - LOCKED if already processing or approved */}
-                    {selectedRequest.appStatus === "Visa Processing" ? (
-                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-100 border border-blue-300 text-blue-800 font-extrabold text-xs">
-                        <Lock className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Currently Processing with Embassy</span>
+              {/* Modal Body: List of Applications */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+                {selectedStudent.applications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4 hover:border-blue-200 transition-colors"
+                  >
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] font-extrabold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                            {app.appId}
+                          </span>
+                          <h4 className="font-extrabold text-sm text-slate-900">{app.university}</h4>
+                        </div>
+                        <p className="text-slate-600 text-xs mt-0.5">
+                          {app.course} &bull; <span className="font-semibold text-slate-700">Target Country: {app.targetCountry}</span>
+                        </p>
                       </div>
-                    ) : selectedRequest.appStatus === "Visa Approved" ? (
-                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Visa Approved &amp; Completed</span>
+
+                      <div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide border ${
+                            app.appStatus === "Visa Approved"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : app.appStatus === "Visa Processing"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : app.appStatus === "Rejected"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {app.appStatus}
+                        </span>
                       </div>
-                    ) : (
+                    </div>
+
+                    {/* Action Controls */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Visa In Process Button */}
+                        {app.appStatus === "Visa Processing" ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 border border-blue-300 text-blue-800 font-extrabold text-xs">
+                            <Lock className="w-3.5 h-3.5 text-blue-600" />
+                            <span>In Processing with Embassy</span>
+                          </div>
+                        ) : app.appStatus === "Visa Approved" ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Visa Approved</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={actionLoadingAppId === app.id}
+                            onClick={() => handleUpdateStatus(app.id, "Visa Processing")}
+                            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {actionLoadingAppId === app.id && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                            <span>Mark &quot;In Process (Embassy)&quot;</span>
+                          </button>
+                        )}
+
+                        {/* Visa Approved Button */}
+                        {app.appStatus !== "Visa Approved" && (
+                          <button
+                            type="button"
+                            disabled={actionLoadingAppId === app.id}
+                            onClick={() => handleUpdateStatus(app.id, "Visa Approved")}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {actionLoadingAppId === app.id && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Mark &quot;Visa Approved&quot;</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Toggle Send Note Button */}
                       <button
                         type="button"
-                        disabled={isUpdatingStatus}
-                        onClick={() => handleUpdateStatus("Visa Processing")}
-                        className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                        onClick={() =>
+                          setActiveAppIdForNote(activeAppIdForNote === app.id ? null : app.id)
+                        }
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                          activeAppIdForNote === app.id
+                            ? "bg-blue-600 text-white border-blue-700"
+                            : "bg-white text-slate-700 hover:bg-slate-100 border-slate-200"
+                        }`}
                       >
-                        {isUpdatingStatus && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                        <span>Mark As &quot;Visa In Process (Embassy)&quot;</span>
+                        <MessageSquarePlus className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Embassy Instructions</span>
                       </button>
-                    )}
+                    </div>
 
-                    {/* Visa Completed Button */}
-                    {selectedRequest.appStatus !== "Visa Approved" && (
-                      <button
-                        type="button"
-                        disabled={isUpdatingStatus}
-                        onClick={() => handleUpdateStatus("Visa Approved")}
-                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-colors cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
-                      >
-                        {isUpdatingStatus && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Mark As &quot;Visa Completed (Visa Approved)&quot;</span>
-                      </button>
+                    {/* Inline Note Sender */}
+                    {activeAppIdForNote === app.id && (
+                      <div className="p-3.5 bg-white rounded-xl border border-blue-200 space-y-2.5 animate-in fade-in duration-150 shadow-2xs">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                          Send Embassy / Appointment Instructions to Student for {app.university}:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={officerNote}
+                          onChange={(e) => setOfficerNote(e.target.value)}
+                          placeholder="e.g. Your Biometrics appointment is scheduled for Friday at 10:00 AM at the Canadian Visa Application Center. Bring your original passport."
+                          className="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-xs outline-none focus:border-blue-600 resize-none text-slate-800"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] text-slate-400">
+                            Sent directly as an in-app portal notification to {selectedStudent.studentName}.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isSendingNote || !officerNote.trim()}
+                              onClick={() => handleSendNote(app.id)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-2xs"
+                            >
+                              {isSendingNote ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                              <span>Send Note</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveAppIdForNote(null)}
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {/* 3. Instructions / Notes for Student */}
-                <div className="p-4.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                  <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <MessageSquarePlus className="w-4 h-4 text-blue-600" />
-                    <span>Send Embassy / Appointment Instructions to Student</span>
-                  </h4>
-                  <textarea
-                    rows={2}
-                    value={officerNote}
-                    onChange={(e) => setOfficerNote(e.target.value)}
-                    placeholder="e.g. Your Embassy Biometrics appointment is scheduled for Friday at 10:00 AM at the Canadian Visa Application Center. Bring your original passport and proof of funds."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white focus:border-blue-600 outline-none resize-none text-slate-800 text-xs"
-                  />
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-slate-400">
-                      This instruction will be delivered as an in-app portal notification directly to the student.
-                    </p>
-                    <button
-                      type="button"
-                      disabled={isSendingNote || !officerNote.trim()}
-                      onClick={handleSendNote}
-                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
-                    >
-                      {isSendingNote ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      <span>Send Visa Note</span>
-                    </button>
-                  </div>
-                </div>
+                ))}
               </div>
 
               {/* Modal Footer */}
               <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedRequest(null);
-                    setModalFeedback(null);
-                  }}
+                  onClick={handleCloseModal}
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-colors cursor-pointer"
                 >
-                  Close Details
+                  Close Visa Hub
                 </button>
               </div>
             </motion.div>

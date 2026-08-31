@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
 
     // 1. Authenticate user strictly from verified session
     let authenticatedUserId: string | null = null;
-
     const authHeader = req.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "").trim();
@@ -29,9 +28,7 @@ export async function GET(req: NextRequest) {
           const {
             data: { user },
           } = await clientWithToken.auth.getUser();
-          if (user?.id) {
-            authenticatedUserId = user.id;
-          }
+          if (user?.id) authenticatedUserId = user.id;
         } catch (tokenErr) {
           console.warn("[DocumentsAPI] Bearer auth error:", tokenErr);
         }
@@ -44,9 +41,7 @@ export async function GET(req: NextRequest) {
         const {
           data: { user },
         } = await serverClient.auth.getUser();
-        if (user?.id) {
-          authenticatedUserId = user.id;
-        }
+        if (user?.id) authenticatedUserId = user.id;
       } catch {
         // Ignore cookie error
       }
@@ -64,20 +59,13 @@ export async function GET(req: NextRequest) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data: profile, error: profileErr } = await adminClient
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("id, role")
       .eq("id", authenticatedUserId)
       .maybeSingle();
 
-    if (profileErr || !profile) {
-      return NextResponse.json(
-        { success: false, error: "User profile not found." },
-        { status: 401 }
-      );
-    }
-
-    const normalizedRole = (profile.role || "").trim().toLowerCase();
+    const normalizedRole = (profile?.role || "").trim().toLowerCase();
     if (!["admission_officer", "super_admin"].includes(normalizedRole)) {
       return NextResponse.json(
         { success: false, error: "Forbidden: Access restricted to Admission Officers and Super Admins." },
@@ -85,25 +73,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 3. Parse and sanitize query parameters for pagination & filters
-    const { searchParams } = new URL(req.url);
-
-    // Page: default 1, min 1
-    const rawPage = parseInt(searchParams.get("page") || "1", 10);
-    const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
-
-    // PageSize: default 10, min 1, max 100
-    const rawPageSize = parseInt(searchParams.get("pageSize") || "10", 10);
-    const pageSize = isNaN(rawPageSize) || rawPageSize < 1 ? 10 : Math.min(rawPageSize, 100);
-
-    // Tab filter: "All", "Pending", "Verified"
-    const tab = (searchParams.get("tab") || "All").trim();
-
-    // Search query: max 100 characters, sanitize wildcards
-    const rawSearch = (searchParams.get("search") || "").trim().slice(0, 100);
-    const search = rawSearch.replace(/[%_\\]/g, "");
-
-    // 4. Visibility Rule: Only fetch academic/admission documents belonging to students with Approved payment
+    // 3. Only fetch documents belonging to students with Approved payment
     const { data: approvedPayments } = await adminClient
       .from("payments")
       .select("student_id")
@@ -114,88 +84,17 @@ export async function GET(req: NextRequest) {
     );
 
     if (approvedStudentIds.length === 0) {
-      const emptyCounts = { All: 0, Pending: 0, Verified: 0 };
       return NextResponse.json({
         success: true,
-        data: {
-          items: [],
-          pagination: {
-            page: 1,
-            pageSize,
-            totalRecords: 0,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPrevPage: false,
-          },
-          tabCounts: emptyCounts,
-        },
-        documents: [],
-        counts: emptyCounts,
-        pagination: {
-          page: 1,
-          pageSize,
-          totalRecords: 0,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
+        students: [],
+        counts: { All: 0, Pending: 0, Verified: 0, totalDocs: 0, pendingDocs: 0, verifiedDocs: 0 },
       });
     }
 
-    // 5. Parallel count aggregations for each tab (Head count queries, 0-byte payload)
-    const [
-      { count: countAll },
-      { count: countPending },
-      { count: countVerified },
-    ] = await Promise.all([
-      adminClient
-        .from("documents")
-        .select("*", { count: "exact", head: true })
-        .in("student_id", approvedStudentIds)
-        .neq("document_type", "Payment_Receipt"),
-      adminClient
-        .from("documents")
-        .select("*", { count: "exact", head: true })
-        .in("student_id", approvedStudentIds)
-        .neq("document_type", "Payment_Receipt")
-        .eq("is_verified", false),
-      adminClient
-        .from("documents")
-        .select("*", { count: "exact", head: true })
-        .in("student_id", approvedStudentIds)
-        .neq("document_type", "Payment_Receipt")
-        .eq("is_verified", true),
-    ]);
-
-    const tabCounts = {
-      All: countAll || 0,
-      Pending: countPending || 0,
-      Verified: countVerified || 0,
-    };
-
-    // 6. Handle Search filtering at database level
-    let targetStudentIds = approvedStudentIds;
-    let isSearchEmptyResult = false;
-
-    if (search) {
-      const { data: matchedProfiles } = await adminClient
-        .from("profiles")
-        .select("id")
-        .in("id", approvedStudentIds)
-        .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
-
-      const profileMatchedIds = (matchedProfiles || []).map((p) => p.id);
-
-      if (profileMatchedIds.length > 0) {
-        targetStudentIds = profileMatchedIds;
-      }
-    }
-
-    // 7. Build Paginated Database Query EXCLUDING Payment_Receipt (strictly for Finance Officers)
-    let query = adminClient
+    // 4. Fetch all documents for approved students (excluding Payment_Receipt)
+    const { data: docsData, error: docErr } = await adminClient
       .from("documents")
-      .select(
-        `
+      .select(`
         id,
         student_id,
         application_id,
@@ -210,91 +109,51 @@ export async function GET(req: NextRequest) {
           id,
           first_name,
           last_name,
-          email
-        ),
-        applications:application_id (
-          id,
-          preferred_course,
-          status,
-          universities:university_id (
-            id,
-            name
-          )
+          email,
+          phone,
+          avatar_url
         )
-      `,
-        { count: "exact" }
-      )
-      .in("student_id", targetStudentIds)
-      .neq("document_type", "Payment_Receipt");
-
-    // Apply Verification Tab Filter
-    if (tab === "Pending") {
-      query = query.eq("is_verified", false);
-    } else if (tab === "Verified") {
-      query = query.eq("is_verified", true);
-    }
-
-    // Apply file name / doc type search if user searched for specific document names
-    if (search && targetStudentIds === approvedStudentIds) {
-      query = query.or(`file_name.ilike.%${search}%,document_type.ilike.%${search}%`);
-    }
-
-    // Server-Side Range Calculation
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    const { data: docsData, count: totalRecordsCount, error: docErr } = await query
-      .order("created_at", { ascending: false })
-      .range(from, to);
+      `)
+      .in("student_id", approvedStudentIds)
+      .order("created_at", { ascending: false });
 
     if (docErr) {
       return NextResponse.json({ success: false, error: docErr.message }, { status: 500 });
     }
 
-    // Filter out any other receipt/payment types defensively
+    // Filter out payment receipts
     const filteredDocs = (docsData || []).filter((d: any) => {
       const typeLower = (d.document_type || "").toLowerCase();
       return !typeLower.includes("receipt") && !typeLower.includes("payment");
     });
 
-    const totalRecords = totalRecordsCount || 0;
-    const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
+    // 5. Group by Student
+    const studentMap: Record<string, any> = {};
 
-    const documents = filteredDocs.map((d: any) => {
-      const studentObj = Array.isArray(d.profiles) ? d.profiles[0] : d.profiles;
-      const appObj = Array.isArray(d.applications) ? d.applications[0] : d.applications;
-      const uniObj = appObj?.universities
-        ? Array.isArray(appObj.universities)
-          ? appObj.universities[0]
-          : appObj.universities
-        : null;
+    filteredDocs.forEach((d: any) => {
+      const sId = d.student_id;
+      if (!sId) return;
 
-      const studentName = studentObj
-        ? `${studentObj.first_name || ""} ${studentObj.last_name || ""}`.trim() || studentObj.email || "Student"
+      const profileObj = Array.isArray(d.profiles) ? d.profiles[0] : d.profiles;
+      const studentName = profileObj
+        ? `${profileObj.first_name || ""} ${profileObj.last_name || ""}`.trim() || profileObj.email || "Student"
         : "Student";
 
-      const appId = d.application_id
-        ? `APP-${d.application_id.slice(0, 6).toUpperCase()}`
-        : "APP-GENERAL";
-
-      const uniName = uniObj?.name || "Partner University";
-      const isVerified = Boolean(d.is_verified);
-      const status = isVerified ? "Verified" : "Pending";
-
-      // Direct preview route URL
-      const signedUrl = `/api/admin/admission/documents/${d.id}/preview`;
-
-      const dateStr = d.created_at
-        ? new Date(d.created_at).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "Recently";
+      if (!studentMap[sId]) {
+        studentMap[sId] = {
+          id: sId,
+          studentId: sId,
+          studentName,
+          studentEmail: profileObj?.email || "N/A",
+          studentPhone: profileObj?.phone || "N/A",
+          avatarUrl: profileObj?.avatar_url || null,
+          documents: [],
+          totalDocs: 0,
+          pendingDocs: 0,
+          verifiedDocs: 0,
+          lastUploaded: d.created_at,
+        };
+      }
 
       // Pretty document label
       const rawDocType = d.document_type || "Document";
@@ -306,53 +165,97 @@ export async function GET(req: NextRequest) {
       else if (rawDocType === "Passport") prettyDocType = "Passport / Travel Document";
       else if (rawDocType === "Photo") prettyDocType = "Passport Size Photo";
 
-      return {
+      const docItem = {
         id: d.id,
         studentId: d.student_id,
         applicationId: d.application_id,
-        appId,
-        student: studentName,
-        studentEmail: studentObj?.email,
-        document: prettyDocType,
+        documentType: prettyDocType,
         rawType: rawDocType,
         fileName: d.file_name || "document.pdf",
         fileSize: d.file_size ? `${Math.round(d.file_size / 1024)} KB` : "Document",
+        fileUrl: d.file_url,
+        previewUrl: `/api/admin/admission/documents/${d.id}/preview`,
+        isVerified: Boolean(d.is_verified),
+        status: d.is_verified ? "Verified" : "Pending",
+        uploadedAt: d.created_at
+          ? new Date(d.created_at).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "Recently",
+      };
+
+      studentMap[sId].documents.push(docItem);
+      studentMap[sId].totalDocs += 1;
+      if (docItem.isVerified) {
+        studentMap[sId].verifiedDocs += 1;
+      } else {
+        studentMap[sId].pendingDocs += 1;
+      }
+
+      if (new Date(d.created_at) > new Date(studentMap[sId].lastUploaded)) {
+        studentMap[sId].lastUploaded = d.created_at;
+      }
+    });
+
+    // Generate signed avatar URLs for students
+    await Promise.all(
+      Object.values(studentMap).map(async (s: any) => {
+        if (s.avatarUrl && !s.avatarUrl.startsWith("http")) {
+          try {
+            let cleanPath = s.avatarUrl.replace(/^student-documents\//, "");
+            const { data } = await adminClient.storage
+              .from("student-documents")
+              .createSignedUrl(cleanPath, 60 * 60 * 24 * 7);
+            if (data?.signedUrl) {
+              s.avatarUrl = data.signedUrl;
+            }
+          } catch (avatarErr) {
+            console.warn("[DocumentsAPI] Avatar signed URL error:", avatarErr);
+          }
+        }
+      })
+    );
+
+    const students = Object.values(studentMap).map((s: any) => {
+      let status = "Pending Review";
+      if (s.totalDocs > 0 && s.pendingDocs === 0) {
+        status = "Fully Verified";
+      } else if (s.verifiedDocs > 0) {
+        status = "Partially Verified";
+      }
+
+      return {
+        ...s,
         status,
-        isVerified,
-        university: uniName,
-        uploaded: dateStr,
-        signedUrl,
+        lastUploadedFormatted: s.lastUploaded
+          ? new Date(s.lastUploaded).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "N/A",
       };
     });
 
+    // Counts
+    const counts = {
+      All: students.length,
+      Pending: students.filter((s) => s.pendingDocs > 0).length,
+      Verified: students.filter((s) => s.totalDocs > 0 && s.pendingDocs === 0).length,
+      totalDocs: filteredDocs.length,
+      pendingDocs: filteredDocs.filter((d: any) => !d.is_verified).length,
+      verifiedDocs: filteredDocs.filter((d: any) => d.is_verified).length,
+    };
+
     return NextResponse.json({
       success: true,
-      data: {
-        items: documents,
-        pagination: {
-          page,
-          pageSize,
-          totalRecords,
-          totalPages,
-          hasNextPage,
-          hasPrevPage,
-        },
-        tabCounts,
-      },
-      // Backward-compatible keys for current frontend
-      documents,
-      counts: tabCounts,
-      pagination: {
-        page,
-        pageSize,
-        totalRecords,
-        totalPages,
-        hasNextPage,
-        hasPrevPage,
-      },
+      students,
+      counts,
     });
   } catch (err: any) {
-    console.error("[DocumentsAPI] Error:", err);
+    console.error("[DocumentsAPI] GET error:", err);
     return NextResponse.json(
       { success: false, error: err.message || "Internal server error" },
       { status: 500 }
