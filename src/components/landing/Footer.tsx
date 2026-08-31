@@ -33,7 +33,7 @@ const socialLinks = [
   {
     name: "Facebook",
     href: "#",
-    image: "/images/facebook-logo.jpg",
+    image: "/images/facebook-logo.png",
   },
   {
     name: "TikTok",
@@ -43,7 +43,7 @@ const socialLinks = [
   {
     name: "Instagram",
     href: "#",
-    image: "/images/instagram-logo.jpg",
+    image: "/images/instagram-logo.png",
   },
 ];
 
