@@ -96,10 +96,12 @@ export async function GET(req: NextRequest) {
       // Finance officer sees notifications addressed to them or payment-related
       query = query.or(`user_id.eq.${authenticatedUserId},and(type.eq.payment,user_id.is.null)`);
     } else if (normalizedRole === "admission_officer") {
-      // Admission officer sees notifications addressed to them or application/document-related
-      query = query.or(
-        `user_id.eq.${authenticatedUserId},and(type.in.(application,document,passport,student),user_id.is.null)`
-      );
+      // Admission officer sees notifications addressed to them or application/document-related (strictly excluding payment/finance)
+      query = query
+        .or(`user_id.eq.${authenticatedUserId},and(type.in.(application,document,passport,student),user_id.is.null)`)
+        .neq("type", "payment")
+        .not("title", "ilike", "%payment%")
+        .not("title", "ilike", "%fee%");
     } else {
       // Super admin sees all notifications or notifications addressed to them
       query = query.or(`user_id.eq.${authenticatedUserId},user_id.is.null,type.in.(payment,application,document,passport,student,system)`);

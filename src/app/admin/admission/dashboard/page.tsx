@@ -168,14 +168,14 @@ export default function AdmissionDashboardPage() {
       href: "/admin/admission/applications?status=university_processing",
     },
     {
-      title: "Visa Processing",
-      value: kpi?.visaProcessing ?? (loading ? "..." : 0),
-      change: kpi?.visaProcessingChange ?? (loading ? "Calculating..." : "No change"),
-      changeUp: kpi?.visaProcessingChangeUp ?? true,
+      title: "Passport Requests",
+      value: kpi?.passport ?? (loading ? "..." : 0),
+      change: kpi?.passportChange ?? (loading ? "Calculating..." : "No change"),
+      changeUp: kpi?.passportChangeUp ?? true,
       icon: Globe,
       iconBg: "bg-cyan-50",
       iconColor: "text-cyan-500",
-      href: "/admin/admission/visa?status=processing",
+      href: "/admin/admission/passport",
     },
   ];
 

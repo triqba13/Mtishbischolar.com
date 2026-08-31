@@ -22,6 +22,198 @@ import {
 import StatusBadge from "@/components/admin/admission/StatusBadge";
 import { createClient } from "@/lib/supabase/client";
 
+// ─── Upload Offer Letter / PAL Modal ─────────────────────────────────────────
+function OfferLetterModal({
+  appDisplayId,
+  studentName,
+  applicationId,
+  onClose,
+  onSuccess,
+}: {
+  appDisplayId: string;
+  studentName: string;
+  applicationId: string;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [docType, setDocType] = useState("Offer_Letter");
+  const [status, setStatus] = useState("Offer Letter Received");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      setError("Please select a file to upload.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", applicationId);
+      formData.append("documentType", docType);
+      formData.append("newStatus", status);
+      if (notes.trim()) formData.append("notes", notes.trim());
+
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/admin/admission/upload-offer-letter", {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to upload offer letter.");
+      }
+
+      alert("Offer letter uploaded successfully! Student has been notified.");
+      await onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Failed to upload offer letter.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base">Upload University Decision Letter</h3>
+              <p className="text-[11px] text-slate-500 font-medium">Application {appDisplayId} • {studentName}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wide">
+              Document Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none font-semibold text-slate-800"
+            >
+              <option value="Offer_Letter">Official Offer Letter / Acceptance</option>
+              <option value="PAL">Provincial Attestation Letter (PAL)</option>
+              <option value="Visa_Support_Letter">Visa Support Letter</option>
+              <option value="Scholarship_Award">Scholarship Award Letter</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wide">
+              Select Document File (PDF / Image) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              required
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full p-2 rounded-xl border border-slate-200 bg-slate-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+            />
+            {file && (
+              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wide">
+              Update Application Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none font-semibold text-slate-800"
+            >
+              <option value="Offer Letter Received">Offer Letter Received</option>
+              <option value="University Approved">University Approved</option>
+              <option value="Visa Processing">Ready for Visa Processing</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1 uppercase tracking-wide">
+              Notes for Student (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Please confirm acceptance and review fee schedule before visa application."
+              className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none resize-none text-slate-800"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !file}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold shadow-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+              <span>Upload &amp; Notify Student</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
+
 // ─── Section Card ─────────────────────────────────────────────────────────────
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -252,6 +444,7 @@ export default function ViewApplicationPage({
 
   const [showDocPending, setShowDocPending] = useState(false);
   const [showComment, setShowComment] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -449,6 +642,16 @@ export default function ViewApplicationPage({
           onClose={() => setShowDocPending(false)}
           onSubmit={handleDocPendingSubmit}
           loading={actionLoading}
+        />
+      )}
+
+      {showOfferModal && (
+        <OfferLetterModal
+          appDisplayId={application.displayId}
+          studentName={student.fullName}
+          applicationId={appId}
+          onClose={() => setShowOfferModal(false)}
+          onSuccess={loadData}
         />
       )}
 
@@ -701,10 +904,11 @@ export default function ViewApplicationPage({
                   </a>
                 ) : (
                   <button
-                    disabled
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-400 cursor-not-allowed opacity-60"
+                    type="button"
+                    onClick={() => setShowOfferModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition-all cursor-pointer shadow-xs"
                   >
-                    <Upload className="w-4 h-4" /> Upload
+                    <Upload className="w-4 h-4" /> Upload Offer Letter / PAL
                   </button>
                 )}
               </div>

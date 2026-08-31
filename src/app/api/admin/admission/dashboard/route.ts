@@ -220,20 +220,44 @@ export async function GET(req: NextRequest) {
 
     const docsPendingChange = calcPercentageChange(docsPendingCurr, docsPendingPrev, "last 7 days");
 
-    // 6. Database-side count for passport assistance requests (0-byte payload head query)
-    const { count: passportAssistanceCount } = await adminClient
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .in("has_passport", ["No", "Assistance Requested", "assistance_requested"]);
+    // 6. Database-side metrics for Verified Passport Assistance Requests
+    const [
+      { count: assistanceCountTotal },
+      { count: assistanceCountCurr },
+      { count: assistanceCountPrev },
+    ] = await Promise.all([
+      adminClient
+        .from("passport_assistance")
+        .select("*", { count: "exact", head: true })
+        .eq("payment_status", "verified"),
 
-    const passportRequestsCount = passportAssistanceCount || 0;
+      adminClient
+        .from("passport_assistance")
+        .select("*", { count: "exact", head: true })
+        .eq("payment_status", "verified")
+        .gte("created_at", tCurrent7d.toISOString())
+        .lte("created_at", now.toISOString()),
 
-    // 7. Fetch unread notifications
+      adminClient
+        .from("passport_assistance")
+        .select("*", { count: "exact", head: true })
+        .eq("payment_status", "verified")
+        .gte("created_at", tPrevious7d.toISOString())
+        .lte("created_at", tCurrent7d.toISOString()),
+    ]);
+
+    const passportAssistance = assistanceCountTotal || 0;
+    const passportChange = calcPercentageChange(assistanceCountCurr || 0, assistanceCountPrev || 0, "last 7 days");
+
+    // 7. Fetch Admission-specific notifications (exclude payment/finance notices)
     const { data: notifs } = await adminClient
       .from("notifications")
       .select("id, title, message, type, is_read, created_at")
+      .neq("type", "payment")
+      .not("title", "ilike", "%payment%")
+      .not("title", "ilike", "%fee%")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(15);
 
     // Helper: is application in date range
     const isAppInRange = (a: any, start: Date, end: Date) => {
@@ -340,7 +364,7 @@ export async function GET(req: NextRequest) {
       },
       {
         label: "Passport Requests",
-        count: passportRequestsCount,
+        count: passportAssistance,
         href: "/admin/admission/passport",
       },
       {
@@ -439,6 +463,9 @@ export async function GET(req: NextRequest) {
         universityProcessingChangeUp: uniProcessingChange.changeUp,
         uniBreakdown: uniBreakdown.length > 0 ? uniBreakdown : [{ label: "No Active Submissions", value: 0 }],
 
+        passport: passportAssistance,
+        passportChange: passportChange.change,
+        passportChangeUp: passportChange.changeUp,
         visaProcessing: visaAppsTotal.length,
         visaProcessingChange: visaChange.change,
         visaProcessingChangeUp: visaChange.changeUp,
