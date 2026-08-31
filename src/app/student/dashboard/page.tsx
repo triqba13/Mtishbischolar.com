@@ -49,6 +49,8 @@ import {
   savePassportAssistance,
   submitPassportPaymentProof,
   deleteStudentPassportReceipt,
+  uploadStudentAvatar,
+  deleteStudentAvatar,
 } from "@/lib/supabase/data";
 import { NationalitySelect } from "@/components/NationalitySelect";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -93,6 +95,7 @@ import {
   Lock,
   Unlock,
   Download,
+  Camera,
   QrCode,
   Trash2,
   Star,
@@ -306,6 +309,76 @@ function DashboardContent() {
   // ── RE-UPLOAD RECEIPT STATE ──
   const [isReuploadingPayment, setIsReuploadingPayment] = useState<boolean>(false);
   const [isRemovingReceipt, setIsRemovingReceipt] = useState<boolean>(false);
+
+  // ── STUDENT PROFILE PHOTO UPLOAD / REMOVE ──
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser?.id) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image size exceeds 10MB limit. Please choose a smaller photo.");
+      return;
+    }
+
+    try {
+      setIsUploadingAvatar(true);
+      const res = await uploadStudentAvatar(currentUser.id, file);
+      if (res.success && res.avatarUrl) {
+        setDashData((prev) => {
+          if (!prev || !prev.profile) return prev;
+          return {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              avatar_url: res.avatarUrl!,
+            },
+          };
+        });
+      } else {
+        alert(res.error || "Failed to update profile photo.");
+      }
+    } catch (err: any) {
+      console.error("Error uploading avatar:", err);
+      alert(err.message || "Failed to update profile photo.");
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarFileInputRef.current) {
+        avatarFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!currentUser?.id) return;
+    if (!confirm("Are you sure you want to remove your profile photo?")) return;
+
+    try {
+      setIsUploadingAvatar(true);
+      const res = await deleteStudentAvatar(currentUser.id);
+      if (res.success) {
+        setDashData((prev) => {
+          if (!prev || !prev.profile) return prev;
+          return {
+            ...prev,
+            profile: {
+              ...prev.profile,
+              avatar_url: undefined,
+            },
+          };
+        });
+      } else {
+        alert(res.error || "Failed to remove profile photo.");
+      }
+    } catch (err: any) {
+      console.error("Error removing avatar:", err);
+      alert(err.message || "Failed to remove profile photo.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Profile Header Dropdown State & Listener
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
@@ -2974,9 +3047,17 @@ function DashboardContent() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-3 p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <div className="w-9 h-9 rounded-full bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs flex items-center justify-center uppercase shrink-0">
-                  {studentInitials}
-                </div>
+                {dashData?.profile?.avatar_url ? (
+                  <img
+                    src={dashData.profile.avatar_url}
+                    alt={studentFullName}
+                    className="w-9 h-9 rounded-full object-cover border border-blue-200 shadow-xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs flex items-center justify-center uppercase shrink-0">
+                    {studentInitials}
+                  </div>
+                )}
                 <div className="hidden sm:flex items-center gap-1.5 text-left">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-100 max-w-[150px] truncate">
                     {studentFullName}
@@ -2998,13 +3079,26 @@ function DashboardContent() {
                   className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-900/10 p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1"
                 >
                   {/* User Info Header */}
-                  <div className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl mb-1 border border-slate-100 dark:border-slate-800">
-                    <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                      {studentFullName}
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                      {currentUser?.email || dashData?.profile?.email || "Student"}
-                    </p>
+                  <div className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl mb-1 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                    {dashData?.profile?.avatar_url ? (
+                      <img
+                        src={dashData.profile.avatar_url}
+                        alt={studentFullName}
+                        className="w-10 h-10 rounded-full object-cover border border-blue-300 shadow-xs shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs flex items-center justify-center uppercase shrink-0">
+                        {studentInitials}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                        {studentFullName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {currentUser?.email || dashData?.profile?.email || "Student"}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Menu Items */}
@@ -3744,21 +3838,46 @@ function DashboardContent() {
                       {/* 1. Profile Header Card */}
                       <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200 shadow-sm shadow-slate-200/60 flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                          {/* Student Avatar / Initials Fallback */}
-                          {dashData?.profile?.avatar_url ? (
-                            <img
-                              src={dashData.profile.avatar_url}
-                              alt="Student Avatar"
-                              className="w-16 h-16 rounded-full object-cover border-2 border-blue-600 shadow-md shrink-0"
+                          {/* Student Avatar / Interactive Photo Upload */}
+                          <div className="relative group shrink-0">
+                            <input
+                              ref={avatarFileInputRef}
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg,image/webp"
+                              className="hidden"
+                              onChange={handleAvatarFileChange}
+                              disabled={isUploadingAvatar}
                             />
-                          ) : (
-                            <div className="w-16 h-16 rounded-full bg-blue-600 text-white font-extrabold text-xl flex items-center justify-center border-2 border-blue-200 shadow-md shrink-0 uppercase">
-                              {[profileData.firstName, profileData.lastName]
-                                .filter(Boolean)
-                                .map((n) => n[0])
-                                .join("") || "ST"}
-                            </div>
-                          )}
+                            {dashData?.profile?.avatar_url ? (
+                              <img
+                                src={dashData.profile.avatar_url}
+                                alt="Student Avatar"
+                                className="w-18 h-18 sm:w-20 sm:h-20 rounded-full object-cover border-3 border-blue-600 shadow-md transition-all group-hover:brightness-95"
+                              />
+                            ) : (
+                              <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-2xl flex items-center justify-center border-3 border-blue-200 shadow-md uppercase">
+                                {[profileData.firstName, profileData.lastName]
+                                  .filter(Boolean)
+                                  .map((n) => n[0])
+                                  .join("") || studentInitials || "ST"}
+                              </div>
+                            )}
+
+                            {/* Camera overlay / change photo button */}
+                            <button
+                              type="button"
+                              onClick={() => avatarFileInputRef.current?.click()}
+                              disabled={isUploadingAvatar}
+                              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all cursor-pointer hover:scale-105 active:scale-95"
+                              title={dashData?.profile?.avatar_url ? "Change Profile Photo" : "Upload Profile Photo"}
+                            >
+                              {isUploadingAvatar ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Camera className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
 
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -3791,13 +3910,42 @@ function DashboardContent() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => setIsEditingProfile(true)}
-                          className="px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs rounded-xl transition-all border border-blue-200 flex items-center gap-2 cursor-pointer shadow-xs self-start md:self-auto"
-                        >
-                          <UserCheck className="w-4 h-4 text-blue-600" />
-                          <span>Edit Profile</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+                          {/* Upload / Change Avatar Button */}
+                          <button
+                            type="button"
+                            onClick={() => avatarFileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs rounded-xl transition-all border border-slate-200 flex items-center gap-2 cursor-pointer shadow-2xs"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-blue-600" />
+                            <span>{dashData?.profile?.avatar_url ? "Change Photo" : "Upload Photo"}</span>
+                          </button>
+
+                          {/* Remove Avatar Button (Only when photo exists) */}
+                          {dashData?.profile?.avatar_url && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveAvatar}
+                              disabled={isUploadingAvatar}
+                              className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs rounded-xl transition-all border border-rose-200 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              title="Remove profile photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span className="hidden sm:inline">Remove</span>
+                            </button>
+                          )}
+
+                          {/* Edit Profile Details */}
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingProfile(true)}
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                            <span>Edit Profile</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Prominent Application Status CTA Banner at the Top of Profile */}

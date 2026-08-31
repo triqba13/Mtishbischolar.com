@@ -1797,6 +1797,17 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
   ]);
 
   const profile: DbProfile | null = profileRes.status === "fulfilled" && !profileRes.value.error ? (profileRes.value.data as DbProfile) : null;
+
+  if (profile?.avatar_url && !profile.avatar_url.startsWith("http")) {
+    try {
+      const avatarRes = await getStudentDocumentSignedUrl(profile.avatar_url, 60 * 60 * 24 * 7);
+      if (avatarRes.success && avatarRes.signedUrl) {
+        profile.avatar_url = avatarRes.signedUrl;
+      }
+    } catch (avErr) {
+      console.warn("Could not generate signed URL for student avatar:", avErr);
+    }
+  }
   const rawApplications: DbApplication[] = appRes.status === "fulfilled" && !appRes.value.error ? ((appRes.value.data as DbApplication[]) || []) : [];
   const payments: DbPayment[] = payRes.status === "fulfilled" && !payRes.value.error ? ((payRes.value.data as DbPayment[]) || []) : [];
   const notifications: DbNotification[] = notifRes.status === "fulfilled" && !notifRes.value.error ? ((notifRes.value.data as DbNotification[]) || []) : [];
@@ -2052,3 +2063,79 @@ export async function deleteStudentProfileAndAccount(): Promise<{ success: boole
 }
 
 
+
+/**
+ * Upload student profile photo/avatar using resilient server API
+ */
+export async function uploadStudentAvatar(
+  userId: string,
+  file: File
+): Promise<{ success: boolean; avatarUrl?: string; storagePath?: string; error?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("studentId", userId);
+
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch("/api/student/upload-avatar", {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || "Failed to upload profile photo." };
+    }
+
+    return {
+      success: true,
+      avatarUrl: data.avatarUrl,
+      storagePath: data.storagePath,
+    };
+  } catch (err: any) {
+    console.error("uploadStudentAvatar error:", err);
+    return { success: false, error: err.message || "Network error while uploading profile photo." };
+  }
+}
+
+/**
+ * Remove student profile photo/avatar using server API
+ */
+export async function deleteStudentAvatar(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`/api/student/upload-avatar?studentId=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      headers,
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || "Failed to remove profile photo." };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("deleteStudentAvatar error:", err);
+    return { success: false, error: err.message || "Network error while removing profile photo." };
+  }
+}
