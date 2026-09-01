@@ -121,6 +121,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${outfit.variable} ${inter.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="antialiased bg-white text-slate-900 font-sans">
