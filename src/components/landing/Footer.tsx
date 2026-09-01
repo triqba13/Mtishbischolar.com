@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Mail, Phone, MapPin, Heart, ExternalLink, Headphones, ArrowRight } from "lucide-react";
+import { Mail, Phone, MapPin, Heart, Headphones, ArrowRight, ShieldCheck, Lock } from "lucide-react";
 import Link from "next/link";
 
 const footerLinks = {
@@ -52,19 +52,19 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#0A1020] text-white relative overflow-hidden">
-      {/* Top gold line */}
+      {/* Top gold accent line */}
       <div className="w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
 
-      {/* Decorations */}
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#D4AF37]/3 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl pointer-events-none" />
-      <div className="absolute top-0 right-0 w-72 h-72 bg-[#D4AF37]/3 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl pointer-events-none" />
+      {/* Ambient background glows */}
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-72 h-72 bg-[#D4AF37]/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl pointer-events-none" />
 
       <div className="container-wide section-padding relative z-10">
         {/* Main Footer Content */}
-        <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-          {/* Brand */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-3 mb-3 inline-flex" aria-label="Mtishbi Scholars Home">
+        <div className="py-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+          {/* Brand & Contact (Col 1-2) */}
+          <div className="lg:col-span-2 space-y-5">
+            <Link href="/" className="flex items-center gap-3 inline-flex" aria-label="Mtishbi Scholars Home">
               <div className="relative h-12 w-16 overflow-hidden rounded-xl">
                 <Image
                   src="/logo.png"
@@ -86,19 +86,19 @@ export default function Footer() {
                 </div>
               </div>
             </Link>
-            {/* Tagline from VVX */}
-            <p className="text-[#D4AF37]/80 text-xs italic mb-4 tracking-wide">
+
+            <p className="text-[#D4AF37]/80 text-xs italic tracking-wide">
               &lsquo;Springboard to your education&rsquo;
             </p>
-            {/* Mission Statement from VVX */}
-            <p className="text-white/50 text-sm leading-relaxed max-w-sm mb-6">
+
+            <p className="text-white/50 text-sm leading-relaxed max-w-sm">
               Our mission is to connect students&apos; skills, performance, and aspirations
               with the greatest available career opportunities and tailor services to those
               interested in studying abroad.
             </p>
 
-            {/* Contact mini */}
-            <div className="space-y-3">
+            {/* Contact details */}
+            <div className="space-y-3 pt-2">
               <div>
                 <a
                   href="mailto:info@mtishbischolar.com"
@@ -125,7 +125,7 @@ export default function Footer() {
                 </p>
               </div>
 
-              <div className="pt-1">
+              <div>
                 <a
                   href="tel:+255764488687"
                   className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors"
@@ -142,7 +142,7 @@ export default function Footer() {
             </div>
 
             {/* Social Media Links */}
-            <div className="mt-5 pt-4 border-t border-white/10">
+            <div className="pt-3">
               <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2.5">
                 Follow Us
               </p>
@@ -190,67 +190,50 @@ export default function Footer() {
                   </li>
                 ))}
               </ul>
+
+              {/* Staff Portal Badge inside Company column */}
+              {group === "Company" && (
+                <div className="mt-8 p-4 rounded-2xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-[#D4AF37]/20 shadow-lg relative overflow-hidden">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-6 h-6 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    </div>
+                    <span className="text-xs font-bold text-white tracking-wide">Staff &amp; Admin</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 mb-3 leading-snug">
+                    Access administrative desks and admission officer tools.
+                  </p>
+                  <Link
+                    href="/admin/login"
+                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#D4AF37] hover:bg-[#E8C84A] text-[#0A1020] text-xs font-extrabold transition-all shadow-md group"
+                  >
+                    <Lock className="w-3 h-3 text-[#0A1020]" />
+                    <span>Admin Login</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Newsletter */}
-        <div className="py-8 border-t border-white/5">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h4
-                className="text-base font-bold text-white mb-1"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                Stay Updated on Scholarships & Opportunities
-              </h4>
-              <p className="text-white/40 text-sm">
-                Get monthly scholarship alerts and study abroad tips directly in your inbox.
-              </p>
-            </div>
-            <form
-              className="flex w-full md:w-auto gap-2"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="email"
-                placeholder="Enter your email"
-                aria-label="Enter your email address"
-                className="flex-1 md:w-64 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 focus:border-[#D4AF37]/50 outline-none text-white text-sm placeholder-white/20 transition-all"
-              />
-              <button
-                type="submit"
-                aria-label="Subscribe to newsletter"
-                className="px-5 py-2.5 bg-[#D4AF37] text-[#0F172A] font-bold rounded-xl text-sm hover:bg-[#E8C84A] transition-all shrink-0"
-              >
-                Subscribe
-              </button>
-            </form>
-          </div>
-        </div>
-
         {/* Bottom bar */}
-        <div className="py-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-white/30 text-xs">
+        <div className="py-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-white/40 text-xs text-center sm:text-left">
             © {year} MtishbiScholars. All rights reserved. Made with{" "}
             <Heart className="w-3 h-3 text-[#D4AF37] inline" /> in Tanzania.
           </p>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy-policy" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+            <Link href="/privacy-policy" className="text-white/40 hover:text-[#D4AF37] transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/terms-of-service" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
+            <span className="text-white/20">•</span>
+            <Link href="/terms-of-service" className="text-white/40 hover:text-[#D4AF37] transition-colors">
               Terms of Service
             </Link>
-            <Link href="/cookie-policy" className="text-white/30 hover:text-[#D4AF37] text-xs transition-colors">
+            <span className="text-white/20">•</span>
+            <Link href="/cookie-policy" className="text-white/40 hover:text-[#D4AF37] transition-colors">
               Cookie Policy
-            </Link>
-            <Link
-              href="/admin/login"
-              className="text-[#D4AF37] text-xs font-semibold hover:text-[#E8C84A] transition-colors inline-flex items-center gap-1"
-            >
-              <span>Admin Login</span>
-              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
           </div>
         </div>
