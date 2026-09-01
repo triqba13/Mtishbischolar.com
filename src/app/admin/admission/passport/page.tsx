@@ -99,6 +99,28 @@ export interface ExistingPassport {
   createdAt: string;
 }
 
+function StudentAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  const [imgError, setImgError] = useState(false);
+  const initials = (name || "ST").slice(0, 2).toUpperCase();
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setImgError(true)}
+        className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-2xs shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-extrabold flex items-center justify-center text-xs border border-blue-200 shrink-0">
+      {initials}
+    </div>
+  );
+}
+
 export default function PassportPage() {
   const { loading: authLoading } = useAdminAuth();
   const [activeMainTab, setActiveMainTab] = useState<"assistance" | "existing">("assistance");
@@ -148,9 +170,19 @@ export default function PassportPage() {
         headers,
         credentials: "include",
       });
+
+      if (!res.ok) {
+        let errorMsg = `Server response error (${res.status})`;
+        try {
+          const errJson = await res.json();
+          errorMsg = errJson.error || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
       const json = await res.json();
 
-      if (!res.ok || !json.success) {
+      if (!json.success) {
         throw new Error(json.error || "Failed to load passport requests.");
       }
 
@@ -385,39 +417,41 @@ export default function PassportPage() {
       )}
 
       {/* Main Section Switcher Tabs */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 max-w-fit">
+      <div className="grid grid-cols-2 w-full sm:w-auto sm:inline-flex items-center gap-1.5 sm:gap-2 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80">
         <button
+          type="button"
           onClick={() => {
             setActiveMainTab("assistance");
             setSearch("");
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             activeMainTab === "assistance"
-              ? "bg-white text-blue-600 shadow-sm border border-slate-200/60"
+              ? "bg-white text-blue-600 shadow-xs border border-slate-200/60"
               : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>Passport Assistance Requests</span>
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+          <FileText className="w-4 h-4 shrink-0" />
+          <span className="truncate">Assistance <span className="hidden sm:inline">Requests</span></span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
             {counts.assistanceTotal || assistanceRequests.length}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setActiveMainTab("existing");
             setSearch("");
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             activeMainTab === "existing"
-              ? "bg-white text-blue-600 shadow-sm border border-slate-200/60"
+              ? "bg-white text-blue-600 shadow-xs border border-slate-200/60"
               : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          <ShieldCheck className="w-4 h-4" />
-          <span>Existing Passports (On File)</span>
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <ShieldCheck className="w-4 h-4 shrink-0" />
+          <span className="truncate">Existing <span className="hidden sm:inline">Passports</span></span>
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
             {counts.existingTotal || existingPassports.length}
           </span>
         </button>
@@ -496,7 +530,7 @@ export default function PassportPage() {
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">
                         <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        Loading verified assistance requests...
+                        Loading assistance requests...
                       </td>
                     </tr>
                   ) : filteredAssistance.length === 0 ? (
@@ -510,8 +544,13 @@ export default function PassportPage() {
                     filteredAssistance.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{row.studentName}</div>
-                          <div className="text-[11px] text-slate-500">{row.nationality}</div>
+                          <div className="flex items-center gap-3">
+                            <StudentAvatar name={row.studentName} />
+                            <div>
+                              <div className="font-bold text-slate-900">{row.studentName}</div>
+                              <div className="text-[11px] text-slate-500">{row.nationality}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="text-slate-800 font-medium">{row.studentEmail}</div>
@@ -555,10 +594,10 @@ export default function PassportPage() {
                               setNewPassportNumber("");
                               setOfficerNote(row.notes || "");
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
+                            className="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>View Full Form</span>
+                            <span>View</span>
                           </button>
                         </td>
                       </tr>
@@ -577,10 +616,9 @@ export default function PassportPage() {
       {activeMainTab === "existing" && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-xs font-bold text-slate-600">
-              Students who reported holding a valid passport on their profile
-            </div>
-
+            <p className="text-xs text-slate-500 font-medium">
+              Students who registered with a pre-existing passport on file.
+            </p>
             <div className="relative w-full sm:w-72">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -611,7 +649,7 @@ export default function PassportPage() {
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">
                         <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        Loading existing passport records...
+                        Loading existing passports...
                       </td>
                     </tr>
                   ) : filteredExisting.length === 0 ? (
@@ -625,8 +663,13 @@ export default function PassportPage() {
                     filteredExisting.map((p) => (
                       <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{p.studentName}</div>
-                          <div className="text-[11px] text-slate-500">{p.studentEmail} • {p.studentPhone}</div>
+                          <div className="flex items-center gap-3">
+                            <StudentAvatar name={p.studentName} />
+                            <div>
+                              <div className="font-bold text-slate-900">{p.studentName}</div>
+                              <div className="text-[11px] text-slate-500">{p.studentEmail} • {p.studentPhone}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
@@ -652,10 +695,10 @@ export default function PassportPage() {
                             <button
                               type="button"
                               onClick={() => handlePreviewDoc(p.documentUrl!, `${p.studentName} - Passport Copy`)}
-                              className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold text-xs transition-colors border border-blue-200 flex items-center gap-1.5 ml-auto cursor-pointer shadow-2xs"
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              <span>View Passport Copy</span>
+                              <span>View Copy</span>
                             </button>
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">No File Copy</span>
@@ -739,152 +782,219 @@ export default function PassportPage() {
               )}
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-                {/* 1. Personal & Birth Details */}
-                <div className="bg-slate-50 rounded-2xl p-4.5 border border-slate-200/80 space-y-3">
-                  <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <span>1. Applicant Personal &amp; Birth Details</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+                {/* ──────────────────────────────────────────────────────────── */}
+                {/* SECTION 1: APPLICANT INFORMATION (Q1 - Q14)                  */}
+                {/* ──────────────────────────────────────────────────────────── */}
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+                    <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                      <span>Applicant Information / Taarifa za Mwombaji</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                      Questions 1 to 14
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">First Name</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.firstName || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">1. First Name / Jina la kwanza</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.firstName || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Middle Name</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.middleName || "-"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">2. Middle Name / Jina la kati</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.middleName || "-"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Last Name</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.lastName || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">3. Last Name / Jina la ukoo</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.lastName || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.dateOfBirth || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">4. Gender / Jinsia</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.sex || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Gender / Sex</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.sex || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">5. Date of Birth / Tarehe ya kuzaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.dateOfBirth || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Marital Status</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.maritalStatus || "Single"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">6. Country of Birth / Nchi ya kuzaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.birthCountry || "Tanzania"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Country</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.birthCountry || "Tanzania"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">7. Region of Birth / Mkoa uliozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.birthRegion || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Region</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.birthRegion || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">8. District of Birth / Wilaya uliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.birthDistrict || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Birth District</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.birthDistrict || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">9. Ward of Birth / Kata uliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.birthWard || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Ward</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.birthWard || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">10. Village / Street / Kijiji au Mtaa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.birthVillageStreet || "N/A"}</p>
                     </div>
-                    <div className="col-span-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Village / Street</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.birthVillageStreet || "N/A"}</p>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">11. Marital Status / Hali ya ndoa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.maritalStatus || "Single"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">12. Phone / Namba ya simu</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.studentPhone || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">13. Email / Barua pepe</span>
+                      <p className="font-bold text-slate-900 mt-0.5 break-all">{selectedRequest.studentEmail || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">14. Postal Address / Sanduku la Posta</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.postalAddress || "N/A"}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. Residence & Contact */}
-                <div className="bg-slate-50 rounded-2xl p-4.5 border border-slate-200/80 space-y-3">
-                  <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <span>2. Residence &amp; Contact Details</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                {/* ──────────────────────────────────────────────────────────── */}
+                {/* SECTION 2: CURRENT RESIDENCE (Q15 - Q20)                     */}
+                {/* ──────────────────────────────────────────────────────────── */}
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+                    <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                      <span>Current Residence / Makazi ya Sasa</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                      Questions 15 to 20
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Email</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.studentEmail}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">15. Country of Residence / Nchi unayoishi</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceCountry || "Tanzania"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Phone</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.studentPhone}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">16. Current Region / Mkoa unaoishi</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceRegion || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Postal Address</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.postalAddress || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">17. Current District / Wilaya unayoishi</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceDistrict || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Residence Region</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.residenceRegion || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">18. Current Ward / Kata unayoishi</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceWard || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Residence District</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.residenceDistrict || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">19. Street / Village / Kijiji au Mtaa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceStreetVillage || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Ward / Shehia</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.residenceWard || "N/A"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Street / Village</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.residenceStreetVillage || "N/A"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">House Number</span>
-                      <p className="font-bold text-slate-800">{selectedRequest.residenceHouseNumber || "N/A"}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">20. House Number / Namba ya nyumba</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.residenceHouseNumber || "N/A"}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Parents Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Father */}
-                  <div className="bg-slate-50 rounded-2xl p-4.5 border border-slate-200/80 space-y-2.5">
-                    <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
-                      Father&apos;s Details
+                {/* ──────────────────────────────────────────────────────────── */}
+                {/* SECTION 3: FATHER'S INFORMATION (Q21 - Q28)                  */}
+                {/* ──────────────────────────────────────────────────────────── */}
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+                    <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                      <span>Father&apos;s Information / Taarifa za Baba</span>
                     </h4>
-                    <div className="grid grid-cols-2 gap-2 text-slate-700">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Full Name</span>
-                        <p className="font-bold">{selectedRequest.fatherFullName || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Occupation</span>
-                        <p className="font-bold">{selectedRequest.fatherOccupation || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</span>
-                        <p className="font-bold">{selectedRequest.fatherDob || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Region</span>
-                        <p className="font-bold">{selectedRequest.fatherBirthRegion || "N/A"}</p>
-                      </div>
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                      Questions 21 to 28
+                    </span>
                   </div>
 
-                  {/* Mother */}
-                  <div className="bg-slate-50 rounded-2xl p-4.5 border border-slate-200/80 space-y-2.5">
-                    <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">
-                      Mother&apos;s Details
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">21. Full Name / Jina kamili</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherFullName || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">22. Occupation / Kazi ya baba</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherOccupation || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">23. Date of Birth / Tarehe ya kuzaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherDob || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">24. Country of Birth / Nchi aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherBirthCountry || "Tanzania"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">25. Region of Birth / Mkoa aliozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherBirthRegion || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">26. District of Birth / Wilaya aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherBirthDistrict || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">27. Ward / Shehia / Kata aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherBirthWard || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">28. Street / Village / Mtaa aliozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.fatherBirthVillage || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ──────────────────────────────────────────────────────────── */}
+                {/* SECTION 4: MOTHER'S INFORMATION (Q29 - Q36)                  */}
+                {/* ──────────────────────────────────────────────────────────── */}
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+                    <h4 className="font-extrabold text-xs text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">4</span>
+                      <span>Mother&apos;s Information / Taarifa za Mama</span>
                     </h4>
-                    <div className="grid grid-cols-2 gap-2 text-slate-700">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Full Name</span>
-                        <p className="font-bold">{selectedRequest.motherFullName || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Occupation</span>
-                        <p className="font-bold">{selectedRequest.motherOccupation || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</span>
-                        <p className="font-bold">{selectedRequest.motherDob || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Birth Region</span>
-                        <p className="font-bold">{selectedRequest.motherBirthRegion || "N/A"}</p>
-                      </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                      Questions 29 to 36
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">29. Full Name / Jina kamili</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherFullName || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">30. Occupation / Kazi ya mama</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherOccupation || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">31. Date of Birth / Tarehe ya kuzaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherDob || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">32. Country of Birth / Nchi aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherBirthCountry || "Tanzania"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">33. Region of Birth / Mkoa aliozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherBirthRegion || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">34. District of Birth / Wilaya aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherBirthDistrict || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">35. Ward / Shehia / Kata aliyozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherBirthWard || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">36. Street / Village / Mtaa aliozaliwa</span>
+                      <p className="font-bold text-slate-900 mt-0.5">{selectedRequest.motherBirthVillage || "N/A"}</p>
                     </div>
                   </div>
                 </div>

@@ -986,9 +986,15 @@ function DashboardContent() {
   const [passportPayErrorMsg, setPassportPayErrorMsg] = useState<string>("");
   const [isRemovingPassportReceipt, setIsRemovingPassportReceipt] = useState<boolean>(false);
   const [isReuploadingPassportPayment, setIsReuploadingPassportPayment] = useState<boolean>(false);
+  const passportFormInitializedRef = useRef<boolean>(false);
 
-  // Sync / Prefill Passport Data
+  // Sync / Prefill Passport Data (ONLY on initial load or when not actively in edit mode)
   useEffect(() => {
+    // If user is currently editing the form, do NOT let background polling overwrite what they are typing!
+    if (passportFormInitializedRef.current && isEditingPassport) {
+      return;
+    }
+
     if (dashData?.passportAssistance) {
       const pa = dashData.passportAssistance;
       setPassportData({
@@ -1035,33 +1041,39 @@ function DashboardContent() {
       const hasCompletedPassport = Boolean(
         pa.first_name && (pa.last_name || pa.father_full_name || pa.residence_region || pa.assistance_status === "form_completed" || pa.assistance_status === "submitted" || pa.assistance_status === "completed")
       );
-      setIsEditingPassport(!hasCompletedPassport);
+      if (!passportFormInitializedRef.current) {
+        setIsEditingPassport(!hasCompletedPassport);
+        passportFormInitializedRef.current = true;
+      }
     } else if (dashData?.profile || currentUser) {
-      const prof = dashData?.profile;
-      const fatherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Father");
-      const motherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Mother");
+      if (!passportFormInitializedRef.current) {
+        const prof = dashData?.profile;
+        const fatherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Father");
+        const motherFromContact = dashData?.contacts?.find((c) => c.relationship_type === "Mother");
 
-      setPassportData((prev) => ({
-        ...prev,
-        firstName: prof?.first_name || currentUser?.user_metadata?.first_name || prev.firstName,
-        middleName: prof?.middle_name || prev.middleName,
-        lastName: prof?.last_name || currentUser?.user_metadata?.last_name || prev.lastName,
-        dob: prof?.dob || prev.dob,
-        birthCountry: prof?.nationality || prev.birthCountry,
-        sex: prof?.gender || prev.sex,
-        email: prof?.email || currentUser?.email || prev.email,
-        phone: prof?.phone || prev.phone,
-        residenceCountry: prof?.nationality || prev.residenceCountry,
-        fatherFullName: fatherFromContact
-          ? `${fatherFromContact.first_name} ${fatherFromContact.middle_name || ""} ${fatherFromContact.last_name}`.trim()
-          : prev.fatherFullName,
-        motherFullName: motherFromContact
-          ? `${motherFromContact.first_name} ${motherFromContact.middle_name || ""} ${motherFromContact.last_name}`.trim()
-          : prev.motherFullName,
-      }));
-      setIsEditingPassport(true);
+        setPassportData((prev) => ({
+          ...prev,
+          firstName: prof?.first_name || currentUser?.user_metadata?.first_name || prev.firstName,
+          middleName: prof?.middle_name || prev.middleName,
+          lastName: prof?.last_name || currentUser?.user_metadata?.last_name || prev.lastName,
+          dob: prof?.dob || prev.dob,
+          birthCountry: prof?.nationality || prev.birthCountry,
+          sex: prof?.gender || prev.sex,
+          email: prof?.email || currentUser?.email || prev.email,
+          phone: prof?.phone || prev.phone,
+          residenceCountry: prof?.nationality || prev.residenceCountry,
+          fatherFullName: fatherFromContact
+            ? `${fatherFromContact.first_name} ${fatherFromContact.middle_name || ""} ${fatherFromContact.last_name}`.trim()
+            : prev.fatherFullName,
+          motherFullName: motherFromContact
+            ? `${motherFromContact.first_name} ${motherFromContact.middle_name || ""} ${motherFromContact.last_name}`.trim()
+            : prev.motherFullName,
+        }));
+        setIsEditingPassport(true);
+        passportFormInitializedRef.current = true;
+      }
     }
-  }, [dashData?.passportAssistance, dashData?.profile, dashData?.contacts, currentUser]);
+  }, [dashData?.passportAssistance, dashData?.profile, dashData?.contacts, currentUser, isEditingPassport]);
 
   const PASSPORT_REQUIRED_DOC_LIST = [
     {

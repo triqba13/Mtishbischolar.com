@@ -80,9 +80,19 @@ export default function AdmissionDashboardPage() {
         headers,
         credentials: "include",
       });
+
+      if (!res.ok) {
+        let errorMsg = `Server response error (${res.status})`;
+        try {
+          const errJson = await res.json();
+          errorMsg = errJson.error || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
       const json = await res.json();
 
-      if (!res.ok || !json.success) {
+      if (!json.success) {
         throw new Error(json.error || "Failed to load admission dashboard data.");
       }
 
