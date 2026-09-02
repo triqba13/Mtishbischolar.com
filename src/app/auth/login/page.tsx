@@ -180,7 +180,7 @@ function LoginContent() {
         console.error("Failed to update remembered email in localStorage:", e);
       }
 
-      setSuccessMessage("Login successful! Redirecting to student portal...");
+      setSuccessMessage("Login successful!");
       setTimeout(() => {
         window.location.href = "/student/dashboard?welcome=true";
       }, 800);
@@ -382,10 +382,10 @@ function LoginContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-[#D4AF37] via-[#E8C84A] to-[#B8960C] text-[#0F172A] font-extrabold py-3 rounded-xl hover:shadow-xl hover:shadow-[#D4AF37]/25 transition-all duration-300 hover:scale-[1.01] text-xs flex items-center justify-center gap-1.5 mt-2 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-[#D4AF37] via-[#E8C84A] to-[#B8960C] text-[#0F172A] font-extrabold py-3 rounded-xl hover:shadow-xl hover:shadow-[#D4AF37]/25 transition-all duration-300 hover:scale-[1.01] text-xs flex items-center justify-center gap-1.5 mt-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
-              <span className="animate-pulse">Authenticating...</span>
+              <div className="w-4 h-4 border-2 border-[#0F172A]/30 border-t-[#0F172A] rounded-full animate-spin" />
             ) : (
               <>
                 <span>Sign In to Student Portal</span>

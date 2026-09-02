@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
@@ -98,7 +101,7 @@ export async function GET(
       );
     }
 
-    // 3. Fetch Application by ID
+    // 3. Fetch Application by ID with full Profile, University, and Course
     const { data: application, error: appErr } = await adminClient
       .from("applications")
       .select(
@@ -117,35 +120,7 @@ export async function GET(
         created_at,
         updated_at,
         profiles:student_id (
-          id,
-          first_name,
-          last_name,
-          middle_name,
-          email,
-          phone,
-          dob,
-          gender,
-          nationality,
-          highest_education,
-          o_level_school,
-          o_level_year,
-          a_level_school,
-          a_level_year,
-          a_level_combination,
-          has_passport,
-          passport_number,
-          passport_issue_date,
-          passport_expiry_date,
-          applied_abroad_before,
-          how_did_you_hear,
-          need_financial_guidance,
-          is_profile_completed,
-          bachelor_institution,
-          bachelor_course,
-          bachelor_year,
-          master_institution,
-          master_course,
-          master_year
+          *
         ),
         universities:university_id (
           id,
@@ -174,46 +149,74 @@ export async function GET(
       );
     }
 
-    // 4. Payment Gating Enforcement: Check if student has Approved payment
-    const { data: approvedPayment } = await adminClient
+    // 4. File-Opening Fee Verification: Fetch approved file-opening payment (TSh 50,000)
+    const { data: approvedFilePayments } = await adminClient
       .from("payments")
-      .select("id, status, amount, currency, created_at, verified_at")
+      .select("id, status, amount, currency, created_at, verified_at, payment_type, transaction_ref")
       .eq("student_id", application.student_id)
+      .eq("payment_type", "file_opening_fee")
       .eq("status", "Approved")
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    let approvedPayment = approvedFilePayments?.[0] || null;
 
     if (!approvedPayment) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Application Locked: Student file-opening payment has not yet been approved by Finance.",
-          paymentLocked: true,
-        },
-        { status: 403 }
-      );
+      const { data: anyApprovedPayment } = await adminClient
+        .from("payments")
+        .select("id, status, amount, currency, created_at, verified_at, payment_type, transaction_ref")
+        .eq("student_id", application.student_id)
+        .eq("status", "Approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      approvedPayment = anyApprovedPayment?.[0] || null;
     }
 
-    // 5. Fetch all documents for this student / application
-    const { data: documents } = await adminClient
-      .from("documents")
-      .select("id, student_id, application_id, document_type, file_url, file_name, file_size, is_verified, verified_by, created_at")
-      .eq("student_id", application.student_id)
-      .order("created_at", { ascending: true });
+    // 5. Fetch all documents, contacts, passport assistance, and all applications for this student
+    const [docsRes, contactsRes, passportRes, allAppsRes] = await Promise.all([
+      adminClient
+        .from("documents")
+        .select("id, student_id, application_id, document_type, file_url, file_name, file_size, is_verified, verified_by, created_at")
+        .eq("student_id", application.student_id)
+        .order("created_at", { ascending: true }),
+      adminClient
+        .from("student_contacts")
+        .select("*")
+        .eq("student_id", application.student_id)
+        .order("is_primary", { ascending: false }),
+      adminClient
+        .from("passport_assistance")
+        .select("*")
+        .eq("student_id", application.student_id)
+        .maybeSingle(),
+      adminClient
+        .from("applications")
+        .select("id, status, target_country, preferred_course, target_intake, created_at, universities(name, country), courses(title, level)")
+        .eq("student_id", application.student_id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const documents = docsRes.data || [];
+    const contacts = contactsRes.data || [];
+    const passportAssistance = passportRes.data || null;
+    const allStudentApps = allAppsRes.data || [];
 
     // Generate signed URLs for private storage files
     const docsWithSignedUrls = await Promise.all(
-      (documents || []).map(async (doc) => {
+      documents.map(async (doc) => {
         let signedUrl = doc.file_url;
         if (doc.file_url && !doc.file_url.startsWith("http")) {
+          const cleanPath = doc.file_url.replace(/^student-documents\//, "").replace(/^\/+/, "");
           const { data: sData } = await adminClient.storage
             .from("student-documents")
-            .createSignedUrl(doc.file_url, 60 * 30);
+            .createSignedUrl(cleanPath, 60 * 60);
           if (sData?.signedUrl) {
             signedUrl = sData.signedUrl;
           }
         }
         return {
           ...doc,
+          previewUrl: `/api/admin/admission/documents/${doc.id}/preview`,
           signedUrl,
         };
       })
@@ -251,6 +254,8 @@ export async function GET(
       previousEducation = `Highest Qualification: ${student.highest_education}.`;
     }
 
+    const primaryContact = contacts.find((c: any) => c.is_primary) || contacts[0] || null;
+
     return NextResponse.json({
       success: true,
       application: {
@@ -277,6 +282,9 @@ export async function GET(
       },
       student: {
         fullName,
+        firstName: student.first_name || "",
+        middleName: student.middle_name || "",
+        lastName: student.last_name || "",
         email: student.email,
         phone: student.phone || "Not provided",
         dob: student.dob
@@ -286,15 +294,39 @@ export async function GET(
               year: "numeric",
             })
           : "Not provided",
+        gender: student.gender || "Not specified",
         nationality: student.nationality || "Tanzanian",
+        region: student.region || student.location || "Not specified",
+        district: student.district || "",
+        nidaNumber: student.nida_number || student.id_number || "Not on file",
+        appliedAbroadBefore: student.applied_abroad_before || "No",
+        howDidYouHear: student.how_did_you_hear || "Not specified",
+        needFinancialGuidance: student.need_financial_guidance === true ? "Yes" : "No",
+        sponsorType: student.sponsor_type || "Self / Parent Sponsored",
       },
       academic: {
         qualification: student.highest_education || "A-Level",
+        oLevelSchool: student.o_level_school || "Secondary School",
+        oLevelYear: student.o_level_year || "",
+        oLevelIndexNumber: student.o_level_index_number || "",
+        aLevelSchool: student.a_level_school || "",
+        aLevelYear: student.a_level_year || "",
+        aLevelCombination: student.a_level_combination || "",
+        aLevelIndexNumber: student.a_level_index_number || "",
+        bachelorInstitution: student.bachelor_institution || "",
+        bachelorCourse: student.bachelor_course || "",
+        bachelorYear: student.bachelor_year || "",
+        bachelorGpa: student.bachelor_gpa || "",
+        masterInstitution: student.master_institution || "",
+        masterCourse: student.master_course || "",
+        masterYear: student.master_year || "",
         school: student.a_level_school || student.o_level_school || student.bachelor_institution || "Secondary School",
         completionYear: student.a_level_year || student.o_level_year || student.bachelor_year || "2024",
         grades: student.a_level_combination ? `Combination: ${student.a_level_combination}` : "Good Academic Standing",
         westernEquivalent: student.highest_education || "Ordinary level / A-level",
       },
+      contacts: contacts || [],
+      primaryContact,
       previousEducation,
       passport: {
         hasPassport: student.has_passport === "Yes" || student.has_passport === "true" || !!student.passport_number,
@@ -314,7 +346,9 @@ export async function GET(
               year: "numeric",
             })
           : null,
+        passportAssistance,
       },
+      allStudentApplications: allStudentApps,
       documents: docsWithSignedUrls,
       auditLogs: auditLogs || [],
       payment: approvedPayment,

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function calcPercentageChange(curr: number, prev: number, periodLabel = "last 7 days"): { change: string; changeUp: boolean } {
   if (prev === 0 && curr === 0) {
     return { change: "No change", changeUp: true };

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
@@ -117,12 +120,17 @@ export async function POST(
 
     const officerName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Admission Officer";
 
-    // ── ACTION 1: APPROVE APPLICATION (Ready for manual university processing) ──
+    // ── ACTION 1: APPROVE APPLICATION ──
     if (action === "approve_application") {
+      const nextStatus =
+        application.status === "Profile Completed" || application.status === "Rejected" || !application.status
+          ? "Under Review"
+          : application.status;
+
       const { error: updateErr } = await adminClient
         .from("applications")
         .update({
-          status: "Under Review",
+          status: nextStatus,
           admission_officer_id: authenticatedUserId,
           updated_at: new Date().toISOString(),
         })
@@ -141,7 +149,7 @@ export async function POST(
         details: {
           officer_name: officerName,
           previous_status: application.status,
-          new_status: "Under Review",
+          new_status: nextStatus,
           student_id: application.student_id,
         },
       });
@@ -150,22 +158,84 @@ export async function POST(
       await adminClient.from("notifications").insert({
         user_id: application.student_id,
         title: "Application Reviewed & Approved",
-        message: `Your application for ${application.preferred_course || "programme"} has been verified by the Admission Officer and is ready for university submission.`,
+        message: `Your application for ${application.preferred_course || "programme"} has been reviewed and approved by Admission Officer ${officerName}.`,
         type: "application",
         is_read: false,
       });
 
       return NextResponse.json({
         success: true,
-        message: "Application approved successfully.",
-        newStatus: "Under Review",
+        message: "Application reviewed and approved successfully.",
+        newStatus: nextStatus,
+      });
+    }
+
+    // ── ACTION 1B: REJECT APPLICATION ──
+    if (action === "reject_application") {
+      const { reason, comment } = body;
+      const rejectReason = reason || "Qualifications not met";
+      const rejectNote = comment ? `Reason: ${rejectReason}. Note: ${comment}` : `Reason: ${rejectReason}`;
+
+      const existingNotes = application.notes ? `${application.notes}\n` : "";
+      const dateHeader = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      const newNote = `[${dateHeader}] [Application Rejected by ${officerName}] ${rejectNote}`;
+
+      const { error: updateErr } = await adminClient
+        .from("applications")
+        .update({
+          status: "Rejected",
+          notes: `${existingNotes}${newNote}`.trim(),
+          admission_officer_id: authenticatedUserId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", applicationId);
+
+      if (updateErr) {
+        return NextResponse.json({ success: false, error: updateErr.message }, { status: 500 });
+      }
+
+      // Record audit log
+      await adminClient.from("audit_logs").insert({
+        user_id: authenticatedUserId,
+        action: "application_rejected_by_officer",
+        target_type: "application",
+        target_id: applicationId,
+        details: {
+          officer_name: officerName,
+          previous_status: application.status,
+          new_status: "Rejected",
+          reason: rejectReason,
+          comment: comment || "",
+          student_id: application.student_id,
+        },
+      });
+
+      // Notify student
+      await adminClient.from("notifications").insert({
+        user_id: application.student_id,
+        title: "Application Status Update: Application Rejected",
+        message: `Your application for ${application.preferred_course || "programme"} was reviewed: ${rejectNote}. Please contact your advisor for assistance.`,
+        type: "application",
+        is_read: false,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Application has been marked as Rejected.",
+        newStatus: "Rejected",
       });
     }
 
     // ── ACTION 2: UPDATE UNIVERSITY STATUS ──
     if (action === "update_university_status") {
-      const { status } = body;
-      const validStatuses = [
+      let { status } = body;
+      
+      // Map any non-enum or legacy values to valid Postgres enum values
+      if (status === "Offer Letter Received" || status === "Offer Letter") {
+        status = "Submitted to University";
+      }
+
+      const validPostgresStatuses = [
         "Profile Completed",
         "Under Review",
         "Submitted to University",
@@ -173,11 +243,11 @@ export async function POST(
         "Rejected",
       ];
 
-      if (!status || !validStatuses.includes(status)) {
+      if (!status || !validPostgresStatuses.includes(status)) {
         return NextResponse.json(
           {
             success: false,
-            error: `Invalid status "${status}". Allowed database statuses: ${validStatuses.join(", ")}.`,
+            error: `Invalid status "${status}". Allowed database statuses: ${validPostgresStatuses.join(", ")}.`,
           },
           { status: 400 }
         );
@@ -220,7 +290,7 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
-        message: `Status updated to ${status}.`,
+        message: `Application stage successfully updated to "${status}".`,
         newStatus: status,
       });
     }

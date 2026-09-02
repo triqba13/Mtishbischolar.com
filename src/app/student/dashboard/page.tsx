@@ -2612,14 +2612,32 @@ function DashboardContent() {
   const officialApps = dashData?.applications || [];
   const primaryApp = officialApps[0] || null;
 
+  const hasPassportOnFile = Boolean(
+    dashData?.profile?.has_passport === "Yes" ||
+    dashData?.profile?.has_passport === "true" ||
+    dashData?.profile?.passport_number ||
+    dashData?.passportAssistance?.status === "completed" ||
+    (dashData?.passportAssistance?.status as any) === "issued"
+  );
+
+  const isProfileDone = progressPct >= 15 || Boolean(dashData?.profile?.is_profile_completed);
+  const isActivatedDone = progressPct >= 25 || hasApprovedPayment;
+  const isAdmissionReviewDone = progressPct >= 40 || (primaryApp && ["Under Review", "Submitted to University", "Offer Letter Received", "Offer Letter", "Visa Approved"].includes(primaryApp.status));
+  const isAppSubmittedDone = progressPct >= 55 || (primaryApp && ["Submitted to University", "Offer Letter Received", "Offer Letter", "Visa Approved"].includes(primaryApp.status));
+  const isOfferDone = progressPct >= 70 || Boolean(primaryApp?.offer_letter_url || (primaryApp && ["Offer Letter Received", "Offer Letter", "Visa Approved"].includes(primaryApp.status)));
+  const isPassportDone = isOfferDone && (hasPassportOnFile || progressPct >= 80);
+  const isVisaDone = isPassportDone && (progressPct >= 90 || (primaryApp && ["Visa Approved", "Ready to Fly"].includes(primaryApp.status)));
+  const isReadyToFlyDone = isVisaDone;
+
   const journeySteps = [
-    { label: "Profile Completed", status: progressPct >= 25 ? (progressPct === 25 ? "current" : "completed") : "upcoming" },
-    { label: "Application Activated", status: progressPct >= 35 ? (progressPct === 35 ? "current" : "completed") : "upcoming" },
-    { label: "Application Submitted", status: progressPct >= 50 ? (progressPct === 50 ? "current" : "completed") : "upcoming" },
-    { label: "Admission Review", status: progressPct >= 65 ? (progressPct === 65 ? "current" : "completed") : "upcoming" },
-    { label: "Offer Letter", status: progressPct >= 80 ? (progressPct === 80 ? "current" : "completed") : "upcoming" },
-    { label: "Visa Processing", status: progressPct >= 90 ? (progressPct === 90 ? "current" : "completed") : "upcoming" },
-    { label: "Ready to Fly", status: progressPct >= 100 ? "completed" : "upcoming" },
+    { label: "Profile Completed", status: isProfileDone ? (progressPct === 15 ? "current" : "completed") : "upcoming" },
+    { label: "Application Activated", status: isActivatedDone ? (progressPct === 25 ? "current" : "completed") : "upcoming" },
+    { label: "Admission Review", status: isAdmissionReviewDone ? (progressPct === 40 ? "current" : "completed") : "upcoming" },
+    { label: "Application Submitted", status: isAppSubmittedDone ? (progressPct === 55 ? "current" : "completed") : "upcoming" },
+    { label: "Offer Letter", status: isOfferDone ? (progressPct === 70 ? "current" : "completed") : "upcoming" },
+    { label: "Passport", status: isPassportDone ? (progressPct === 80 ? "current" : "completed") : (isOfferDone ? "current" : "upcoming") },
+    { label: "Visa Processing", status: isVisaDone ? (progressPct === 90 ? "current" : "completed") : (isPassportDone ? "current" : "upcoming") },
+    { label: "Ready to Fly", status: isReadyToFlyDone ? "completed" : "upcoming" },
   ];
 
   const handleToggleUniversity = (name: string) => {

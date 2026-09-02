@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const TAB_STATUS_GROUPS: Record<string, string[]> = {
   "New": ["Profile Completed", "New", "Submitted"],
   "Ready for Review": ["Ready for Review", "Under Review"],

@@ -94,10 +94,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: `Upload failed: ${uploadError.message}` }, { status: 500 });
     }
 
+    const validStatus =
+      newStatus === "Offer Letter Received" || newStatus === "Offer Letter" || !newStatus
+        ? "Submitted to University"
+        : newStatus;
+
     // 3. Update application record
     const updatePayload: any = {
       offer_letter_url: storagePath,
-      status: newStatus,
+      status: validStatus,
       updated_at: new Date().toISOString(),
     };
     if (notes) updatePayload.notes = notes;

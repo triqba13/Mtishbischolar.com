@@ -1462,7 +1462,7 @@ export function calculateStudentProgress(
 } {
   const isProfileDone = profile?.is_profile_completed === true;
 
-  // 1. Profile Incomplete
+  // 1. Profile Incomplete (0%)
   if (!isProfileDone) {
     return {
       progressPercentage: 0,
@@ -1507,10 +1507,10 @@ export function calculateStudentProgress(
   );
   const primaryApp = sortedApps[0] || null;
 
-  // 2. Profile Complete, No Payment Submitted
+  // 2. Profile Complete, No Payment Submitted (15%)
   if (!hasApprovedPayment && !isPaymentPendingReview && !isPaymentRejected) {
     return {
-      progressPercentage: 25,
+      progressPercentage: 15,
       currentMilestoneStage: "Payment Required",
       isOnboardingCompleted: true,
       journeyStep: {
@@ -1528,10 +1528,10 @@ export function calculateStudentProgress(
     };
   }
 
-  // 3. Payment Submitted / Under Finance Review
+  // 3. Payment Submitted / Under Finance Review (20%)
   if (isPaymentPendingReview) {
     return {
-      progressPercentage: 30,
+      progressPercentage: 20,
       currentMilestoneStage: "Payment Under Review",
       isOnboardingCompleted: true,
       journeyStep: {
@@ -1549,10 +1549,10 @@ export function calculateStudentProgress(
     };
   }
 
-  // 4. Payment Rejected
+  // 4. Payment Rejected (15%)
   if (isPaymentRejected) {
     return {
-      progressPercentage: 25,
+      progressPercentage: 15,
       currentMilestoneStage: "Payment Issue",
       isOnboardingCompleted: true,
       journeyStep: {
@@ -1570,10 +1570,10 @@ export function calculateStudentProgress(
     };
   }
 
-  // 5. Payment Approved, No University Application Selected Yet
+  // 5. Payment Approved, No University Application Selected Yet (25%)
   if (!primaryApp || (!primaryApp.university_id && !primaryApp.preferred_course && !primaryApp.target_country)) {
     return {
-      progressPercentage: 35,
+      progressPercentage: 25,
       currentMilestoneStage: "Application File Activated",
       isOnboardingCompleted: true,
       journeyStep: {
@@ -1597,7 +1597,13 @@ export function calculateStudentProgress(
     ? `${primaryApp.universities.name}${primaryApp.universities.country ? `, ${primaryApp.universities.country}` : ""}`
     : primaryApp.target_country || "Partner University";
 
-  // 6. Ready to Fly / Enrolled
+  const hasPassport = Boolean(
+    profile?.has_passport === "Yes" ||
+    profile?.has_passport === "true" ||
+    profile?.passport_number
+  );
+
+  // 6. Ready to Fly / Enrolled (100%)
   if (appStatus.includes("ready to fly") || appStatus.includes("enrolled")) {
     return {
       progressPercentage: 100,
@@ -1619,7 +1625,7 @@ export function calculateStudentProgress(
     };
   }
 
-  // 7. Visa Approved
+  // 7. Visa Approved (95%) or Visa in Processing (90%)
   if (appStatus.includes("visa approved")) {
     return {
       progressPercentage: 95,
@@ -1641,7 +1647,6 @@ export function calculateStudentProgress(
     };
   }
 
-  // 8. Visa Processing
   if (appStatus.includes("visa")) {
     return {
       progressPercentage: 90,
@@ -1663,11 +1668,12 @@ export function calculateStudentProgress(
     };
   }
 
-  // 9. University Offer Issued
-  if (appStatus.includes("offer") || appStatus.includes("university offer issued")) {
+  // 8. Offer Letter Issued / Received (70% or 80% if Passport ready)
+  if (appStatus.includes("offer") || appStatus.includes("university offer issued") || primaryApp.offer_letter_url) {
+    const passportReady = hasPassport;
     return {
-      progressPercentage: 80,
-      currentMilestoneStage: "Offer Letter Issued",
+      progressPercentage: passportReady ? 80 : 70,
+      currentMilestoneStage: passportReady ? "Passport Ready for Visa" : "Offer Letter Issued",
       isOnboardingCompleted: true,
       journeyStep: {
         stageKey: "offer_issued",
@@ -1685,32 +1691,10 @@ export function calculateStudentProgress(
     };
   }
 
-  // 10. Admission Review in Progress
-  if (appStatus.includes("review") || appStatus.includes("under review") || appStatus.includes("processing")) {
-    return {
-      progressPercentage: 65,
-      currentMilestoneStage: "Admission Review in Progress",
-      isOnboardingCompleted: true,
-      journeyStep: {
-        stageKey: "under_review",
-        badge: "IN REVIEW",
-        badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
-        title: "Admission Officer Evaluating Documents",
-        description: `Your application documents for ${primaryApp.courses?.title || primaryApp.preferred_course || "your course"} at ${appTarget} are being verified by your assigned officer.`,
-        estimatedTimeline: "3 – 5 Business Days",
-        appliedToSummary: appTarget,
-        actionLabel: "View Application Progress →",
-        actionNav: "application",
-        iconType: "clock",
-        primaryApp,
-      },
-    };
-  }
-
-  // 11. Submitted to University
+  // 9. Submitted to University (55%)
   if (appStatus.includes("submitted to university")) {
     return {
-      progressPercentage: 50,
+      progressPercentage: 55,
       currentMilestoneStage: "Submitted to University",
       isOnboardingCompleted: true,
       journeyStep: {
@@ -1729,17 +1713,39 @@ export function calculateStudentProgress(
     };
   }
 
-  // 12. Application Prepared / Ready for Officer Review
+  // 10. Admission Review in Progress (40%)
+  if (appStatus.includes("review") || appStatus.includes("under review") || appStatus.includes("processing")) {
+    return {
+      progressPercentage: 40,
+      currentMilestoneStage: "Admission Review in Progress",
+      isOnboardingCompleted: true,
+      journeyStep: {
+        stageKey: "under_review",
+        badge: "IN REVIEW",
+        badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
+        title: "Admission Officer Evaluating Documents",
+        description: `Your application documents for ${primaryApp.courses?.title || primaryApp.preferred_course || "your course"} at ${appTarget} are being verified by your assigned officer.`,
+        estimatedTimeline: "3 – 5 Business Days",
+        appliedToSummary: appTarget,
+        actionLabel: "View Application Progress →",
+        actionNav: "application",
+        iconType: "clock",
+        primaryApp,
+      },
+    };
+  }
+
+  // 11. Application Prepared / Ready for Officer Review (25%)
   return {
-    progressPercentage: 40,
-    currentMilestoneStage: "Application Ready",
+    progressPercentage: 25,
+    currentMilestoneStage: "Application File Activated",
     isOnboardingCompleted: true,
     journeyStep: {
       stageKey: "application_ready",
       badge: "APPLICATION READY",
       badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
       title: "Application Queued for Review",
-      description: `Your application for ${primaryApp.courses?.title || primaryApp.preferred_course || "your course"} at ${appTarget} is prepared and queued for officer assignment.`,
+      description: `Your application for ${primaryApp.courses?.title || primaryApp.preferred_course || "your course"} at ${appTarget} is prepared and queued for officer review.`,
       estimatedTimeline: "1 – 3 Business Days",
       appliedToSummary: appTarget,
       actionLabel: "View My Application →",
@@ -1776,6 +1782,7 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
       contacts: [],
       primaryContact: null,
       assignedOfficer: null,
+      passportAssistance: null,
       hasApprovedPayment: false,
       isOnboardingCompleted: false,
       progressPercentage: 0,

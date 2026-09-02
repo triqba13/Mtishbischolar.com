@@ -128,8 +128,8 @@ export default function AdminLoginPage() {
         console.error("Failed to update localStorage:", e);
       }
 
-      const officerName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || email;
-      setSuccess(`Authentication successful! Welcome, ${officerName}. Redirecting...`);
+      const officerName = [profile.first_name, profile.last_name].filter(Boolean).join(" ");
+      setSuccess(officerName ? `Welcome, ${officerName}` : "Welcome");
 
       // 5. Role-based Redirect
       setTimeout(() => {
@@ -326,10 +326,7 @@ export default function AdminLoginPage() {
             className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl text-sm shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-200 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Authenticating...</span>
-              </>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <span className="flex items-center gap-1.5">
                 <span>Sign In to Admin Portal</span>
