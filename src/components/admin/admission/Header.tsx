@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { Search, Bell, ChevronDown, LogOut, User, ShieldCheck, Menu } from "lucide-react";
+import { Search, Bell, ChevronDown, LogOut, User, ShieldCheck, Menu, Sun, Moon } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,8 +16,35 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
   const [searchValue, setSearchValue] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isDark, setIsDark] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { fullName, roleLabel, avatarLetter, logout, profile } = useAdminAuth();
+
+  useEffect(() => {
+    try {
+      const isDarkMode =
+        document.documentElement.classList.contains("dark") ||
+        localStorage.getItem("mtb_theme") === "dark";
+      setIsDark(isDarkMode);
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    try {
+      if (nextDark) {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("mtb_theme", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("mtb_theme", "light");
+      }
+      window.dispatchEvent(
+        new CustomEvent("mtb_theme_change", { detail: nextDark ? "dark" : "light" })
+      );
+    } catch {}
+  };
 
   useEffect(() => {
     async function fetchUnreadCount() {
@@ -86,6 +113,21 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
       </div>
 
       <div className="flex-1" />
+
+      {/* Theme Toggle Button */}
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer shrink-0"
+        title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        aria-label="Toggle theme mode"
+      >
+        {isDark ? (
+          <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400" />
+        ) : (
+          <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-slate-600" />
+        )}
+      </button>
 
       {/* Notifications */}
       <Link

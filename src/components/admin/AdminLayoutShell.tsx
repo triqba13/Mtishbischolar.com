@@ -64,7 +64,7 @@ export default function AdminLayoutShell({
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 transition-colors duration-200">
+    <div className="admin-portal min-h-screen bg-[#F8FAFC] text-slate-900 transition-colors duration-200">
       {/* Sidebar (Desktop static + Mobile off-canvas drawer) */}
       {React.isValidElement(sidebar)
         ? React.cloneElement(sidebar as React.ReactElement<any>, {
