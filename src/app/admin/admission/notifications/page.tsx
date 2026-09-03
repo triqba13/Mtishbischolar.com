@@ -18,6 +18,7 @@ import {
   Check,
   Search,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -76,6 +77,9 @@ export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearSuccess, setClearSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
@@ -103,9 +107,18 @@ export default function NotificationsPage() {
         throw new Error(json.error || "Failed to load notifications.");
       }
 
-      setIncoming(json.incoming || []);
-      setOutgoing(json.outgoing || []);
-      setUnreadCount(json.unreadCount || 0);
+      const clearedAtStr = typeof window !== "undefined" ? localStorage.getItem("admission_notifications_cleared_at") : null;
+      const clearedAt = clearedAtStr ? new Date(clearedAtStr).getTime() : 0;
+
+      const rawIncoming: NotificationItem[] = json.incoming || [];
+      const rawOutgoing: NotificationItem[] = json.outgoing || [];
+
+      const filteredIncoming = rawIncoming.filter((n) => new Date(n.created_at).getTime() > clearedAt);
+      const filteredOutgoing = rawOutgoing.filter((n) => new Date(n.created_at).getTime() > clearedAt);
+
+      setIncoming(filteredIncoming);
+      setOutgoing(filteredOutgoing);
+      setUnreadCount(filteredIncoming.filter((n) => !n.is_read).length);
     } catch (err: any) {
       console.error("[NotificationsPage] Error:", err);
       setError(err.message || "Failed to load notifications.");
@@ -160,6 +173,45 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      setClearing(true);
+      setError(null);
+      setClearSuccess(null);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("admission_notifications_cleared_at", new Date().toISOString());
+      }
+
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+      try {
+        await fetch("/api/admin/admission/notifications", {
+          method: "DELETE",
+          headers,
+          credentials: "include",
+        });
+      } catch (e) {
+        console.warn("Server delete:", e);
+      }
+
+      setIncoming([]);
+      setOutgoing([]);
+      setUnreadCount(0);
+      setShowClearConfirm(false);
+      setClearSuccess("All admission notifications have been cleared successfully.");
+      setTimeout(() => setClearSuccess(null), 4000);
+    } catch (err: any) {
+      console.error("[NotificationsPage] Clear error:", err);
+      setError(err.message || "Failed to clear notifications.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const currentList = activeTab === "incoming" ? incoming : outgoing;
 
   const filteredList = useMemo(() => {
@@ -210,20 +262,36 @@ export default function NotificationsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Refresh Button */}
             <button
+              type="button"
               onClick={loadNotifications}
-              disabled={loading}
+              disabled={loading || clearing}
               className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 shadow-xs transition-all cursor-pointer disabled:opacity-60"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${loading ? "animate-spin" : ""}`} />
               <span>Refresh</span>
             </button>
 
+            {/* Clear All Notifications Button (Admission Desk Only) */}
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              disabled={loading || clearing || (incoming.length === 0 && outgoing.length === 0)}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Clear all admission notifications"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear All</span>
+            </button>
+
             {unreadCount > 0 && activeTab === "incoming" && (
               <button
+                type="button"
                 onClick={markAllRead}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                disabled={loading || clearing}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-60"
               >
                 Mark All as Read ({unreadCount})
               </button>
@@ -231,6 +299,51 @@ export default function NotificationsPage() {
           </div>
         </div>
       </div>
+
+      {clearSuccess && (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center gap-3 animate-in fade-in duration-150">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <p className="text-sm font-medium">{clearSuccess}</p>
+        </div>
+      )}
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Clear All Admission Notifications?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                This action will clear notification alerts on the Admission Desk. Student portal notifications will remain completely untouched and intact.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={clearing}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAll}
+                disabled={clearing}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {clearing && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{clearing ? "Clearing..." : "Clear Notifications"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 flex items-center justify-between">

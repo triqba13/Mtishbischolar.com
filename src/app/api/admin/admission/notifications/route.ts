@@ -139,3 +139,88 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ success: false, error: "Server configuration missing." }, { status: 500 });
+    }
+
+    const authHeader = req.headers.get("Authorization");
+    let authenticatedUserId: string | null = null;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      if (token && supabaseAnonKey) {
+        const clientWithToken = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: { user } } = await clientWithToken.auth.getUser();
+        if (user?.id) authenticatedUserId = user.id;
+      }
+    }
+
+    if (!authenticatedUserId) {
+      const serverClient = await createServerClient();
+      const { data: { user } } = await serverClient.auth.getUser();
+      if (user?.id) authenticatedUserId = user.id;
+    }
+
+    if (!authenticatedUserId) {
+      return NextResponse.json({ success: false, error: "Unauthorized." }, { status: 401 });
+    }
+
+    const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("id, role")
+      .eq("id", authenticatedUserId)
+      .maybeSingle();
+
+    const normalizedRole = (profile?.role || "").trim().toLowerCase();
+    if (!["admission_officer", "super_admin"].includes(normalizedRole)) {
+      return NextResponse.json({ success: false, error: "Forbidden." }, { status: 403 });
+    }
+
+    // 1. Fetch only admission staff profiles (strictly exclude students)
+    const { data: staffProfiles } = await adminClient
+      .from("profiles")
+      .select("id")
+      .in("role", ["admission_officer", "super_admin"]);
+
+    const staffIds = (staffProfiles || []).map((p) => p.id).filter(Boolean);
+
+    if (staffIds.length === 0) {
+      return NextResponse.json({ success: true, message: "No notifications to delete." });
+    }
+
+    // 2. Delete notifications that belong ONLY to admission officers / staff (excluding payment notifications and NEVER touching students)
+    const { error: delError } = await adminClient
+      .from("notifications")
+      .delete()
+      .in("user_id", staffIds)
+      .neq("type", "payment")
+      .not("title", "ilike", "%payment%")
+      .not("title", "ilike", "%fee%");
+
+    if (delError) {
+      console.error("[AdmissionNotifs] Delete error:", delError);
+      return NextResponse.json({ success: false, error: delError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "All admission notifications cleared successfully.",
+    });
+  } catch (err: any) {
+    console.error("[AdmissionNotifs] Delete unhandled error:", err);
+    return NextResponse.json({ success: false, error: err.message || "Failed to clear notifications." }, { status: 500 });
+  }
+}
+
