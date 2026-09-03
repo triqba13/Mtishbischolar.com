@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
+import { getFinanceNotifPrefs, isFinanceNotificationAllowed } from "@/lib/notifications/prefs";
 
 export interface DbNotificationItem {
   id: string;
@@ -50,7 +51,10 @@ export default function FinanceNotificationsPage() {
       if (!json.success) {
         throw new Error(json.error || "Unable to load notifications.");
       }
-      setNotifications((json.notifications as DbNotificationItem[]) || []);
+      const rawNotifs = (json.notifications as DbNotificationItem[]) || [];
+      const finPrefs = getFinanceNotifPrefs();
+      const filtered = rawNotifs.filter((n) => isFinanceNotificationAllowed(n, finPrefs));
+      setNotifications(filtered);
     } catch (err: any) {
       console.error("Finance Notifications Error:", err);
       setError(err.message || "Unable to load notifications.");
@@ -61,8 +65,14 @@ export default function FinanceNotificationsPage() {
 
   useEffect(() => {
     loadNotifications();
+    const onPrefsChange = () => loadNotifications(false);
+    window.addEventListener("mtb_finance_notif_prefs_change", onPrefsChange);
+
     const interval = setInterval(() => loadNotifications(false), 15000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("mtb_finance_notif_prefs_change", onPrefsChange);
+      clearInterval(interval);
+    };
   }, []);
 
   // Mark single notification as read

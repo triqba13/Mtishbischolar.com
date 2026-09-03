@@ -6,6 +6,13 @@ import { Home, ChevronRight, User, Bell, Palette, Check, Moon, Sun, Sparkles, Mo
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
+import {
+  AdmissionNotifPrefs,
+  DEFAULT_ADMISSION_NOTIF_PREFS,
+  getAdmissionNotifPrefs,
+  saveAdmissionNotifPrefs,
+} from "@/lib/notifications/prefs";
+
 export default function SettingsPage() {
   const { profile, user, refreshProfile, loading: authLoading } = useAdminAuth();
 
@@ -15,20 +22,14 @@ export default function SettingsPage() {
   const [role, setRole] = useState("Admission Officer");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
 
   // Theme selection state
   // "light" | "dark" | "gold_dark" | "system"
   const [theme, setTheme] = useState<string>("light");
 
   // Notification toggles
-  const [notifPreferences, setNotifPreferences] = useState({
-    newApp: true,
-    docUploaded: true,
-    studentReply: true,
-    passportRequest: true,
-    uniResponse: true,
-    statusChanged: true,
-  });
+  const [notifPreferences, setNotifPreferences] = useState<AdmissionNotifPrefs>(DEFAULT_ADMISSION_NOTIF_PREFS);
 
   useEffect(() => {
     if (profile) {
@@ -41,20 +42,13 @@ export default function SettingsPage() {
       setEmail(user.email || "");
     }
 
-    // Load saved theme
+    // Load saved theme and preferences
     if (typeof window !== "undefined") {
       const savedTheme = localStorage.getItem("mtishbi_admin_theme") || "light";
       setTheme(savedTheme);
       applyThemeToDOM(savedTheme);
 
-      const savedNotifs = localStorage.getItem("mtishbi_admin_notif_prefs");
-      if (savedNotifs) {
-        try {
-          setNotifPreferences(JSON.parse(savedNotifs));
-        } catch {
-          // Ignore
-        }
-      }
+      setNotifPreferences(getAdmissionNotifPrefs());
     }
   }, [profile, user]);
 
@@ -122,10 +116,12 @@ export default function SettingsPage() {
     }
   };
 
-  const toggleNotif = (key: keyof typeof notifPreferences) => {
+  const toggleNotif = (key: keyof AdmissionNotifPrefs) => {
     setNotifPreferences((prev) => {
       const updated = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("mtishbi_admin_notif_prefs", JSON.stringify(updated));
+      saveAdmissionNotifPrefs(updated);
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2000);
       return updated;
     });
   };
@@ -338,17 +334,25 @@ export default function SettingsPage() {
         </div>
 
         {/* Notifications Preferences */}
-        <div className="col-span-2 bg-white rounded-2xl border border-slate-200 p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-orange-500" />
+        <div className="col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200/60 dark:border-orange-900/50 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 dark:text-white">Notification Preferences</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Control which event alerts trigger in your workspace</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-slate-800">Notification Preferences</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Control which event alerts trigger in your workspace</p>
-            </div>
+            {prefsSaved && (
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 animate-in fade-in duration-150">
+                <Check className="w-3.5 h-3.5" />
+                <span>Saved</span>
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
             {[
               { key: "newApp" as const, label: "New application submitted by verified student" },
               { key: "docUploaded" as const, label: "Academic document uploaded by student" },
@@ -356,21 +360,34 @@ export default function SettingsPage() {
               { key: "passportRequest" as const, label: "Passport assistance request received" },
               { key: "uniResponse" as const, label: "University admission response received" },
               { key: "statusChanged" as const, label: "Visa or application stage transition alerts" },
-            ].map(({ key, label }) => (
-              <label key={key} className="flex items-center justify-between py-2 cursor-pointer">
-                <span className="text-sm text-slate-700">{label}</span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={notifPreferences[key]}
-                    onChange={() => toggleNotif(key)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 transition-colors" />
-                  <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5" />
-                </div>
-              </label>
-            ))}
+            ].map(({ key, label }) => {
+              const isOn = notifPreferences[key];
+              return (
+                <label
+                  key={key}
+                  className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</span>
+                  <div className="relative shrink-0 ml-4">
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      onChange={() => toggleNotif(key)}
+                      className="sr-only peer"
+                    />
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 ${
+                        isOn
+                          ? "bg-blue-600 dark:bg-amber-500 justify-end"
+                          : "bg-slate-300 dark:bg-slate-700 justify-start"
+                      }`}
+                    >
+                      <div className="w-5 h-5 bg-white rounded-full shadow-md transition-transform" />
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
       </div>

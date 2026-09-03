@@ -5,6 +5,12 @@ import { useState, useRef, useEffect } from "react";
 import { Search, Bell, ChevronDown, LogOut, User, ShieldCheck, Menu, Sun, Moon } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getAdmissionNotifPrefs,
+  isNotificationAllowed,
+  getFinanceNotifPrefs,
+  isFinanceNotificationAllowed,
+} from "@/lib/notifications/prefs";
 
 interface HeaderProps {
   title?: string;
@@ -22,7 +28,7 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
 
   useEffect(() => {
     try {
-      const currentTheme = localStorage.getItem("mtishbi_admin_theme");
+      const currentTheme = localStorage.getItem("mtishbi_admin_theme") || localStorage.getItem("mtb_theme");
       const isDarkMode =
         document.documentElement.classList.contains("dark") ||
         document.documentElement.classList.contains("theme-gold-dark") ||
@@ -41,10 +47,12 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
         root.classList.add("dark", "theme-dark");
         root.setAttribute("data-theme", "dark");
         localStorage.setItem("mtishbi_admin_theme", "dark");
+        localStorage.setItem("mtb_theme", "dark");
       } else {
         root.classList.remove("dark", "theme-dark", "theme-gold-dark");
         root.removeAttribute("data-theme");
         localStorage.setItem("mtishbi_admin_theme", "light");
+        localStorage.setItem("mtb_theme", "light");
       }
       window.dispatchEvent(
         new CustomEvent("mtb_theme_change", { detail: nextDark ? "dark" : "light" })
@@ -58,7 +66,30 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
         const res = await fetch("/api/admin/notifications");
         if (res.ok) {
           const json = await res.json();
-          if (json.success && typeof json.unreadCount === "number") {
+          if (json.success && Array.isArray(json.notifications)) {
+            const isFinance = profile?.role === "finance_officer";
+
+            if (isFinance) {
+              const finPrefs = getFinanceNotifPrefs();
+              const unread = json.notifications.filter((n: any) => {
+                if (n.is_read || n.read) return false;
+                return isFinanceNotificationAllowed(n, finPrefs);
+              }).length;
+              setUnreadCount(unread);
+            } else {
+              const clearedAtStr = typeof window !== "undefined" ? localStorage.getItem("admission_notifications_cleared_at") : null;
+              const clearedAt = clearedAtStr ? new Date(clearedAtStr).getTime() : 0;
+              const prefs = getAdmissionNotifPrefs();
+
+              const unread = json.notifications.filter((n: any) => {
+                if (n.is_read || n.read) return false;
+                if (n.created_at && new Date(n.created_at).getTime() <= clearedAt) return false;
+                return isNotificationAllowed(n, prefs);
+              }).length;
+
+              setUnreadCount(unread);
+            }
+          } else if (json.success && typeof json.unreadCount === "number") {
             setUnreadCount(json.unreadCount);
           }
         }
@@ -68,9 +99,17 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
     }
     fetchUnreadCount();
 
+    const onPrefsChange = () => fetchUnreadCount();
+    window.addEventListener("mtb_notif_prefs_change", onPrefsChange);
+    window.addEventListener("mtb_finance_notif_prefs_change", onPrefsChange);
+
     const interval = setInterval(fetchUnreadCount, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      window.removeEventListener("mtb_notif_prefs_change", onPrefsChange);
+      window.removeEventListener("mtb_finance_notif_prefs_change", onPrefsChange);
+      clearInterval(interval);
+    };
+  }, [profile?.role]);
 
   const notificationsHref =
     profile?.role === "finance_officer"

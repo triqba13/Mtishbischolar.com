@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
+import { getAdmissionNotifPrefs, isNotificationAllowed } from "@/lib/notifications/prefs";
 
 export interface NotificationItem {
   id: string;
@@ -109,12 +110,18 @@ export default function NotificationsPage() {
 
       const clearedAtStr = typeof window !== "undefined" ? localStorage.getItem("admission_notifications_cleared_at") : null;
       const clearedAt = clearedAtStr ? new Date(clearedAtStr).getTime() : 0;
+      const prefs = getAdmissionNotifPrefs();
 
       const rawIncoming: NotificationItem[] = json.incoming || [];
       const rawOutgoing: NotificationItem[] = json.outgoing || [];
 
-      const filteredIncoming = rawIncoming.filter((n) => new Date(n.created_at).getTime() > clearedAt);
-      const filteredOutgoing = rawOutgoing.filter((n) => new Date(n.created_at).getTime() > clearedAt);
+      const filteredIncoming = rawIncoming
+        .filter((n) => new Date(n.created_at).getTime() > clearedAt)
+        .filter((n) => isNotificationAllowed(n, prefs));
+
+      const filteredOutgoing = rawOutgoing
+        .filter((n) => new Date(n.created_at).getTime() > clearedAt)
+        .filter((n) => isNotificationAllowed(n, prefs));
 
       setIncoming(filteredIncoming);
       setOutgoing(filteredOutgoing);
@@ -131,6 +138,12 @@ export default function NotificationsPage() {
     if (!authLoading) {
       loadNotifications();
     }
+
+    const onPrefsChange = () => loadNotifications();
+    window.addEventListener("mtb_notif_prefs_change", onPrefsChange);
+    return () => {
+      window.removeEventListener("mtb_notif_prefs_change", onPrefsChange);
+    };
   }, [authLoading, loadNotifications]);
 
   const markAllRead = async () => {
