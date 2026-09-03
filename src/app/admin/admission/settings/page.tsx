@@ -62,17 +62,17 @@ export default function SettingsPage() {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
 
-    root.classList.remove("theme-dark", "theme-gold-dark");
+    root.classList.remove("dark", "theme-dark", "theme-gold-dark");
     if (selectedTheme === "dark") {
-      root.classList.add("theme-dark");
+      root.classList.add("dark", "theme-dark");
       root.setAttribute("data-theme", "dark");
     } else if (selectedTheme === "gold_dark") {
-      root.classList.add("theme-gold-dark");
+      root.classList.add("dark", "theme-gold-dark");
       root.setAttribute("data-theme", "gold_dark");
     } else if (selectedTheme === "system") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       if (prefersDark) {
-        root.classList.add("theme-dark");
+        root.classList.add("dark", "theme-dark");
         root.setAttribute("data-theme", "dark");
       } else {
         root.removeAttribute("data-theme");

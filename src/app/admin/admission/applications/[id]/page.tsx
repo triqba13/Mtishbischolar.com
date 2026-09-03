@@ -43,6 +43,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import StatusBadge from "@/components/admin/admission/StatusBadge";
+import { useAdminAuth } from "@/components/admin/AdminAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Upload Offer Letter / PAL Modal ─────────────────────────────────────────
@@ -504,6 +505,7 @@ function CommentModal({
 
           <div className="flex items-center gap-3 pt-2">
             <button
+              type="button"
               onClick={onClose}
               disabled={loading}
               className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -511,6 +513,7 @@ function CommentModal({
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={loading || !message.trim()}
               className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
@@ -531,12 +534,14 @@ function DocumentViewerModal({
   onVerify,
   onRequestPending,
   loading,
+  isSuperAdmin = false,
 }: {
   doc: any;
   onClose: () => void;
   onVerify: (docId: string) => Promise<void>;
   onRequestPending: (doc: any) => void;
   loading: boolean;
+  isSuperAdmin?: boolean;
 }) {
   const [zoom, setZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -555,97 +560,66 @@ function DocumentViewerModal({
         }`}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-slate-50/90 shrink-0">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center font-bold">
-              <FileText className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-slate-900 text-sm">{doc.document_type || "Document"}</h3>
-                <span
-                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                    doc.is_verified
-                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                      : "bg-amber-100 text-amber-800 border border-amber-300"
-                  }`}
-                >
-                  {doc.is_verified ? "Verified" : "Pending Review"}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                {doc.file_name || "Uploaded Document File"}
-              </p>
+              <h3 className="font-extrabold text-slate-900 text-sm">{doc.document_type}</h3>
+              <p className="text-[11px] text-slate-400 font-medium">{doc.file_name || "Document Preview"}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {!isPdf && (
-              <div className="hidden sm:flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                <button
-                  type="button"
-                  onClick={() => setZoom((z) => Math.max(z - 25, 50))}
-                  title="Zoom Out"
-                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                >
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[11px] font-mono px-1.5 text-slate-600 font-semibold">{zoom}%</span>
-                <button
-                  type="button"
-                  onClick={() => setZoom((z) => Math.min(z + 25, 200))}
-                  title="Zoom In"
-                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                >
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoom(100)}
-                  title="Reset Zoom"
-                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.max(z - 25, 50))}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              title="Zoom out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono font-bold text-slate-500 w-10 text-center">{zoom}%</span>
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.min(z + 25, 250))}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              title="Zoom in"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom(100)}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              title="Reset Zoom"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs"
-              title={isFullscreen ? "Exit Fullscreen" : "View Full Screen / Full Page"}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              title="Toggle Fullscreen"
             >
-              {isFullscreen ? (
-                <>
-                  <Minimize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Normal View</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Full Page</span>
-                </>
-              )}
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
-
             {docUrl && (
               <a
                 href={docUrl}
-                download={doc.file_name || "document"}
                 target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                title="Download / Open Original"
+                rel="noreferrer noopener"
+                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                title="Open in new window"
               >
-                <Download className="w-4 h-4" />
+                <ExternalLink className="w-4 h-4" />
               </a>
             )}
-
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer ml-1"
+              className="p-1.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -687,35 +661,42 @@ function DocumentViewerModal({
             <span>Secure Officer Document Verification</span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onRequestPending(doc)}
-              className="px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Request Replacement
-            </button>
-
-            {!doc.is_verified && (
+          {isSuperAdmin ? (
+            <div className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Super Admin Oversight (Read-Only)</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onVerify(doc.id)}
-                disabled={loading}
-                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                onClick={() => onRequestPending(doc)}
+                className="px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
               >
-                {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                Verify Document
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Request Replacement
               </button>
-            )}
 
-            {doc.is_verified && (
-              <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Verified
-              </div>
-            )}
-          </div>
+              {!doc.is_verified && (
+                <button
+                  type="button"
+                  onClick={() => onVerify(doc.id)}
+                  disabled={loading}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  Verify Document
+                </button>
+              )}
+
+              {doc.is_verified && (
+                <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Verified
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -730,6 +711,8 @@ export default function ViewApplicationPage({
 }) {
   const unwrappedParams = use(params as any) as { id: string };
   const appId = unwrappedParams.id;
+  const { role } = useAdminAuth();
+  const isSuperAdmin = role === "super_admin";
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -1101,28 +1084,33 @@ export default function ViewApplicationPage({
           <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto">
             <StatusBadge status={application.status} size="md" />
 
-            {/* If NOT approved yet, or if it was Rejected and officer wants to overturn/approve */}
-            {(!isApproved || isRejected) && (
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={actionLoading}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Check className="w-3.5 h-3.5 stroke-[3]" /> {isRejected ? "Overturn & Approve" : "Approve"}
-              </button>
-            )}
+            {/* Officer Actions (Hidden for Super Admin) */}
+            {!isSuperAdmin && (
+              <>
+                {/* If NOT approved yet, or if it was Rejected and officer wants to overturn/approve */}
+                {(!isApproved || isRejected) && (
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={actionLoading}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" /> {isRejected ? "Overturn & Approve" : "Approve"}
+                  </button>
+                )}
 
-            {/* Reject button (always available unless currently Rejected) */}
-            {!isRejected && (
-              <button
-                type="button"
-                onClick={() => setShowRejectModal(true)}
-                disabled={actionLoading}
-                className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
-              >
-                <Ban className="w-3.5 h-3.5" /> Reject
-              </button>
+                {/* Reject button (always available unless currently Rejected) */}
+                {!isRejected && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={actionLoading}
+                    className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <Ban className="w-3.5 h-3.5" /> Reject
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1738,72 +1726,92 @@ export default function ViewApplicationPage({
                 </h3>
               </div>
 
-              <div className="space-y-2">
-                {/* Upload Decision / Offer Letter Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowOfferModal(true)}
-                  disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Offer Letter / Decision
-                </button>
+              {isSuperAdmin ? (
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-slate-800">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Super Admin Audit View</span>
+                  </div>
+                  <p className="text-slate-500 text-[11px] leading-relaxed">
+                    Decisions, document requests, and status changes are restricted to the Admission Officer desk.
+                  </p>
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-medium">Current Status:</span>
+                    <StatusBadge status={data.status} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {/* Upload Decision / Offer Letter Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowOfferModal(true)}
+                      disabled={actionLoading}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Offer Letter / Decision
+                    </button>
 
-                {/* Document Replacement Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowDocPending(true)}
-                  disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-all cursor-pointer"
-                >
-                  <FileText className="w-4 h-4" />
-                  Request Document Replacement
-                </button>
+                    {/* Document Replacement Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowDocPending(true)}
+                      disabled={actionLoading}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-all cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Request Document Replacement
+                    </button>
 
-                {/* Add Comment Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowComment(true)}
-                  disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Add Note / Message Student
-                </button>
-              </div>
+                    {/* Add Comment Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowComment(true)}
+                      disabled={actionLoading}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Add Note / Message Student
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* 2. University Status Dropdown (Strictly Uni-related statuses only) */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
-              <div className="border-b border-slate-100 pb-2">
-                <h3 className="font-extrabold text-slate-900 text-sm">University Application Stage</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Update once the institution confirms stage progress.
-                </p>
-              </div>
+            {/* 2. University Status Dropdown (Only for Admission Officers) */}
+            {!isSuperAdmin && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="border-b border-slate-100 pb-2">
+                  <h3 className="font-extrabold text-slate-900 text-sm">University Application Stage</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Update once the institution confirms stage progress.
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <select
-                  value={universityStatus}
-                  onChange={(e) => setUniversityStatus(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                >
-                  <option value="Under Review">Under Review</option>
-                  <option value="Submitted to University">Submitted to University</option>
-                </select>
+                <div className="space-y-2">
+                  <select
+                    value={universityStatus}
+                    onChange={(e) => setUniversityStatus(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="Under Review">Under Review</option>
+                    <option value="Submitted to University">Submitted to University</option>
+                  </select>
 
-                <button
-                  type="button"
-                  onClick={handleSaveUniversityStatus}
-                  disabled={actionLoading}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {actionLoading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Save Status</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveUniversityStatus}
+                    disabled={actionLoading}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {actionLoading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Save Status</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 3. Compact Application Timeline Stepper */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">

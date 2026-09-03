@@ -22,9 +22,12 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
 
   useEffect(() => {
     try {
+      const currentTheme = localStorage.getItem("mtishbi_admin_theme");
       const isDarkMode =
         document.documentElement.classList.contains("dark") ||
-        localStorage.getItem("mtb_theme") === "dark";
+        document.documentElement.classList.contains("theme-gold-dark") ||
+        currentTheme === "dark" ||
+        currentTheme === "gold_dark";
       setIsDark(isDarkMode);
     } catch {}
   }, []);
@@ -33,12 +36,15 @@ export default function Header({ title, onMenuClick, sidebarCollapsed }: HeaderP
     const nextDark = !isDark;
     setIsDark(nextDark);
     try {
+      const root = document.documentElement;
       if (nextDark) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("mtb_theme", "dark");
+        root.classList.add("dark", "theme-dark");
+        root.setAttribute("data-theme", "dark");
+        localStorage.setItem("mtishbi_admin_theme", "dark");
       } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("mtb_theme", "light");
+        root.classList.remove("dark", "theme-dark", "theme-gold-dark");
+        root.removeAttribute("data-theme");
+        localStorage.setItem("mtishbi_admin_theme", "light");
       }
       window.dispatchEvent(
         new CustomEvent("mtb_theme_change", { detail: nextDark ? "dark" : "light" })

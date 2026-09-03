@@ -70,7 +70,8 @@ export interface TabCounts {
 }
 
 export default function FinancePaymentsPage() {
-  const { user } = useAdminAuth();
+  const { user, role } = useAdminAuth();
+  const isSuperAdmin = role === "super_admin";
   const [payments, setPayments] = useState<DbPaymentWithStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1099,29 +1100,38 @@ export default function FinancePaymentsPage() {
               </button>
 
               <div className="flex items-center gap-2">
-                {/* Reject Button */}
-                {!rejectPromptOpen && (
-                  <button
-                    type="button"
-                    disabled={actionLoading || (selectedPayment.status || "").toLowerCase() === "rejected"}
-                    onClick={() => setRejectPromptOpen(true)}
-                    className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    Reject Payment
-                  </button>
-                )}
+                {isSuperAdmin ? (
+                  <div className="px-3.5 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Super Admin Oversight (Read-Only)</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Reject Button */}
+                    {!rejectPromptOpen && (
+                      <button
+                        type="button"
+                        disabled={actionLoading || (selectedPayment.status || "").toLowerCase() === "rejected"}
+                        onClick={() => setRejectPromptOpen(true)}
+                        className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-extrabold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Reject Payment
+                      </button>
+                    )}
 
-                {/* Approve Button */}
-                {!rejectPromptOpen && (
-                  <button
-                    type="button"
-                    disabled={actionLoading || (selectedPayment.status || "").toLowerCase() === "approved"}
-                    onClick={() => handleExecutePaymentAction("approve")}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>{actionLoading ? "Processing..." : "Approve Payment"}</span>
-                  </button>
+                    {/* Approve Button */}
+                    {!rejectPromptOpen && (
+                      <button
+                        type="button"
+                        disabled={actionLoading || (selectedPayment.status || "").toLowerCase() === "approved"}
+                        onClick={() => handleExecutePaymentAction("approve")}
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>{actionLoading ? "Processing..." : "Approve Payment"}</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

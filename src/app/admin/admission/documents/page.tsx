@@ -79,7 +79,8 @@ function StudentAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string |
 }
 
 export default function DocumentsPage() {
-  const { loading: authLoading } = useAdminAuth();
+  const { loading: authLoading, role } = useAdminAuth();
+  const isSuperAdmin = role === "super_admin";
   const [students, setStudents] = useState<StudentWithDocs[]>([]);
   const [counts, setCounts] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -599,40 +600,43 @@ export default function DocumentsPage() {
                                 <span>Preview</span>
                               </button>
 
-                              {/* Verify Button */}
-                              {!doc.isVerified && (
-                                <button
-                                  type="button"
-                                  disabled={actionLoadingDocId === doc.id}
-                                  onClick={() => handleVerifyDocument(doc.id)}
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-2xs disabled:opacity-50 flex items-center gap-1"
-                                  title="Approve and mark document verified"
-                                >
-                                  {actionLoadingDocId === doc.id ? (
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Check className="w-3.5 h-3.5" />
+                              {/* Verify & Reject Buttons (Admission Officers Only) */}
+                              {!isSuperAdmin && (
+                                <>
+                                  {!doc.isVerified && (
+                                    <button
+                                      type="button"
+                                      disabled={actionLoadingDocId === doc.id}
+                                      onClick={() => handleVerifyDocument(doc.id)}
+                                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-2xs disabled:opacity-50 flex items-center gap-1"
+                                      title="Approve and mark document verified"
+                                    >
+                                      {actionLoadingDocId === doc.id ? (
+                                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Check className="w-3.5 h-3.5" />
+                                      )}
+                                      <span>Verify</span>
+                                    </button>
                                   )}
-                                  <span>Verify</span>
-                                </button>
-                              )}
 
-                              {/* Reject & Request Re-upload Button */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setReplacementDocId(replacementDocId === doc.id ? null : doc.id)
-                                }
-                                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
-                                  replacementDocId === doc.id
-                                    ? "bg-rose-600 text-white border-rose-700"
-                                    : "bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200"
-                                }`}
-                                title="Reject and request student to re-upload"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                <span>Reject</span>
-                              </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setReplacementDocId(replacementDocId === doc.id ? null : doc.id)
+                                    }
+                                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
+                                      replacementDocId === doc.id
+                                        ? "bg-rose-600 text-white border-rose-700"
+                                        : "bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200"
+                                    }`}
+                                    title="Reject and request student to re-upload"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
 
                             {/* Inline Request Re-upload Drawer */}
