@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Mail,
@@ -60,6 +61,32 @@ const contactChannels = [
 ];
 
 export default function ContactSection() {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [loadMap, setLoadMap] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setLoadMap(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setLoadMap(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    if (mapContainerRef.current) {
+      observer.observe(mapContainerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section id="contact" className="py-16 md:py-20 bg-white relative overflow-hidden scroll-mt-20 md:scroll-mt-24">
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
@@ -265,17 +292,29 @@ export default function ContactSection() {
             <span className="text-xs text-slate-500 font-medium">Visiting hours by confirmed appointment</span>
           </div>
 
-          <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner" style={{ height: "380px" }}>
-            <iframe
-              title="MtishbiScholars Office Location"
-              src="https://maps.google.com/maps?q=667F%2BFP%2C+Dar+es+Salaam&t=&z=16&ie=UTF8&iwloc=&output=embed"
-              width="100%"
-              height="380"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+          <div
+            ref={mapContainerRef}
+            className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative flex items-center justify-center"
+            style={{ minHeight: "380px" }}
+          >
+            {loadMap ? (
+              <iframe
+                title="MtishbiScholars Office Location"
+                src="https://maps.google.com/maps?q=667F%2BFP%2C+Dar+es+Salaam&t=&z=16&ie=UTF8&iwloc=&output=embed"
+                width="100%"
+                height="380"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-8 text-slate-500">
+                <MapPin className="w-8 h-8 text-[#D4AF37] animate-bounce mb-2" />
+                <p className="text-sm font-bold text-slate-800">Dar es Salaam, Tanzania Office</p>
+                <p className="text-xs text-slate-500 mt-0.5">Loading interactive map location...</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
