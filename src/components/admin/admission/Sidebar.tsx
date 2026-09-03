@@ -86,8 +86,8 @@ export default function Sidebar({
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col h-full justify-between">
-      <div>
+    <div className={`flex flex-col h-full justify-between ${!isMobile && collapsed ? "overflow-visible" : ""}`}>
+      <div className={!isMobile && collapsed ? "overflow-visible" : ""}>
         {/* Logo */}
         <div
           className={`flex items-center ${
@@ -151,7 +151,7 @@ export default function Sidebar({
         )}
 
         {/* Nav */}
-        <nav className="overflow-y-auto py-2 px-3 space-y-1">
+        <nav className={`py-2 px-3 space-y-1 ${!isMobile && collapsed ? "overflow-visible" : "overflow-y-auto"}`}>
           {navItems.map((item) => {
             if (item.children) {
               const isChildActive = pathname.includes("/passport") || pathname.includes("/visa");
@@ -183,7 +183,7 @@ export default function Sidebar({
 
                   {/* Desktop Hover Tooltip when sidebar is collapsed */}
                   {!isMobile && collapsed && (
-                    <div className="hidden lg:group-hover:flex flex-col absolute left-full top-0 ml-3 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 z-50 py-1.5 px-1 min-w-[130px] animate-in fade-in duration-150">
+                    <div className="hidden lg:group-hover:flex flex-col absolute left-full top-0 ml-3 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 z-[100] py-1.5 px-1 min-w-[130px] animate-in fade-in duration-150">
                       <span className="px-2 py-1 text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800">
                         {item.label}
                       </span>
@@ -280,7 +280,7 @@ export default function Sidebar({
 
                 {/* Desktop Hover Tooltip when sidebar is collapsed */}
                 {!isMobile && collapsed && (
-                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                     <span>{item.label}</span>
                     {item.href === "/admin/admission/notifications" && unreadCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white text-[10px] font-bold">
@@ -315,7 +315,7 @@ export default function Sidebar({
                   {(isMobile || !collapsed) && <span>Finance Panel</span>}
                 </Link>
                 {!isMobile && collapsed && (
-                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                     <span>Finance Panel</span>
                   </div>
                 )}
@@ -335,7 +335,7 @@ export default function Sidebar({
                   {(isMobile || !collapsed) && <span>Super Admin Overview</span>}
                 </Link>
                 {!isMobile && collapsed && (
-                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+                  <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                     <span>Super Admin Overview</span>
                   </div>
                 )}
@@ -358,7 +358,7 @@ export default function Sidebar({
             {(isMobile || !collapsed) && <span>Logout</span>}
           </button>
           {!isMobile && collapsed && (
-            <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+            <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
               <span>Logout</span>
             </div>
           )}
@@ -372,7 +372,7 @@ export default function Sidebar({
       {/* Desktop static sidebar */}
       <aside
         className={`hidden lg:flex fixed top-0 left-0 h-screen ${
-          collapsed ? "w-20" : "w-[220px]"
+          collapsed ? "w-20 overflow-visible" : "w-[220px] overflow-hidden"
         } bg-[#0B132B] flex-col z-40 border-r border-slate-800 transition-all duration-300 ease-in-out`}
       >
         {renderSidebarContent(false)}

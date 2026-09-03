@@ -114,55 +114,7 @@ export async function GET(req: NextRequest) {
       new Set((approvedPayments || []).map((p) => p.student_id).filter(Boolean))
     );
 
-    // 4. Fetch all applications belonging to approved students
-    let applications: any[] = [];
-    if (approvedStudentIds.length > 0) {
-      const { data: appData, error: appErr } = await adminClient
-        .from("applications")
-        .select(
-          `
-          id,
-          student_id,
-          university_id,
-          course_id,
-          target_country,
-          preferred_course,
-          target_intake,
-          status,
-          created_at,
-          updated_at,
-          offer_letter_url,
-          notes,
-          profiles:student_id (
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            nationality,
-            has_passport,
-            passport_number,
-            highest_education,
-            is_profile_completed
-          ),
-          universities:university_id (
-            id,
-            name,
-            country
-          )
-        `
-        )
-        .in("student_id", approvedStudentIds)
-        .order("created_at", { ascending: false });
-
-      if (appErr) {
-        console.error("[AdmissionDashboardAPI] Application fetch error:", appErr);
-      } else {
-        applications = appData || [];
-      }
-    }
-
-    // ── DATE CALCULATIONS FOR PERCENTAGE CHANGES ──
+    // 3. Date calculations for percentage changes
     const now = new Date();
     const nowMs = now.getTime();
     const ms7d = 7 * 24 * 60 * 60 * 1000;
@@ -176,64 +128,99 @@ export async function GET(req: NextRequest) {
     const tCurrent30d = new Date(nowMs - ms30d);
     const tPrevious30d = new Date(nowMs - ms60d);
 
-    // 5. Database-side aggregation for pending unverified academic documents (0-byte payload head queries)
-    let docsPendingTotal = 0;
-    let docsPendingCurr = 0;
-    let docsPendingPrev = 0;
-
-    if (approvedStudentIds.length > 0) {
-      const [
-        { count: totalUnverified },
-        { count: currUnverified },
-        { count: prevUnverified },
-      ] = await Promise.all([
-        // Total unverified academic documents for approved applicants (excludes payment receipts)
-        adminClient
-          .from("documents")
-          .select("*", { count: "exact", head: true })
-          .in("student_id", approvedStudentIds)
-          .eq("is_verified", false)
-          .neq("document_type", "Payment_Receipt"),
-
-        // Unverified academic documents created in current 7-day period
-        adminClient
-          .from("documents")
-          .select("*", { count: "exact", head: true })
-          .in("student_id", approvedStudentIds)
-          .eq("is_verified", false)
-          .neq("document_type", "Payment_Receipt")
-          .gte("created_at", tCurrent7d.toISOString())
-          .lte("created_at", now.toISOString()),
-
-        // Unverified academic documents created in previous 7-day period (7d to 14d ago)
-        adminClient
-          .from("documents")
-          .select("*", { count: "exact", head: true })
-          .in("student_id", approvedStudentIds)
-          .eq("is_verified", false)
-          .neq("document_type", "Payment_Receipt")
-          .gte("created_at", tPrevious7d.toISOString())
-          .lte("created_at", tCurrent7d.toISOString()),
-      ]);
-
-      docsPendingTotal = totalUnverified || 0;
-      docsPendingCurr = currUnverified || 0;
-      docsPendingPrev = prevUnverified || 0;
-    }
-
-    const docsPendingChange = calcPercentageChange(docsPendingCurr, docsPendingPrev, "last 7 days");
-
-    // 6. Database-side metrics for Verified Passport Assistance Requests
+    // 4. Parallel Data Retrieval: Run all independent queries simultaneously
     const [
-      { count: assistanceCountTotal },
-      { count: assistanceCountCurr },
-      { count: assistanceCountPrev },
+      appResult,
+      totalUnverifiedRes,
+      currUnverifiedRes,
+      prevUnverifiedRes,
+      assistanceCountTotalRes,
+      assistanceCountCurrRes,
+      assistanceCountPrevRes,
+      notifsRes,
     ] = await Promise.all([
+      // A. Fetch applications belonging to approved students
+      approvedStudentIds.length > 0
+        ? adminClient
+            .from("applications")
+            .select(
+              `
+              id,
+              student_id,
+              university_id,
+              course_id,
+              target_country,
+              preferred_course,
+              target_intake,
+              status,
+              created_at,
+              updated_at,
+              offer_letter_url,
+              notes,
+              profiles:student_id (
+                id,
+                first_name,
+                last_name,
+                email,
+                phone,
+                nationality,
+                has_passport,
+                passport_number,
+                highest_education,
+                is_profile_completed
+              ),
+              universities:university_id (
+                id,
+                name,
+                country
+              )
+            `
+            )
+            .in("student_id", approvedStudentIds)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+
+      // B. Total unverified academic documents
+      approvedStudentIds.length > 0
+        ? adminClient
+            .from("documents")
+            .select("*", { count: "exact", head: true })
+            .in("student_id", approvedStudentIds)
+            .eq("is_verified", false)
+            .neq("document_type", "Payment_Receipt")
+        : Promise.resolve({ count: 0, error: null }),
+
+      // C. Unverified academic documents current 7d
+      approvedStudentIds.length > 0
+        ? adminClient
+            .from("documents")
+            .select("*", { count: "exact", head: true })
+            .in("student_id", approvedStudentIds)
+            .eq("is_verified", false)
+            .neq("document_type", "Payment_Receipt")
+            .gte("created_at", tCurrent7d.toISOString())
+            .lte("created_at", now.toISOString())
+        : Promise.resolve({ count: 0, error: null }),
+
+      // D. Unverified academic documents previous 7d
+      approvedStudentIds.length > 0
+        ? adminClient
+            .from("documents")
+            .select("*", { count: "exact", head: true })
+            .in("student_id", approvedStudentIds)
+            .eq("is_verified", false)
+            .neq("document_type", "Payment_Receipt")
+            .gte("created_at", tPrevious7d.toISOString())
+            .lte("created_at", tCurrent7d.toISOString())
+        : Promise.resolve({ count: 0, error: null }),
+
+      // E. Verified Passport Assistance total
       adminClient
         .from("passport_assistance")
         .select("*", { count: "exact", head: true })
         .eq("payment_status", "verified"),
 
+      // F. Verified Passport Assistance current 7d
       adminClient
         .from("passport_assistance")
         .select("*", { count: "exact", head: true })
@@ -241,26 +228,39 @@ export async function GET(req: NextRequest) {
         .gte("created_at", tCurrent7d.toISOString())
         .lte("created_at", now.toISOString()),
 
+      // G. Verified Passport Assistance prev 7d
       adminClient
         .from("passport_assistance")
         .select("*", { count: "exact", head: true })
         .eq("payment_status", "verified")
         .gte("created_at", tPrevious7d.toISOString())
         .lte("created_at", tCurrent7d.toISOString()),
+
+      // H. Admission notifications
+      adminClient
+        .from("notifications")
+        .select("id, title, message, type, is_read, created_at")
+        .neq("type", "payment")
+        .not("title", "ilike", "%payment%")
+        .not("title", "ilike", "%fee%")
+        .order("created_at", { ascending: false })
+        .limit(15),
     ]);
 
-    const passportAssistance = assistanceCountTotal || 0;
-    const passportChange = calcPercentageChange(assistanceCountCurr || 0, assistanceCountPrev || 0, "last 7 days");
+    const applications: any[] = (appResult as any)?.data || [];
+    const docsPendingTotal = totalUnverifiedRes?.count || 0;
+    const docsPendingCurr = currUnverifiedRes?.count || 0;
+    const docsPendingPrev = prevUnverifiedRes?.count || 0;
+    const docsPendingChange = calcPercentageChange(docsPendingCurr, docsPendingPrev, "last 7 days");
 
-    // 7. Fetch Admission-specific notifications (exclude payment/finance notices)
-    const { data: notifs } = await adminClient
-      .from("notifications")
-      .select("id, title, message, type, is_read, created_at")
-      .neq("type", "payment")
-      .not("title", "ilike", "%payment%")
-      .not("title", "ilike", "%fee%")
-      .order("created_at", { ascending: false })
-      .limit(15);
+    const passportAssistance = assistanceCountTotalRes?.count || 0;
+    const passportChange = calcPercentageChange(
+      assistanceCountCurrRes?.count || 0,
+      assistanceCountPrevRes?.count || 0,
+      "last 7 days"
+    );
+
+    const notifs = (notifsRes as any)?.data || [];
 
     // Helper: is application in date range
     const isAppInRange = (a: any, start: Date, end: Date) => {
@@ -372,7 +372,7 @@ export async function GET(req: NextRequest) {
       },
       {
         label: "Student Replies / Comments",
-        count: (notifs || []).filter((n) => !n.is_read).length,
+        count: (notifs || []).filter((n: any) => !n.is_read).length,
         href: "/admin/admission/notifications",
       },
     ];

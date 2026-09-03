@@ -20,9 +20,15 @@ export default function CookieConsentBanner() {
   const [showPreferences, setShowPreferences] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
+  // Strictly block rendering inside authenticated portals and auth screens
+  const isPortalOrAuth =
+    !pathname ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/student") ||
+    pathname.startsWith("/auth");
+
   useEffect(() => {
-    // Only show on public pages, not on dashboard areas
-    if (pathname.startsWith("/admin") || pathname.startsWith("/student")) {
+    if (isPortalOrAuth) {
       setVisible(false);
       setShowPreferences(false);
       return;
@@ -74,7 +80,7 @@ export default function CookieConsentBanner() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPreferences]);
 
-  if (!visible) return null;
+  if (isPortalOrAuth || !visible) return null;
 
   return (
     <>

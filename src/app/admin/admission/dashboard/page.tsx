@@ -54,16 +54,25 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+// In-memory module cache for instant sub-millisecond tab switching
+let cachedAdmissionDashboard: any = null;
+let cachedSyncTime: string = "Just now";
+
 export default function AdmissionDashboardPage() {
   const { profile, loading: authLoading } = useAdminAuth();
-  const [dashboardData, setDashboardData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(cachedAdmissionDashboard);
+  const [loading, setLoading] = useState(!cachedAdmissionDashboard);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<string>("Just now");
+  const [lastSyncTime, setLastSyncTime] = useState<string>(cachedSyncTime);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async (isManual = false) => {
     try {
-      setLoading(true);
+      if (isManual || !cachedAdmissionDashboard) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError(null);
 
       const supabase = createClient();
@@ -96,18 +105,23 @@ export default function AdmissionDashboardPage() {
         throw new Error(json.error || "Failed to load admission dashboard data.");
       }
 
+      const syncTimeStr = new Date().toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      cachedAdmissionDashboard = json;
+      cachedSyncTime = syncTimeStr;
       setDashboardData(json);
-      setLastSyncTime(
-        new Date().toLocaleTimeString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
+      setLastSyncTime(syncTimeStr);
     } catch (err: any) {
       console.error("[AdmissionDashboard] Error fetching data:", err);
-      setError(err.message || "Failed to load dashboard data.");
+      if (!cachedAdmissionDashboard) {
+        setError(err.message || "Failed to load dashboard data.");
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -199,7 +213,7 @@ export default function AdmissionDashboardPage() {
             <p className="text-sm font-medium">Dashboard Sync Error: {error}</p>
           </div>
           <button
-            onClick={loadDashboardData}
+            onClick={() => loadDashboardData(true)}
             className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
           >
             Retry Sync
@@ -219,13 +233,13 @@ export default function AdmissionDashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
-            onClick={loadDashboardData}
-            disabled={loading}
+            onClick={() => loadDashboardData(true)}
+            disabled={loading || refreshing}
             className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm cursor-pointer disabled:opacity-60"
             title="Refresh dashboard data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 ${loading ? "animate-spin" : ""}`} />
-            <span className="font-medium text-xs">Refresh</span>
+            <RefreshCw className={`w-4 h-4 text-slate-400 ${loading || refreshing ? "animate-spin text-blue-600" : ""}`} />
+            <span className="hidden sm:inline">Sync Data</span>
           </button>
           <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
             <CalendarRange className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />

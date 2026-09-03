@@ -24,8 +24,8 @@ export default function SuperSidebar({
   const { logout } = useAdminAuth();
 
   const renderContent = (isMobile = false) => (
-    <div className="flex flex-col h-full justify-between">
-      <div>
+    <div className={`flex flex-col h-full justify-between ${!isMobile && collapsed ? "overflow-visible" : ""}`}>
+      <div className={!isMobile && collapsed ? "overflow-visible" : ""}>
         {/* Logo */}
         <div
           className={`flex items-center ${
@@ -88,7 +88,7 @@ export default function SuperSidebar({
           </div>
         )}
 
-        <nav className="overflow-y-auto py-2 px-3 space-y-1">
+        <nav className={`py-2 px-3 space-y-1 ${!isMobile && collapsed ? "overflow-visible" : "overflow-y-auto"}`}>
           <div className="relative group">
             <Link
               href="/admin/super/dashboard"
@@ -107,7 +107,7 @@ export default function SuperSidebar({
               {(isMobile || !collapsed) && <span>Overview</span>}
             </Link>
             {!isMobile && collapsed && (
-              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                 <span>Overview</span>
               </div>
             )}
@@ -127,7 +127,7 @@ export default function SuperSidebar({
               {(isMobile || !collapsed) && <span>Admission Panel</span>}
             </Link>
             {!isMobile && collapsed && (
-              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                 <span>Admission Panel</span>
               </div>
             )}
@@ -147,7 +147,7 @@ export default function SuperSidebar({
               {(isMobile || !collapsed) && <span>Finance Panel</span>}
             </Link>
             {!isMobile && collapsed && (
-              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+              <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
                 <span>Finance Panel</span>
               </div>
             )}
@@ -168,7 +168,7 @@ export default function SuperSidebar({
             {(isMobile || !collapsed) && <span>Logout</span>}
           </button>
           {!isMobile && collapsed && (
-            <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
+            <div className="hidden lg:group-hover:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-2xl border border-slate-700 whitespace-nowrap z-[100] pointer-events-none items-center gap-1.5 animate-in fade-in duration-150">
               <span>Logout</span>
             </div>
           )}
@@ -181,7 +181,7 @@ export default function SuperSidebar({
     <>
       <aside
         className={`hidden lg:flex fixed top-0 left-0 h-screen ${
-          collapsed ? "w-20" : "w-[220px]"
+          collapsed ? "w-20 overflow-visible" : "w-[220px] overflow-hidden"
         } bg-[#0B132B] flex-col z-40 border-r border-slate-800 transition-all duration-300 ease-in-out`}
       >
         {renderContent(false)}
