@@ -246,7 +246,7 @@ export default function TestimonialsSection() {
                 Yourself
               </span>
             </h2>
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-slate-300 text-sm mt-1 font-medium">
               Real moments captured: students, parents &amp; campuses.
             </p>
           </motion.div>

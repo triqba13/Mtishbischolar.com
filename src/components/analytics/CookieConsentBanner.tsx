@@ -37,8 +37,18 @@ export default function CookieConsentBanner() {
     try {
       const consent = localStorage.getItem("mtb_cookie_consent");
       if (!consent) {
-        // Delay display slightly to avoid layout shift / LCP interference
-        const timer = setTimeout(() => setVisible(true), 1500);
+        // Defer display until after initial render & critical LCP window
+        let timer: any;
+        if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+          (window as any).requestIdleCallback(
+            () => {
+              timer = setTimeout(() => setVisible(true), 3200);
+            },
+            { timeout: 5000 }
+          );
+        } else {
+          timer = setTimeout(() => setVisible(true), 3200);
+        }
         return () => clearTimeout(timer);
       } else {
         setAnalyticsEnabled(consent === "accepted");

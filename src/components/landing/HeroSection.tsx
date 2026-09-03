@@ -292,11 +292,11 @@ export default function HeroSection() {
           transition={{ delay: 1.5 }}
           className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1.5 pointer-events-none"
         >
-          <span className="text-white/40 text-[10px] tracking-widest uppercase">Scroll</span>
+          <span className="text-slate-300 text-[10px] tracking-widest uppercase font-medium">Scroll</span>
           <motion.div
             animate={{ y: [0, 6, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-4 h-7 border border-white/20 rounded-full flex items-start justify-center pt-1"
+            className="w-4 h-7 border border-white/30 rounded-full flex items-start justify-center pt-1"
           >
             <div className="w-1 h-1.5 bg-[#D4AF37] rounded-full" />
           </motion.div>

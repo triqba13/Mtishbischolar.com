@@ -373,13 +373,13 @@ export default function UniversitiesSection() {
                                   </span>
                                 ))}
                                 {uni.courses.length > 5 && (
-                                  <span className="text-[10px] bg-amber-50 text-[#B8960C] border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                                  <span className="text-[10px] bg-amber-100/80 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
                                     +{uni.courses.length - 5} more
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 font-medium">
+                              <p className="text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg p-2 font-medium">
                                 Apply through the Student Dashboard to continue your university application.
                               </p>
                             )}
@@ -388,10 +388,13 @@ export default function UniversitiesSection() {
 
                         {/* Footer */}
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
-                          <span className="text-[#D4AF37] text-xs font-bold">Featured Partner</span>
+                          <span className="text-amber-900 text-xs font-bold flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-600" aria-hidden="true" />
+                            <span>Featured Partner</span>
+                          </span>
                           <Link
                             href="/destinations"
-                            className="text-xs text-[#0F172A] font-semibold hover:text-[#B8960C] transition-colors flex items-center gap-1"
+                            className="text-xs text-[#0F172A] font-bold hover:text-amber-800 transition-colors flex items-center gap-1"
                           >
                             Explore Programs →
                           </Link>

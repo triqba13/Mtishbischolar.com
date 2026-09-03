@@ -81,17 +81,17 @@ export default function Footer() {
                 >
                   Mtishbi<span className="text-[#D4AF37]">Scholars</span>
                 </span>
-                <div className="text-white/30 text-[10px] tracking-widest uppercase mt-1">
+                <div className="text-slate-300 text-[10px] tracking-widest uppercase mt-1 font-medium">
                   Your Pathway to Global Education
                 </div>
               </div>
             </Link>
 
-            <p className="text-[#D4AF37]/80 text-xs italic tracking-wide">
+            <p className="text-[#D4AF37] text-xs italic tracking-wide font-medium">
               &lsquo;Springboard to your education&rsquo;
             </p>
 
-            <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+            <p className="text-slate-300 text-sm leading-relaxed max-w-sm">
               Our mission is to connect students&apos; skills, performance, and aspirations
               with the greatest available career opportunities and tailor services to those
               interested in studying abroad.
@@ -102,12 +102,12 @@ export default function Footer() {
               <div>
                 <a
                   href="mailto:info@mtishbischolar.com"
-                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors group"
+                  className="flex items-center gap-2.5 text-slate-200 hover:text-[#D4AF37] text-sm transition-colors group"
                 >
                   <Mail className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
                   <span className="font-semibold">info@mtishbischolar.com</span>
                 </a>
-                <p className="text-white/40 text-[11px] ml-6">
+                <p className="text-slate-300 text-[11px] ml-6">
                   General inquiries, admissions &amp; scholarships
                 </p>
               </div>
@@ -115,12 +115,12 @@ export default function Footer() {
               <div>
                 <a
                   href="mailto:support@mtishbischolar.com"
-                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors group"
+                  className="flex items-center gap-2.5 text-slate-200 hover:text-[#D4AF37] text-sm transition-colors group"
                 >
                   <Headphones className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                   <span className="font-semibold">support@mtishbischolar.com</span>
                 </a>
-                <p className="text-white/40 text-[11px] ml-6">
+                <p className="text-slate-300 text-[11px] ml-6">
                   24/7 technical &amp; account support
                 </p>
               </div>
@@ -128,14 +128,14 @@ export default function Footer() {
               <div>
                 <a
                   href="tel:+255764488687"
-                  className="flex items-center gap-2.5 text-white/70 hover:text-[#D4AF37] text-sm transition-colors"
+                  className="flex items-center gap-2.5 text-slate-200 hover:text-[#D4AF37] text-sm transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
                   <span>+255 764 488 687</span>
                 </a>
               </div>
 
-              <div className="flex items-center gap-2.5 text-white/50 text-sm">
+              <div className="flex items-center gap-2.5 text-slate-300 text-sm">
                 <MapPin className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
                 <span>Dar es Salaam, Tanzania</span>
               </div>
@@ -143,7 +143,7 @@ export default function Footer() {
 
             {/* Social Media Links */}
             <div className="pt-3">
-              <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2.5">
+              <p className="text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2.5">
                 Follow Us
               </p>
               <div className="flex items-center gap-3">
@@ -182,7 +182,7 @@ export default function Footer() {
                   <li key={l.label}>
                     <a
                       href={l.href}
-                      className="text-white/50 text-sm hover:text-[#D4AF37] transition-colors flex items-center gap-1 group"
+                      className="text-slate-300 text-sm hover:text-[#D4AF37] transition-colors flex items-center gap-1 group"
                     >
                       <span className="w-0 group-hover:w-2 h-px bg-[#D4AF37] transition-all duration-200" />
                       {l.label}
@@ -200,7 +200,7 @@ export default function Footer() {
                     </div>
                     <span className="text-xs font-bold text-white tracking-wide">Staff &amp; Admin</span>
                   </div>
-                  <p className="text-[11px] text-white/50 mb-3 leading-snug">
+                  <p className="text-[11px] text-slate-300 mb-3 leading-snug">
                     Access administrative desks and admission officer tools.
                   </p>
                   <Link
@@ -219,20 +219,20 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="py-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-white/40 text-xs text-center sm:text-left">
+          <p className="text-slate-300 text-xs text-center sm:text-left">
             © {year} MtishbiScholars. All rights reserved. Made with{" "}
             <Heart className="w-3 h-3 text-[#D4AF37] inline" /> in Tanzania.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-            <Link href="/privacy-policy" className="text-white/40 hover:text-[#D4AF37] transition-colors">
+            <Link href="/privacy-policy" className="text-slate-300 hover:text-[#D4AF37] transition-colors">
               Privacy Policy
             </Link>
             <span className="text-white/20">•</span>
-            <Link href="/terms-of-service" className="text-white/40 hover:text-[#D4AF37] transition-colors">
+            <Link href="/terms-of-service" className="text-slate-300 hover:text-[#D4AF37] transition-colors">
               Terms of Service
             </Link>
             <span className="text-white/20">•</span>
-            <Link href="/cookie-policy" className="text-white/40 hover:text-[#D4AF37] transition-colors">
+            <Link href="/cookie-policy" className="text-slate-300 hover:text-[#D4AF37] transition-colors">
               Cookie Policy
             </Link>
           </div>

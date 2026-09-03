@@ -199,7 +199,7 @@ export default function TrustSection() {
         <div className="flex items-stretch flex-1 min-w-0 h-12 md:h-20 lg:h-24">
           {/* Tab label */}
           <div className="flex items-center justify-center px-3 sm:px-4 bg-gradient-to-r from-[#7B1113] to-[#9B1B1E] border-r border-white/10 shrink-0">
-            <span className="text-white/90 text-[10px] font-bold uppercase tracking-[0.15em] whitespace-nowrap">
+            <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em] whitespace-nowrap">
               Courses
             </span>
           </div>
@@ -213,12 +213,12 @@ export default function TrustSection() {
                 type="button"
                 aria-label="Select Country"
                 onClick={() => { setCountryOpen(!countryOpen); setCourseOpen(false); }}
-                className="w-full flex items-center justify-between bg-white/8 hover:bg-white/12 border border-white/15 hover:border-[#D4AF37]/40 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left transition-all duration-200"
+                className="w-full flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/25 hover:border-[#D4AF37] rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left transition-all duration-200"
               >
-                <span className={`text-[11px] sm:text-xs truncate ${selectedCountry ? "text-white font-medium" : "text-white/40"}`}>
+                <span className={`text-[11px] sm:text-xs truncate ${selectedCountry ? "text-white font-medium" : "text-slate-300 font-medium"}`}>
                   {selectedCountry || "Select country"}
                 </span>
-                <ChevronDown className={`w-3 h-3 text-white/40 ml-1 shrink-0 transition-transform ${countryOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-300 ml-1 shrink-0 transition-transform ${countryOpen ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
@@ -228,7 +228,7 @@ export default function TrustSection() {
                     animate={{ opacity: 1, y: 0, scaleY: 1 }}
                     exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute top-full left-0 right-0 mt-1 bg-[#1E293B] border border-white/15 rounded-xl shadow-2xl z-[50] max-h-52 overflow-y-auto"
+                    className="absolute top-full left-0 right-0 mt-1 bg-[#1E293B] border border-white/20 rounded-xl shadow-2xl z-[50] max-h-52 overflow-y-auto"
                   >
                     {allCountries.map((c) => (
                       <button
@@ -236,7 +236,7 @@ export default function TrustSection() {
                         type="button"
                         onClick={() => handleCountrySelect(c)}
                         className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#D4AF37]/15 hover:text-[#D4AF37]
-                          ${selectedCountry === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-white/75"}`}
+                          ${selectedCountry === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-slate-200"}`}
                       >
                         {c}
                       </button>
@@ -255,14 +255,14 @@ export default function TrustSection() {
                 disabled={!selectedCountry}
                 className={`w-full flex items-center justify-between border rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left transition-all duration-200
                   ${selectedCountry
-                    ? "bg-white/8 hover:bg-white/12 border-white/15 hover:border-[#D4AF37]/40 cursor-pointer"
-                    : "bg-white/4 border-white/8 cursor-not-allowed opacity-40"
+                    ? "bg-white/10 hover:bg-white/15 border-white/25 hover:border-[#D4AF37] cursor-pointer"
+                    : "bg-white/5 border-white/10 cursor-not-allowed opacity-60"
                   }`}
               >
-                <span className={`text-[11px] sm:text-xs truncate ${selectedCourse ? "text-white font-medium" : "text-white/40"}`}>
+                <span className={`text-[11px] sm:text-xs truncate ${selectedCourse ? "text-white font-medium" : "text-slate-300 font-medium"}`}>
                   {selectedCourse || "Select course"}
                 </span>
-                <ChevronDown className={`w-3 h-3 text-white/40 ml-1 shrink-0 transition-transform ${courseOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-300 ml-1 shrink-0 transition-transform ${courseOpen ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
@@ -272,7 +272,7 @@ export default function TrustSection() {
                     animate={{ opacity: 1, y: 0, scaleY: 1 }}
                     exit={{ opacity: 0, y: -6, scaleY: 0.95 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute top-full left-0 right-0 mt-1 bg-[#1E293B] border border-white/15 rounded-xl shadow-2xl z-[50] max-h-56 overflow-y-auto"
+                    className="absolute top-full left-0 right-0 mt-1 bg-[#1E293B] border border-white/20 rounded-xl shadow-2xl z-[50] max-h-56 overflow-y-auto"
                   >
                     {courses.map((c) => (
                       <button
@@ -280,7 +280,7 @@ export default function TrustSection() {
                         type="button"
                         onClick={() => handleCourseSelect(c)}
                         className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#D4AF37]/15 hover:text-[#D4AF37]
-                          ${selectedCourse === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-white/75"}`}
+                          ${selectedCourse === c ? "bg-[#D4AF37]/20 text-[#D4AF37] font-semibold" : "text-slate-200"}`}
                       >
                         {c}
                       </button>
@@ -299,7 +299,7 @@ export default function TrustSection() {
               className={`shrink-0 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all duration-200
                 ${selectedCountry && selectedCourse
                   ? "bg-[#D4AF37] text-[#0F172A] hover:bg-[#E8C84A] hover:shadow-lg hover:shadow-[#D4AF37]/25"
-                  : "bg-white/10 text-white/30 cursor-not-allowed"
+                  : "bg-white/10 text-slate-400 cursor-not-allowed"
                 }`}
             >
               Go
