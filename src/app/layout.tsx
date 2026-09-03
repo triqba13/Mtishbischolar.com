@@ -124,6 +124,10 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
+      <head>
+        <link rel="preconnect" href="https://qjhggpmbuqnywjlvrvfif.supabase.co" />
+        <link rel="dns-prefetch" href="https://qjhggpmbuqnywjlvrvfif.supabase.co" />
+      </head>
       <body className="antialiased bg-white text-slate-900 font-sans">
         <Script
           id="theme-init"

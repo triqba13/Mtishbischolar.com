@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Globe, BookOpen, Award } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import AnimatedCounter from "@/components/landing/AnimatedCounter";
 
@@ -16,14 +17,23 @@ const stats = [
 export default function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
   const { scrollYProgress } = useScroll({ target: ref });
   const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
   const textY = useTransform(scrollYProgress, [0, 1], [0, 80]);
 
+  // Determine single best video source on client mount to eliminate duplicate downloads
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    setVideoSrc(isMobile ? "/videos/hero_bg_mobile.mp4" : "/videos/hero_bg_720p.mp4");
+  }, []);
+
   // Robust video autoplay for all devices (including iOS Safari & Android Low Power Mode)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !videoSrc) return;
 
     // Explicitly enforce muted and playsinline at the DOM property level
     video.muted = true;
@@ -36,22 +46,26 @@ export default function HeroSection() {
     const startPlayback = () => {
       const playPromise = video.play();
       if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.log("[HeroSection] Autoplay waiting for touch gesture:", err);
-          // If iOS Low Power Mode blocks programmatic autoplay, immediately play on first touch or scroll
-          const onFirstInteraction = () => {
-            if (videoRef.current) {
-              videoRef.current.play().catch(() => {});
-            }
-            window.removeEventListener("touchstart", onFirstInteraction);
-            window.removeEventListener("pointerdown", onFirstInteraction);
-            window.removeEventListener("scroll", onFirstInteraction);
-          };
+        playPromise
+          .then(() => setIsVideoPlaying(true))
+          .catch((err) => {
+            console.log("[HeroSection] Autoplay waiting for touch gesture:", err);
+            const onFirstInteraction = () => {
+              if (videoRef.current) {
+                videoRef.current
+                  .play()
+                  .then(() => setIsVideoPlaying(true))
+                  .catch(() => {});
+              }
+              window.removeEventListener("touchstart", onFirstInteraction);
+              window.removeEventListener("pointerdown", onFirstInteraction);
+              window.removeEventListener("scroll", onFirstInteraction);
+            };
 
-          window.addEventListener("touchstart", onFirstInteraction, { passive: true, once: true });
-          window.addEventListener("pointerdown", onFirstInteraction, { passive: true, once: true });
-          window.addEventListener("scroll", onFirstInteraction, { passive: true, once: true });
-        });
+            window.addEventListener("touchstart", onFirstInteraction, { passive: true, once: true });
+            window.addEventListener("pointerdown", onFirstInteraction, { passive: true, once: true });
+            window.addEventListener("scroll", onFirstInteraction, { passive: true, once: true });
+          });
       }
     };
 
@@ -68,7 +82,7 @@ export default function HeroSection() {
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [videoSrc]);
 
   return (
     <section
@@ -76,33 +90,42 @@ export default function HeroSection() {
       ref={ref}
       className="relative min-h-screen flex items-center overflow-hidden"
     >
-      {/* ── Video Background ─────────────────── */}
+      {/* ── Video / Poster Background ─────────────────── */}
       <motion.div
         style={{ scale: videoScale }}
         className="absolute inset-0 z-0 pointer-events-none select-none"
       >
-        {/* Fallback gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A] via-[#1a2744] to-[#0d1f3c]" />
+        {/* Instant High-Performance Poster for 0ms LCP */}
+        <Image
+          src="/videos/hero_poster.webp"
+          alt="Mtishbi Scholars Pathway to Global Education"
+          fill
+          priority
+          sizes="100vw"
+          quality={80}
+          className="object-cover"
+        />
 
-        {/* Merged hero background video */}
-        <video
-          ref={videoRef}
-          id="hero-video"
-          className="absolute inset-0 w-full h-full object-cover opacity-85 pointer-events-none select-none"
-          autoPlay
-          muted
-          loop
-          playsInline
-          // @ts-ignore
-          webkit-playsinline="true"
-          preload="auto"
-          poster="/videos/hero_poster.webp"
-          aria-hidden="true"
-        >
-          <source media="(max-width: 768px)" src="/videos/hero_bg_mobile.mp4" type="video/mp4" />
-          <source media="(max-width: 1280px)" src="/videos/hero_bg_720p.mp4" type="video/mp4" />
-          <source src="/videos/hero_bg.mp4" type="video/mp4" />
-        </video>
+        {/* Dynamic Single-Source Video (fades in once playback begins) */}
+        {videoSrc && (
+          <video
+            ref={videoRef}
+            id="hero-video"
+            src={videoSrc}
+            className={`absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-700 ${
+              isVideoPlaying ? "opacity-85" : "opacity-0"
+            }`}
+            autoPlay
+            muted
+            loop
+            playsInline
+            // @ts-ignore
+            webkit-playsinline="true"
+            preload="none"
+            onPlaying={() => setIsVideoPlaying(true)}
+            aria-hidden="true"
+          />
+        )}
 
         {/* Overlay: light gradient so text stays readable */}
         <div className="absolute inset-0 hero-gradient pointer-events-none" />
