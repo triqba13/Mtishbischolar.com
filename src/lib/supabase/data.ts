@@ -1421,7 +1421,7 @@ export interface StudentDashboardData {
 /**
  * Helper to determine if an officer is currently online based on last_seen_at timestamp
  */
-export function isOfficerOnline(lastSeenAt: string | null | undefined, thresholdSeconds: number = 90): boolean {
+export function isOfficerOnline(lastSeenAt: string | null | undefined, thresholdSeconds: number = 180): boolean {
   if (!lastSeenAt) return false;
   const lastActiveTime = new Date(lastSeenAt).getTime();
   if (isNaN(lastActiveTime)) return false;
@@ -1845,12 +1845,48 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
     }
   }
 
+  // Fetch primary admission officer (Jenifer Hilary) as default assignment
+  let defaultAdmissionOfficer: DbProfile | null = null;
+  try {
+    const { data: defaultOfficerData } = await supabase
+      .from("profiles")
+      .select("id, email, first_name, last_name, phone, role, avatar_url, last_seen_at")
+      .eq("role", "admission_officer")
+      .order("last_seen_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (defaultOfficerData) {
+      defaultAdmissionOfficer = defaultOfficerData as DbProfile;
+    }
+  } catch (err) {
+    console.warn("Could not load default admission officer:", err);
+  }
+
+  // Fallback profile if database query fails
+  if (!defaultAdmissionOfficer) {
+    defaultAdmissionOfficer = {
+      id: "c90cf29c-b691-48a6-a90f-949141e497b1",
+      email: "admission@mtishbischolar.com",
+      first_name: "Jenifer",
+      last_name: "Hilary",
+      role: "admission_officer",
+      phone: "0764488687",
+      avatar_url: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_seen_at: null,
+    };
+  }
+
   const applications: DbApplication[] = rawApplications.map((app) => ({
     ...app,
-    admission_officer: app.admission_officer_id ? officersMap.get(app.admission_officer_id) || null : null,
+    admission_officer: app.admission_officer_id
+      ? officersMap.get(app.admission_officer_id) || defaultAdmissionOfficer
+      : defaultAdmissionOfficer,
   }));
 
-  const assignedOfficer: DbProfile | null = applications[0]?.admission_officer || null;
+  const assignedOfficer: DbProfile | null = applications[0]?.admission_officer || defaultAdmissionOfficer;
 
   const hasApprovedPayment = payments.some((p) => {
     const isFileFee =
