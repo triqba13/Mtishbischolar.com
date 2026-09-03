@@ -102,10 +102,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 4. Fetch student profiles
+    // 4. Fetch student profiles with avatar_url
     const { data: studentProfiles, error: profErr } = await adminClient
       .from("profiles")
-      .select("id, first_name, middle_name, last_name, email, phone, created_at, is_profile_completed")
+      .select("id, first_name, middle_name, last_name, email, phone, avatar_url, created_at, is_profile_completed")
       .eq("role", "student")
       .in("id", approvedStudentIds)
       .order("created_at", { ascending: false });
@@ -120,31 +120,53 @@ export async function GET(req: NextRequest) {
       .select("id, student_id")
       .in("student_id", approvedStudentIds);
 
-    const students = (studentProfiles || []).map((sp) => {
-      const fullName = `${sp.first_name || ""} ${sp.middle_name || ""} ${sp.last_name || ""}`.trim() || sp.email || "Student";
-      const appCount = (allApplications || []).filter((a) => a.student_id === sp.id).length;
-      const joinedDate = sp.created_at
-        ? new Date(sp.created_at).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "Recently";
+    // 6. Generate signed URLs for avatar images stored in Supabase storage
+    const studentsWithAvatars = await Promise.all(
+      (studentProfiles || []).map(async (sp) => {
+        const fullName = `${sp.first_name || ""} ${sp.middle_name || ""} ${sp.last_name || ""}`.trim() || sp.email || "Student";
+        const appCount = (allApplications || []).filter((a) => a.student_id === sp.id).length;
+        const joinedDate = sp.created_at
+          ? new Date(sp.created_at).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "Recently";
 
-      return {
-        id: sp.id,
-        name: fullName,
-        email: sp.email,
-        phone: sp.phone || "Not provided",
-        applications: appCount,
-        joined: joinedDate,
-        initial: (fullName.charAt(0) || "S").toUpperCase(),
-      };
-    });
+        let avatarUrl: string | null = null;
+        if (sp.avatar_url) {
+          if (sp.avatar_url.startsWith("http://") || sp.avatar_url.startsWith("https://")) {
+            avatarUrl = sp.avatar_url;
+          } else {
+            // Path inside storage bucket (e.g., student-documents/...)
+            const cleanPath = sp.avatar_url.replace(/^student-documents\//, "");
+            try {
+              const { data: signedData } = await adminClient.storage
+                .from("student-documents")
+                .createSignedUrl(cleanPath, 7200);
+              avatarUrl = signedData?.signedUrl || null;
+            } catch (storageErr) {
+              console.warn(`[StudentsAPI] Could not sign avatar for ${sp.id}:`, storageErr);
+            }
+          }
+        }
+
+        return {
+          id: sp.id,
+          name: fullName,
+          email: sp.email,
+          phone: sp.phone || "Not provided",
+          avatarUrl,
+          applications: appCount,
+          joined: joinedDate,
+          initial: (fullName.charAt(0) || "S").toUpperCase(),
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
-      students,
+      students: studentsWithAvatars,
     });
   } catch (err: any) {
     console.error("[StudentsAPI] Error:", err);

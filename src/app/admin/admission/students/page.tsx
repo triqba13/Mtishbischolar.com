@@ -11,9 +11,39 @@ export interface StudentListItem {
   name: string;
   email: string;
   phone: string;
+  avatarUrl?: string | null;
   applications: number;
   joined: string;
   initial: string;
+}
+
+function StudentAvatar({
+  name,
+  avatarUrl,
+  initial,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  initial: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  if (avatarUrl && !imgError) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setImgError(true)}
+        className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+      {initial}
+    </div>
+  );
 }
 
 export default function StudentsPage() {
@@ -156,9 +186,7 @@ export default function StudentsPage() {
               <div key={`mobile-${s.id}`} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
-                      {s.initial}
-                    </div>
+                    <StudentAvatar name={s.name} avatarUrl={s.avatarUrl} initial={s.initial} />
                     <div className="min-w-0">
                       <Link
                         href={`/admin/admission/applications?search=${encodeURIComponent(s.email)}`}
@@ -233,9 +261,7 @@ export default function StudentsPage() {
                   <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/50 last:border-0 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                          {s.initial}
-                        </div>
+                        <StudentAvatar name={s.name} avatarUrl={s.avatarUrl} initial={s.initial} />
                         <Link
                           href={`/admin/admission/applications?search=${encodeURIComponent(s.email)}`}
                           className="text-sm font-medium text-slate-800 hover:text-blue-600 transition-colors"
