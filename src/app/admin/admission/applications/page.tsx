@@ -238,9 +238,9 @@ export default function ApplicationsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 px-4 sm:px-5 py-4 border-b border-slate-100">
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
@@ -250,54 +250,126 @@ export default function ApplicationsPage() {
                 setSearchInput(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
 
-          {/* University filter */}
-          <select
-            value={universityFilter}
-            onChange={(e) => {
-              setUniversityFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          >
-            {universities.map((u) => (
-              <option key={u}>{u}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+            {/* University filter */}
+            <select
+              value={universityFilter}
+              onChange={(e) => {
+                setUniversityFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="flex-1 sm:flex-initial px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all max-w-full sm:max-w-[180px] truncate"
+            >
+              {universities.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
 
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          >
-            <option>All Status</option>
-            <option value="Profile Completed">Profile Completed</option>
-            <option value="Under Review">Under Review</option>
-            <option value="Submitted to University">Submitted to University</option>
-            <option value="Visa Approved">Visa Approved</option>
-            <option value="Rejected">Rejected</option>
-          </select>
+            {/* Status filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="flex-1 sm:flex-initial px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            >
+              <option value="All Status">All Status</option>
+              <option value="Profile Completed">Profile Completed</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Submitted to University">Submitted to University</option>
+              <option value="Visa Approved">Visa Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
 
-          {/* Export CSV */}
-          <button
-            onClick={handleExportCSV}
-            disabled={applications.length === 0}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-100 transition-all ml-auto cursor-pointer disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </button>
+            {/* Export CSV */}
+            <button
+              onClick={handleExportCSV}
+              disabled={applications.length === 0}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+              title="Export CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export</span>
+            </button>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* ── Mobile Application Cards (Shown on small screens < md) ── */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="text-center py-12 text-slate-400 text-sm">
+              <div className="flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                <span>Loading application records...</span>
+              </div>
+            </div>
+          ) : applications.length === 0 ? (
+            <div className="text-center py-12 px-4 text-slate-400 text-sm">
+              No applications match the selected criteria.
+            </div>
+          ) : (
+            applications.map((app) => (
+              <div
+                key={`mobile-${app.id}`}
+                className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors"
+              >
+                {/* Header: Student Info + Status Badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+                      {(app.student || "ST").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/admission/applications/${app.id}`}
+                        className="text-sm font-bold text-slate-900 hover:text-blue-600 block truncate transition-colors"
+                      >
+                        {app.student}
+                      </Link>
+                      <p className="text-[11px] font-mono text-slate-500 truncate">{app.displayId}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <StatusBadge status={app.status} />
+                  </div>
+                </div>
+
+                {/* Details: University, Course, Date */}
+                <div className="bg-slate-50/80 rounded-xl p-2.5 space-y-1.5 text-xs text-slate-600 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400 font-medium">University:</span>
+                    <span className="font-semibold text-slate-800 truncate text-right">{app.university || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400 font-medium">Course:</span>
+                    <span className="font-semibold text-slate-800 truncate text-right">{app.course || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50 text-[11px]">
+                    <span className="text-slate-400">Submitted:</span>
+                    <span className="text-slate-500">{app.submitted}</span>
+                  </div>
+                </div>
+
+                {/* Prominent Action Button: View Details */}
+                <Link
+                  href={`/admin/admission/applications/${app.id}`}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/70 hover:border-transparent font-bold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>View Application Details</span>
+                </Link>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Desktop Table (Shown on screens >= md) ── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100">
@@ -338,7 +410,14 @@ export default function ApplicationsPage() {
                     <td className="px-5 py-3.5 text-xs font-mono font-medium text-slate-700">
                       {app.displayId}
                     </td>
-                    <td className="px-5 py-3.5 text-sm font-medium text-slate-800">{app.student}</td>
+                    <td className="px-5 py-3.5 text-sm font-medium text-slate-800">
+                      <Link
+                        href={`/admin/admission/applications/${app.id}`}
+                        className="hover:text-blue-600 transition-colors"
+                      >
+                        {app.student}
+                      </Link>
+                    </td>
                     <td className="px-5 py-3.5 text-sm text-slate-600">{app.university}</td>
                     <td className="px-5 py-3.5 text-sm text-slate-600">{app.course}</td>
                     <td className="px-5 py-3.5">
@@ -362,7 +441,7 @@ export default function ApplicationsPage() {
         </div>
 
         {/* Pagination & Summary */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-t border-slate-100">
           <p className="text-xs text-slate-500">
             Showing {totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
             {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} results

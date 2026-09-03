@@ -138,7 +138,67 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* ── Mobile Student Cards (Shown on screens < md) ── */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="px-5 py-10 text-center text-sm text-slate-400">
+              <div className="flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                <span>Loading student records...</span>
+              </div>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-slate-400">
+              {searchQuery ? "No students matching your search." : "No registered students found in the database."}
+            </div>
+          ) : (
+            filteredStudents.map((s) => (
+              <div key={`mobile-${s.id}`} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+                      {s.initial}
+                    </div>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/admission/applications?search=${encodeURIComponent(s.email)}`}
+                        className="text-sm font-bold text-slate-900 hover:text-blue-600 block truncate transition-colors"
+                      >
+                        {s.name}
+                      </Link>
+                      <p className="text-[11px] text-slate-500 truncate">{s.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full shrink-0 border border-blue-200/50">
+                    {s.applications} {s.applications === 1 ? "app" : "apps"}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50/80 rounded-xl p-2.5 space-y-1 text-xs text-slate-600 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400 font-medium">Phone:</span>
+                    <span className="font-semibold text-slate-800">{s.phone || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50 text-[11px]">
+                    <span className="text-slate-400">Joined Date:</span>
+                    <span className="text-slate-500">{s.joined}</span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/admin/admission/applications?search=${encodeURIComponent(s.email)}`}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/70 hover:border-transparent font-bold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>View Student Applications</span>
+                </Link>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Desktop Table (Shown on screens >= md) ── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100">
@@ -176,7 +236,12 @@ export default function StudentsPage() {
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
                           {s.initial}
                         </div>
-                        <span className="text-sm font-medium text-slate-800">{s.name}</span>
+                        <Link
+                          href={`/admin/admission/applications?search=${encodeURIComponent(s.email)}`}
+                          className="text-sm font-medium text-slate-800 hover:text-blue-600 transition-colors"
+                        >
+                          {s.name}
+                        </Link>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-sm text-slate-600">{s.email}</td>
