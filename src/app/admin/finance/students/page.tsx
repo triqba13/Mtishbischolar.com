@@ -13,6 +13,9 @@ import {
   RefreshCw,
   Mail,
   Phone,
+  Trash2,
+  RotateCcw,
+  ArrowLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -46,10 +49,123 @@ export default function FinanceStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Dismissed students (Local queue decluttering for Finance Officer)
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [permanentlyDismissedIds, setPermanentlyDismissedIds] = useState<string[]>([]);
+  const [showDismissed, setShowDismissed] = useState(false);
+  const [studentToDismiss, setStudentToDismiss] = useState<StudentProfileFinancial | null>(null);
+  const [studentToPermanentlyDismiss, setStudentToPermanentlyDismiss] = useState<StudentProfileFinancial | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+
   // Selected Student Modal State
   const [selectedStudent, setSelectedStudent] = useState<StudentProfileFinancial | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
+
+  // Load saved dismissed student IDs from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mtishbi_finance_dismissed_students");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setDismissedIds(parsed);
+        }
+      }
+      const savedPermanent = localStorage.getItem("mtishbi_finance_permanent_dismissed_students");
+      if (savedPermanent) {
+        const parsedPermanent = JSON.parse(savedPermanent);
+        if (Array.isArray(parsedPermanent)) {
+          setPermanentlyDismissedIds(parsedPermanent);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load dismissed student IDs", e);
+    }
+  }, []);
+
+  const handleDismissStudent = (studentId: string) => {
+    const updated = Array.from(new Set([...dismissedIds, studentId]));
+    setDismissedIds(updated);
+    try {
+      localStorage.setItem("mtishbi_finance_dismissed_students", JSON.stringify(updated));
+    } catch (e) {
+      console.error("Failed to save dismissed student IDs", e);
+    }
+    setStudentToDismiss(null);
+  };
+
+  const handleRestoreStudent = (studentId: string) => {
+    const updated = dismissedIds.filter((id) => id !== studentId);
+    setDismissedIds(updated);
+    try {
+      localStorage.setItem("mtishbi_finance_dismissed_students", JSON.stringify(updated));
+    } catch (e) {
+      console.error("Failed to save dismissed student IDs", e);
+    }
+    if (updated.length === 0) {
+      setShowDismissed(false);
+    }
+  };
+
+  const handleRestoreAll = () => {
+    setDismissedIds([]);
+    try {
+      localStorage.removeItem("mtishbi_finance_dismissed_students");
+    } catch (e) {
+      console.error("Failed to clear dismissed student IDs", e);
+    }
+    setShowDismissed(false);
+  };
+
+  const handlePermanentlyDismissStudent = (studentId: string) => {
+    const updatedDismissed = dismissedIds.filter((id) => id !== studentId);
+    setDismissedIds(updatedDismissed);
+    try {
+      localStorage.setItem("mtishbi_finance_dismissed_students", JSON.stringify(updatedDismissed));
+    } catch (e) {
+      console.error("Failed to save dismissed student IDs", e);
+    }
+
+    const updatedPermanent = Array.from(new Set([...permanentlyDismissedIds, studentId]));
+    setPermanentlyDismissedIds(updatedPermanent);
+    try {
+      localStorage.setItem(
+        "mtishbi_finance_permanent_dismissed_students",
+        JSON.stringify(updatedPermanent)
+      );
+    } catch (e) {
+      console.error("Failed to save permanent dismissed student IDs", e);
+    }
+
+    setStudentToPermanentlyDismiss(null);
+    if (updatedDismissed.length === 0) {
+      setShowDismissed(false);
+    }
+  };
+
+  const handleDeleteAllFromRestore = () => {
+    const updatedPermanent = Array.from(new Set([...permanentlyDismissedIds, ...dismissedIds]));
+    setPermanentlyDismissedIds(updatedPermanent);
+    try {
+      localStorage.setItem(
+        "mtishbi_finance_permanent_dismissed_students",
+        JSON.stringify(updatedPermanent)
+      );
+    } catch (e) {
+      console.error("Failed to save permanent dismissed student IDs", e);
+    }
+
+    setDismissedIds([]);
+    try {
+      localStorage.removeItem("mtishbi_finance_dismissed_students");
+    } catch (e) {
+      console.error("Failed to clear dismissed student IDs", e);
+    }
+
+    setShowDeleteAllConfirm(false);
+    setShowDismissed(false);
+  };
 
   const loadStudents = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -83,6 +199,14 @@ export default function FinanceStudentsPage() {
   // Filtered Students List
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
+      // If permanently dismissed from finance view, never show
+      if (permanentlyDismissedIds.includes(s.id)) return false;
+
+      // Dismissal check: If in normal view, hide dismissed students. If viewing dismissed, show only dismissed.
+      const isDismissed = dismissedIds.includes(s.id);
+      if (!showDismissed && isDismissed) return false;
+      if (showDismissed && !isDismissed) return false;
+
       const fullName = [s.first_name, s.last_name].filter(Boolean).join(" ");
       const email = s.email || "";
       const id = s.id || "";
@@ -113,27 +237,43 @@ export default function FinanceStudentsPage() {
 
       return true;
     });
-  }, [students, searchQuery, statusFilter]);
+  }, [students, searchQuery, statusFilter, dismissedIds, permanentlyDismissedIds, showDismissed]);
 
   // Financial Counters
-  const totalStudentsCount = students.length;
+  const visibleStudents = useMemo(
+    () => students.filter((s) => !permanentlyDismissedIds.includes(s.id)),
+    [students, permanentlyDismissedIds]
+  );
+  const totalStudentsCount = visibleStudents.length;
+  const activeStudentsInDirectory = Math.max(0, totalStudentsCount - dismissedIds.length);
+
   const paidStudentsCount = useMemo(
     () =>
-      students.filter((s) =>
+      visibleStudents.filter((s) =>
         s.payments.some((p) => (p.status || "").toLowerCase() === "approved")
       ).length,
-    [students]
+    [visibleStudents]
   );
   const pendingStudentsCount = useMemo(
     () =>
-      students.filter((s) =>
+      visibleStudents.filter((s) =>
         s.payments.some((p) => {
           const st = (p.status || "").toLowerCase();
           return st === "pending" || st === "submitted" || st === "under review";
         })
       ).length,
-    [students]
+    [visibleStudents]
   );
+
+  // Permanent Total Approved Revenue: ALWAYS preserved across all students (never drops upon dismiss)
+  const totalApprovedRevenue = useMemo(() => {
+    return students.reduce((sum, s) => {
+      const approvedAmount = s.payments
+        .filter((p) => (p.status || "").toLowerCase() === "approved")
+        .reduce((pSum, p) => pSum + Number(p.amount || 0), 0);
+      return sum + approvedAmount;
+    }, 0);
+  }, [students]);
 
   return (
     <div className="space-y-6">
@@ -164,11 +304,16 @@ export default function FinanceStudentsPage() {
       </div>
 
       {/* Mini KPI summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Students</p>
-          <p className="text-2xl font-black text-slate-800 mt-1">{totalStudentsCount}</p>
-          <p className="text-xs text-slate-400 mt-1">Students with payment records</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total In Directory</p>
+          <p className="text-2xl font-black text-slate-800 mt-1">
+            {activeStudentsInDirectory}
+            {dismissedIds.length > 0 && (
+              <span className="text-xs font-semibold text-slate-400 ml-2">({totalStudentsCount} all)</span>
+            )}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Active student profiles in view</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
@@ -182,6 +327,14 @@ export default function FinanceStudentsPage() {
           <p className="text-2xl font-black text-amber-600 mt-1">{pendingStudentsCount}</p>
           <p className="text-xs text-slate-400 mt-1">Awaiting finance officer action</p>
         </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-xs bg-gradient-to-br from-white to-emerald-50/40">
+          <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Total Approved Revenue</p>
+          <p className="text-2xl font-black text-emerald-700 mt-1">
+            TSh {totalApprovedRevenue.toLocaleString()}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Verified company collections</p>
+        </div>
       </div>
 
       {/* Main Students Table Card */}
@@ -189,8 +342,14 @@ export default function FinanceStudentsPage() {
         {/* Header & Filter Controls */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-slate-800">Students Directory</h2>
-            <p className="text-xs text-slate-400">Financial overview and transaction history per student</p>
+            <h2 className="text-base font-bold text-slate-800">
+              {showDismissed ? "Students Directory (Removed)" : "Students Directory"}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {showDismissed
+                ? "List of students removed from your active review queue. Their payments remain 100% preserved in company revenue."
+                : "Financial overview and transaction history per student"}
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -226,6 +385,48 @@ export default function FinanceStudentsPage() {
               <option value="pending">Pending Verification</option>
               <option value="rejected">Rejected</option>
             </select>
+
+            {/* Dismissed toggle, restore all & delete all */}
+            {(dismissedIds.length > 0 || showDismissed) && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDismissed(!showDismissed)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 border cursor-pointer ${
+                    showDismissed
+                      ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                      : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                  }`}
+                >
+                  <ArrowLeft className={`w-3.5 h-3.5 ${showDismissed ? "inline" : "hidden"}`} />
+                  <span>{showDismissed ? "Back to Active List" : `Removed (${dismissedIds.length})`}</span>
+                </button>
+
+                {showDismissed && dismissedIds.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRestoreAll}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer inline-flex items-center gap-1"
+                      title="Restore all removed students to active list"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Restore All</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteAllConfirm(true)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-all cursor-pointer inline-flex items-center gap-1"
+                      title="Permanently remove all from finance view"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Delete All</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -267,8 +468,24 @@ export default function FinanceStudentsPage() {
               ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <p className="font-semibold text-slate-500 text-sm">No student records found.</p>
-                    <p className="text-xs text-slate-400 mt-1">Try adjusting your search or filters.</p>
+                    <p className="font-semibold text-slate-500 text-sm">
+                      {showDismissed ? "No removed student records found." : "No student records found."}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {showDismissed
+                        ? "All students are in the active directory."
+                        : "Try adjusting your search or filters."}
+                    </p>
+                    {showDismissed && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDismissed(false)}
+                        className="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back to Active Students</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -360,14 +577,47 @@ export default function FinanceStudentsPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudent(s)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer border border-slate-200 hover:border-emerald-300"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Financial Record</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudent(s)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer border border-slate-200 hover:border-emerald-300"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Financial Record</span>
+                          </button>
+
+                          {dismissedIds.includes(s.id) ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreStudent(s.id)}
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs transition-colors inline-flex items-center gap-1 cursor-pointer border border-emerald-200"
+                                title="Restore student to active directory"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Restore</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStudentToPermanentlyDismiss(s)}
+                                className="p-1.5 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 font-bold text-xs transition-colors inline-flex items-center justify-center cursor-pointer border border-slate-200 hover:border-red-200"
+                                title="Delete permanently from finance view"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setStudentToDismiss(s)}
+                              className="p-1.5 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 font-bold text-xs transition-colors inline-flex items-center justify-center cursor-pointer border border-slate-200 hover:border-red-200"
+                              title="Remove from active review queue"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -377,6 +627,172 @@ export default function FinanceStudentsPage() {
           </table>
         </div>
       </div>
+
+      {/* ── DISMISS STUDENT CONFIRMATION MODAL (ENGLISH) ── */}
+      {studentToDismiss && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Remove from Finance List?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Declutter your active student review queue
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5 text-xs text-slate-600">
+              <p>
+                You are about to remove student{" "}
+                <span className="font-bold text-slate-900">
+                  {[studentToDismiss.first_name, studentToDismiss.last_name].filter(Boolean).join(" ") || "Student"}
+                </span>{" "}
+                from your active working directory to streamline your workspace.
+              </p>
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] leading-relaxed">
+                <span className="font-bold block text-emerald-900 mb-0.5">Company Revenue Protection:</span>
+                This action does <strong>not delete</strong> the student from the primary database and does <strong>not reduce</strong> company revenue. The paid and approved amount (<strong>TSh{" "}
+                {studentToDismiss.payments
+                  .filter((p) => (p.status || "").toLowerCase() === "approved")
+                  .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+                  .toLocaleString()}
+                </strong>) remains 100% secured in company earnings and financial audit reports.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setStudentToDismiss(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDismissStudent(studentToDismiss.id)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Remove from List</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PERMANENTLY DELETE SINGLE STUDENT FROM RESTORE MODAL (ENGLISH) ── */}
+      {studentToPermanentlyDismiss && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Delete Student from Finance View?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Permanently remove from review and restore lists
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5 text-xs text-slate-600">
+              <p>
+                You are about to permanently delete student{" "}
+                <span className="font-bold text-slate-900">
+                  {[studentToPermanentlyDismiss.first_name, studentToPermanentlyDismiss.last_name].filter(Boolean).join(" ") || "Student"}
+                </span>{" "}
+                from your finance view. They will no longer appear in the active directory or the removed list.
+              </p>
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] leading-relaxed">
+                <span className="font-bold block text-emerald-900 mb-0.5">Company Revenue &amp; Database Protection:</span>
+                This action does <strong>not delete</strong> the student from the database and does <strong>not reduce</strong> company revenue. The paid and approved amount (<strong>TSh{" "}
+                {studentToPermanentlyDismiss.payments
+                  .filter((p) => (p.status || "").toLowerCase() === "approved")
+                  .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+                  .toLocaleString()}
+                </strong>) remains 100% secured in company earnings and financial audit reports.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setStudentToPermanentlyDismiss(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePermanentlyDismissStudent(studentToPermanentlyDismiss.id)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete from Finance View</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE ALL FROM RESTORE CONFIRMATION MODAL (ENGLISH) ── */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Delete All from Removed List?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Permanently clear removed students from the finance workspace
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5 text-xs text-slate-600">
+              <p>
+                You are about to permanently remove all{" "}
+                <span className="font-bold text-slate-900">{dismissedIds.length}</span> student(s) from your finance review queue. They will no longer appear in the restore list.
+              </p>
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] leading-relaxed">
+                <span className="font-bold block text-emerald-900 mb-0.5">Company Revenue &amp; Database Protection:</span>
+                This action does <strong>not delete</strong> any records from the database and does <strong>not reduce</strong> company revenue. All verified payments remain 100% secured in company earnings and financial audit reports.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllFromRestore}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── STUDENT FINANCIAL DETAIL MODAL ── */}
       {selectedStudent && (

@@ -28,6 +28,9 @@ export interface ReportPaymentRecord {
   payment_type?: string | null;
   status: string;
   created_at: string;
+  verified_by?: string | null;
+  verified_by_name?: string | null;
+  verified_at?: string | null;
   student?: {
     first_name: string | null;
     last_name: string | null;
@@ -182,32 +185,59 @@ export default function FinanceReportsPage() {
       "Payment ID",
       "Student Name",
       "Student Email",
-      "Purpose",
-      "Amount",
-      "Currency",
+      "Amount Paid (TZS)",
+      "Fee Purpose",
+      "Payment Date",
+      "Approved By (Officer)",
+      "Receipt / Reference No",
       "Payment Method",
-      "Transaction Ref",
       "Status",
-      "Submission Date",
+      "Verification Date",
     ];
 
     const rows = filteredPayments.map((p) => {
       const studentName = p.student
         ? [p.student.first_name, p.student.last_name].filter(Boolean).join(" ")
-        : "N/A";
+        : "Student";
       const studentEmail = p.student?.email || "N/A";
+      const purpose =
+        p.payment_type === "passport_assistance" || Number(p.amount) === 300000
+          ? "Passport Assistance Fee"
+          : "MtishbiScholar File Opening Fee";
+      const paymentDate = p.created_at
+        ? new Date(p.created_at).toLocaleDateString("en-GB", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
+        : "N/A";
+      const verifiedDate = p.verified_at
+        ? new Date(p.verified_at).toLocaleDateString("en-GB", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
+        : paymentDate;
+      const approvedBy =
+        p.verified_by_name ||
+        ((p.status || "").toLowerCase() === "approved"
+          ? "Finance Officer"
+          : "Pending Verification");
+      const refNumber =
+        p.transaction_ref || `REC-${p.id.slice(0, 8).toUpperCase()}`;
 
       return [
         `"${p.id}"`,
         `"${studentName}"`,
         `"${studentEmail}"`,
-        `"${p.payment_type || "MtishbiScholar File Opening Fee"}"`,
-        p.amount,
-        `"${p.currency || "TZS"}"`,
-        `"${p.payment_method}"`,
-        `"${p.transaction_ref || ""}"`,
+        Number(p.amount || 0),
+        `"${purpose}"`,
+        `"${paymentDate}"`,
+        `"${approvedBy}"`,
+        `"${refNumber}"`,
+        `"${p.payment_method || "Mobile Money"}"`,
         `"${p.status}"`,
-        `"${p.created_at ? new Date(p.created_at).toISOString() : ""}"`,
+        `"${verifiedDate}"`,
       ].join(",");
     });
 

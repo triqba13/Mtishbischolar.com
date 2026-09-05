@@ -149,18 +149,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // C. payments (references public.profiles.id and public.applications.id)
-    const { error: payErr } = await adminClient
+    // C. payments (preserves approved payments to protect company revenue)
+    const { data: studentPayments, error: fetchPayErr } = await adminClient
       .from("payments")
-      .delete()
+      .select("id, amount, status, payment_type")
       .eq("student_id", targetUserId);
 
-    if (payErr) {
-      console.error("[DeleteProfile] Error deleting payments:", payErr.message);
-      return NextResponse.json(
-        { success: false, error: "Failed to delete student payment records." },
-        { status: 500 }
-      );
+    if (fetchPayErr) {
+      console.error("[DeleteProfile] Error querying student payments:", fetchPayErr.message);
+    }
+
+    const approvedPayments = (studentPayments || []).filter(
+      (p: any) => (p.status || "").toLowerCase() === "approved"
+    );
+    const hasApprovedPayments = approvedPayments.length > 0;
+
+    if (hasApprovedPayments) {
+      // Retain approved payments so company revenue is NEVER reduced or lost!
+      // Delete only unapproved/pending/rejected payments
+      const { error: unapprovedPayErr } = await adminClient
+        .from("payments")
+        .delete()
+        .eq("student_id", targetUserId)
+        .neq("status", "Approved");
+
+      if (unapprovedPayErr) {
+        console.warn("[DeleteProfile] Notice removing unapproved payments:", unapprovedPayErr.message);
+      }
+    } else {
+      // No approved payments exist: Safe to remove all payments as no company revenue is impacted
+      const { error: payErr } = await adminClient
+        .from("payments")
+        .delete()
+        .eq("student_id", targetUserId);
+
+      if (payErr) {
+        console.error("[DeleteProfile] Error deleting payments:", payErr.message);
+        return NextResponse.json(
+          { success: false, error: "Failed to delete student payment records." },
+          { status: 500 }
+        );
+      }
     }
 
     // D. applications (references public.profiles.id)
@@ -199,33 +228,79 @@ export async function POST(req: NextRequest) {
     }
 
     // G. profiles (parent table)
-    const { error: profileDeleteError } = await adminClient
-      .from("profiles")
-      .delete()
-      .eq("id", targetUserId);
+    const archivedEmail = `deleted_${targetUserId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}@archived.local`;
 
-    if (profileDeleteError) {
-      console.error("[DeleteProfile] Error deleting public.profiles row:", profileDeleteError.message);
-      return NextResponse.json(
-        { success: false, error: "Failed to delete student profile record." },
-        { status: 500 }
-      );
-    }
+    if (hasApprovedPayments) {
+      // Financial Security: Student has verified approved payments.
+      // Anonymize and archive the profile so the foreign key is preserved and company revenue is untouched.
+      // We set email to a unique archived address so the student's original email is freed for future registration.
+      const { error: archiveError } = await adminClient
+        .from("profiles")
+        .update({
+          first_name: "Deleted",
+          last_name: "Student",
+          email: archivedEmail,
+          phone: null,
+          role: "student",
+          avatar_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", targetUserId);
 
-    // 6. AUTH USER DELETION (auth.users)
-    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
-    if (authDeleteError) {
-      console.error(`[DeleteProfile] Error deleting auth.users record for ${targetUserId}:`, authDeleteError.message);
-      return NextResponse.json(
+      if (archiveError) {
+        console.error("[DeleteProfile] Error archiving public.profiles row:", archiveError.message);
+        return NextResponse.json(
+          { success: false, error: "Failed to archive student profile record." },
+          { status: 500 }
+        );
+      }
+
+      // Deactivate Auth User without cascading:
+      // Change auth user email to archivedEmail (freeing their original email to re-register anytime),
+      // and ban the account for 100 years so this old account cannot be logged into.
+      const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(
+        targetUserId,
         {
-          success: false,
-          error: "Student data was removed, but account authentication reset failed. Please contact support.",
-        },
-        { status: 500 }
+          email: archivedEmail,
+          email_confirm: true,
+          ban_duration: "876600h",
+          user_metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+        }
       );
+
+      if (authUpdateError) {
+        console.warn("[DeleteProfile] Notice updating auth user for archived student:", authUpdateError.message);
+      }
+    } else {
+      // Completely remove the profile row since no approved payments exist
+      const { error: profileDeleteError } = await adminClient
+        .from("profiles")
+        .delete()
+        .eq("id", targetUserId);
+
+      if (profileDeleteError) {
+        console.error("[DeleteProfile] Error deleting public.profiles row:", profileDeleteError.message);
+        return NextResponse.json(
+          { success: false, error: "Failed to delete student profile record." },
+          { status: 500 }
+        );
+      }
+
+      // Delete auth user completely from Supabase Auth
+      const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
+      if (authDeleteError) {
+        console.error(`[DeleteProfile] Error deleting auth.users record for ${targetUserId}:`, authDeleteError.message);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Student data was removed, but account authentication reset failed. Please contact support.",
+          },
+          { status: 500 }
+        );
+      }
     }
 
-    console.log(`[DeleteProfile] Successfully deleted all data & auth user for: ${targetUserId}`);
+    console.log(`[DeleteProfile] Successfully processed deletion for user: ${targetUserId} (hasApprovedPayments: ${hasApprovedPayments})`);
 
     return NextResponse.json({
       success: true,

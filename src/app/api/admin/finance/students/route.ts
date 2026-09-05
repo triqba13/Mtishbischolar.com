@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
         created_at,
         verified_at,
         rejection_reason,
-        student:profiles!payments_student_id_fkey(id, first_name, last_name, email, phone, created_at)
+        student:profiles!payments_student_id_fkey(id, first_name, last_name, email, phone, role, created_at)
       `)
       .order("created_at", { ascending: false });
 
@@ -128,8 +128,18 @@ export async function GET(req: NextRequest) {
         last_name: "",
         email: null,
         phone: null,
+        role: "student",
         created_at: p.created_at,
       };
+
+      // Exclude archived/deleted students from active directory while preserving their revenue
+      if (
+        studentProfile.role === "archived_student" ||
+        studentProfile.first_name === "Deleted" ||
+        (studentProfile.email || "").endsWith("@archived.local")
+      ) {
+        return;
+      }
 
       if (!studentMap.has(p.student_id)) {
         studentMap.set(p.student_id, {

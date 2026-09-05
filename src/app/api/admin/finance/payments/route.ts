@@ -229,8 +229,34 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const verifiedByIds = Array.from(
+      new Set(
+        (payments || [])
+          .map((p: any) => p.verified_by)
+          .filter(Boolean)
+      )
+    );
+
+    const officerMap = new Map<string, string>();
+    if (verifiedByIds.length > 0) {
+      try {
+        const { data: officers } = await adminClient
+          .from("profiles")
+          .select("id, first_name, last_name, email")
+          .in("id", verifiedByIds);
+
+        (officers || []).forEach((off: any) => {
+          const name = [off.first_name, off.last_name].filter(Boolean).join(" ");
+          officerMap.set(off.id, name || off.email || "Finance Officer");
+        });
+      } catch (officerErr) {
+        console.warn("[FinancePayments] Officer profile fetch warning:", officerErr);
+      }
+    }
+
     const mappedPayments = (payments || []).map((p: any) => ({
       ...p,
+      verified_by_name: p.verified_by ? officerMap.get(p.verified_by) || "Finance Officer" : null,
       payment_type: p.payment_type || (Number(p.amount) === 300000 ? "passport_assistance" : "file_opening_fee"),
       purpose_display:
         p.payment_type === "passport_assistance" || Number(p.amount) === 300000
