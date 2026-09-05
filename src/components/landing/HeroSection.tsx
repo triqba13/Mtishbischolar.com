@@ -50,6 +50,7 @@ const heroSlides = [
 export default function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [loadedSlides, setLoadedSlides] = useState<number[]>([0]);
 
   const { scrollYProgress } = useScroll({ target: ref });
   const textY = useTransform(scrollYProgress, [0, 1], [0, 40]);
@@ -63,81 +64,77 @@ export default function HeroSection() {
     return () => clearTimeout(timer);
   }, [currentSlide]);
 
+  // Preload next upcoming slide before rotation so initial LCP is never delayed by background downloads
+  useEffect(() => {
+    const nextIndex = (currentSlide + 1) % heroSlides.length;
+    const preloadTimer = setTimeout(() => {
+      setLoadedSlides((prev) => (prev.includes(nextIndex) ? prev : [...prev, nextIndex]));
+    }, 2000);
+    return () => clearTimeout(preloadTimer);
+  }, [currentSlide]);
+
   return (
     <section
       id="home"
       ref={ref}
       className="relative min-h-screen flex items-center overflow-hidden bg-slate-950"
     >
-      {/* ── Dynamic Image Slideshow Background (Uniform & Vivid) ─────────────────── */}
+      {/* ── Dynamic Image Slideshow Background (Progressive & High-Speed) ─────────────────── */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden">
-        {heroSlides.map((slide, index) => (
-          <div
-            key={slide.src}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide
-                ? "opacity-100 z-10"
-                : "opacity-0 z-0"
-            }`}
-          >
-            <Image
-              src={slide.src}
-              alt={slide.alt}
-              fill
-              priority={index === 0}
-              sizes="100vw"
-              quality={95}
-              className={`object-cover ${slide.position || "object-center"}`}
-            />
-          </div>
-        ))}
+        {heroSlides.map((slide, index) => {
+          if (!loadedSlides.includes(index)) return null;
+          return (
+            <div
+              key={slide.src}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                index === currentSlide
+                  ? "opacity-100 z-10"
+                  : "opacity-0 z-0"
+              }`}
+            >
+              <Image
+                src={slide.src}
+                alt={slide.alt}
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                quality={80}
+                className={`object-cover ${slide.position || "object-center"}`}
+              />
+            </div>
+          );
+        })}
 
         {/* Uniform, light overlay across whole screen: no dark side fade, picha zinaonekana wazi kabisa */}
         <div className="absolute inset-0 bg-slate-950/20 pointer-events-none z-20" />
       </div>
 
-      {/* ── Floating Subtle Particles ───────────────── */}
-      <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+      {/* ── Floating Subtle Particles (CSS-only for zero mobile TBT blocking) ───────────────── */}
+      <div className="hidden sm:block absolute inset-0 z-10 overflow-hidden pointer-events-none">
         {[
-          { w:2.1,h:2.1,l:12,t:23,o:0.2,dur:5,del:0.5 },
-          { w:3.2,h:3.2,l:28,t:67,o:0.3,dur:6,del:1.2 },
-          { w:1.5,h:1.5,l:45,t:12,o:0.15,dur:4,del:0 },
-          { w:2.8,h:2.8,l:60,t:80,o:0.25,dur:7,del:2 },
-          { w:4.0,h:4.0,l:75,t:35,o:0.2,dur:5,del:0.8 },
-          { w:1.8,h:1.8,l:88,t:55,o:0.35,dur:4,del:1.5 },
-          { w:2.5,h:2.5,l:6,t:90,o:0.12,dur:6,del:0.3 },
-          { w:3.5,h:3.5,l:33,t:44,o:0.28,dur:5,del:2.2 },
-          { w:1.2,h:1.2,l:50,t:70,o:0.18,dur:7,del:1.0 },
-          { w:2.0,h:2.0,l:68,t:20,o:0.22,dur:4,del:0.7 },
-          { w:3.0,h:3.0,l:82,t:88,o:0.3,dur:6,del:1.8 },
-          { w:1.7,h:1.7,l:18,t:52,o:0.14,dur:5,del:2.5 },
-          { w:4.5,h:4.5,l:92,t:10,o:0.2,dur:7,del:0.2 },
-          { w:2.3,h:2.3,l:38,t:30,o:0.32,dur:4,del:1.3 },
-          { w:1.4,h:1.4,l:55,t:95,o:0.16,dur:6,del:0.9 },
-          { w:3.8,h:3.8,l:70,t:60,o:0.24,dur:5,del:2.1 },
-          { w:2.6,h:2.6,l:8,t:40,o:0.28,dur:7,del:1.6 },
-          { w:1.9,h:1.9,l:22,t:75,o:0.2,dur:4,del:0.4 },
-          { w:4.2,h:4.2,l:48,t:18,o:0.18,dur:6,del:1.1 },
-          { w:2.4,h:2.4,l:95,t:50,o:0.26,dur:5,del:2.8 },
+          { w:2.1,h:2.1,l:12,t:23,o:0.2,dur:4 },
+          { w:3.2,h:3.2,l:28,t:67,o:0.3,dur:5 },
+          { w:1.5,h:1.5,l:45,t:12,o:0.15,dur:3 },
+          { w:2.8,h:2.8,l:60,t:80,o:0.25,dur:6 },
+          { w:4.0,h:4.0,l:75,t:35,o:0.2,dur:4 },
+          { w:1.8,h:1.8,l:88,t:55,o:0.35,dur:5 },
+          { w:2.5,h:2.5,l:6,t:90,o:0.12,dur:4 },
+          { w:3.5,h:3.5,l:33,t:44,o:0.28,dur:6 },
+          { w:1.2,h:1.2,l:50,t:70,o:0.18,dur:5 },
+          { w:2.0,h:2.0,l:68,t:20,o:0.22,dur:4 },
+          { w:3.0,h:3.0,l:82,t:88,o:0.3,dur:5 },
+          { w:1.7,h:1.7,l:18,t:52,o:0.14,dur:4 },
         ].map((p, i) => (
-          <motion.div
+          <div
             key={i}
-            className="absolute rounded-full bg-[#D4AF37]"
+            className="absolute rounded-full bg-[#D4AF37] animate-pulse"
             style={{
               width: p.w,
               height: p.h,
               left: `${p.l}%`,
               top: `${p.t}%`,
               opacity: p.o,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [p.o * 0.5, p.o, p.o * 0.5],
-            }}
-            transition={{
-              duration: p.dur,
-              repeat: Infinity,
-              delay: p.del,
+              animationDuration: `${p.dur}s`,
             }}
           />
         ))}
@@ -149,23 +146,17 @@ export default function HeroSection() {
           {/* Left: Text */}
           <motion.div style={{ y: textY }}>
             {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+            <div
               className="inline-flex items-center gap-2 bg-[#D4AF37]/25 border border-[#D4AF37]/50 rounded-full px-3.5 sm:px-4 py-1 sm:py-1.5 mb-4 sm:mb-6 shadow-md shadow-black/30 backdrop-blur-xs"
             >
               <Globe className="w-3.5 h-3.5 text-[#D4AF37]" />
               <span className="text-[#F4D968] text-[10px] sm:text-xs font-bold tracking-wider uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                 Tanzania&apos;s #1 Study Abroad Platform
               </span>
-            </motion.div>
+            </div>
 
-            {/* Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
+            {/* Headline - Instant Paint for optimal LCP */}
+            <h1
               className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.1] tracking-tight mb-4 sm:mb-6 drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)]"
               style={{ fontFamily: "var(--font-heading)" }}
             >
@@ -174,25 +165,19 @@ export default function HeroSection() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#F4D968] to-[#D4AF37] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                   Global Education
                 </span>
-                <motion.span
+                <span
                   className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-[#D4AF37] to-transparent"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: 1, duration: 0.8 }}
                 />
               </span>
-            </motion.h1>
+            </h1>
 
-            {/* Description */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+            {/* Description - Zero Render Delay LCP Element */}
+            <p
               className="text-white text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed mb-6 sm:mb-8 max-w-xl font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
             >
               From university applications to offer letters, we manage your
               entire international admission journey on one secure platform.
-            </motion.p>
+            </p>
 
             {/* CTA Buttons */}
             <motion.div
