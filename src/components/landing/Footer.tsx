@@ -32,17 +32,17 @@ const footerLinks = {
 const socialLinks = [
   {
     name: "Facebook",
-    href: "#",
+    href: "https://www.facebook.com/profile.php?id=100087644192638",
     image: "/images/facebook-logo.png",
   },
   {
     name: "TikTok",
-    href: "#",
+    href: "https://www.tiktok.com/@mtishbi.scholars",
     image: "/images/tiktok-logo.png",
   },
   {
     name: "Instagram",
-    href: "#",
+    href: "https://www.instagram.com/mtishbischolars?igsi=MXA0bmg2b2psMWs2cg%3D%3D&utm_source=qr",
     image: "/images/instagram-logo.png",
   },
 ];
@@ -151,6 +151,8 @@ export default function Footer() {
                   <a
                     key={social.name}
                     href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label={social.name}
                     className="relative w-9 h-9 rounded-xl overflow-hidden shadow-md hover:opacity-90 transition-all cursor-pointer hover:scale-110 shrink-0 border border-white/10"
                   >
