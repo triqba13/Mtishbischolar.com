@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SessionTimeoutProvider from "@/components/common/SessionTimeoutProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +16,9 @@ export default function StudentRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <SessionTimeoutProvider portalType="student">
+      {children}
+    </SessionTimeoutProvider>
+  );
 }

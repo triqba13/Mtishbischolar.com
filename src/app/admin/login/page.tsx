@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
 
   const supabase = createClient();
 
-  // Load remembered email on mount if previously saved
+  // Load remembered email and check session timeout query param on mount
   useEffect(() => {
     try {
       const savedEmail = localStorage.getItem("mtishbi_admin_remember_email");
@@ -44,8 +44,15 @@ export default function AdminLoginPage() {
           rememberMe: true,
         }));
       }
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("reason") === "timeout") {
+          setError("Your session has expired due to 10 minutes of inactivity. Please sign in again.");
+        }
+      }
     } catch (e) {
-      console.error("Failed to read remembered email from localStorage:", e);
+      console.error("Failed to read parameters on mount:", e);
     }
   }, []);
 

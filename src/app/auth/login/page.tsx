@@ -44,11 +44,14 @@ function LoginContent() {
   const verified = searchParams.get("verified");
   const passwordReset = searchParams.get("password_reset");
   const authError = searchParams.get("error");
+  const timeoutReason = searchParams.get("reason");
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
-    authError === "unauthorized"
+    timeoutReason === "timeout"
+      ? "Your session has expired due to 10 minutes of inactivity. Please sign in again."
+      : authError === "unauthorized"
       ? "Authentication required. Please sign in to access your Student Dashboard."
       : authError
       ? authError
