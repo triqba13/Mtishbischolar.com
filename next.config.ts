@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   compress: true,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
+  },
   allowedDevOrigins: ["172.16.0.2", "localhost:3000"],
   images: {
     formats: ["image/avif", "image/webp"],

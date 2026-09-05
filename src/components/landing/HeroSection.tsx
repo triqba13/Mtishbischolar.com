@@ -51,9 +51,9 @@ export default function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loadedSlides, setLoadedSlides] = useState<number[]>([0]);
 
-  // Slideshow rotation: First slide (MTISHB101) stays 10 seconds, others stay 5.5s
+  // Slideshow rotation: First slide (MTISHB101) stays 4 seconds, others stay 4.5s
   useEffect(() => {
-    const duration = currentSlide === 0 ? 10000 : 5500;
+    const duration = currentSlide === 0 ? 4000 : 4500;
     const timer = setTimeout(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, duration);
@@ -65,7 +65,7 @@ export default function HeroSection() {
     const nextIndex = (currentSlide + 1) % heroSlides.length;
     const preloadTimer = setTimeout(() => {
       setLoadedSlides((prev) => (prev.includes(nextIndex) ? prev : [...prev, nextIndex]));
-    }, 2000);
+    }, 1500);
     return () => clearTimeout(preloadTimer);
   }, [currentSlide]);
 
