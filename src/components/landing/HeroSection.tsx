@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { ArrowRight, Globe } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -48,12 +48,8 @@ const heroSlides = [
 ];
 
 export default function HeroSection() {
-  const ref = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loadedSlides, setLoadedSlides] = useState<number[]>([0]);
-
-  const { scrollYProgress } = useScroll({ target: ref });
-  const textY = useTransform(scrollYProgress, [0, 1], [0, 40]);
 
   // Slideshow rotation: First slide (MTISHB101) stays 10 seconds, others stay 5.5s
   useEffect(() => {
@@ -76,7 +72,6 @@ export default function HeroSection() {
   return (
     <section
       id="home"
-      ref={ref}
       className="relative min-h-screen flex items-center overflow-hidden bg-slate-950"
     >
       {/* ── Dynamic Image Slideshow Background (Progressive & High-Speed) ─────────────────── */}
@@ -144,7 +139,7 @@ export default function HeroSection() {
       <div className="relative z-20 container-wide section-padding w-full pt-20 sm:pt-24 md:pt-32 pb-10 sm:pb-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           {/* Left: Text */}
-          <motion.div style={{ y: textY }}>
+          <div className="space-y-2">
             {/* Badge */}
             <div
               className="inline-flex items-center gap-2 bg-[#D4AF37]/25 border border-[#D4AF37]/50 rounded-full px-3.5 sm:px-4 py-1 sm:py-1.5 mb-4 sm:mb-6 shadow-md shadow-black/30 backdrop-blur-xs"
@@ -180,11 +175,8 @@ export default function HeroSection() {
             </p>
 
             {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row gap-2.5 sm:gap-4"
+            <div
+              className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 pt-2"
             >
               <Link
                 href="/auth/register"
@@ -199,47 +191,32 @@ export default function HeroSection() {
               >
                 Explore Universities
               </a>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
-          {/* Right: Desktop Stats Cards */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.7, duration: 0.8 }}
-            className="hidden lg:grid grid-cols-2 gap-4"
-          >
-            {stats.map((stat, i) => (
-              <motion.div
+          {/* Right: Desktop Stats Cards - Zero Reflow, Instant Paint */}
+          <div className="hidden lg:grid grid-cols-2 gap-4">
+            {stats.map((stat) => (
+              <div
                 key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 + i * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-[#D4AF37]/60 hover:bg-black/60 transition-all duration-300 shadow-xl shadow-black/40"
+                className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-[#D4AF37]/60 hover:bg-black/60 transition-all duration-300 shadow-xl shadow-black/40 hover:-translate-y-1"
               >
                 <div className="text-3xl font-black text-white mb-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]" style={{ fontFamily: "var(--font-heading)" }}>
                   <AnimatedCounter
                     end={stat.value}
                     suffix={stat.suffix}
-                    delay={1 + i * 0.15}
                   />
                 </div>
                 <div className="text-white/90 text-sm font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">{stat.label}</div>
                 <div className="mt-3 h-0.5 bg-gradient-to-r from-[#D4AF37] to-transparent rounded-full" />
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </div>
 
-        {/* Mobile Stats Bar - Compact & Sleek */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="lg:hidden mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5"
-        >
-          {stats.map((stat, i) => (
+        {/* Mobile Stats Bar - Compact, Instant Paint */}
+        <div className="lg:hidden mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+          {stats.map((stat) => (
             <div
               key={stat.label}
               className="bg-black/45 rounded-xl px-2.5 py-2 sm:py-2.5 text-center border border-white/20 flex flex-col justify-center min-h-[54px] sm:min-h-[62px] backdrop-blur-md shadow-lg shadow-black/30"
@@ -248,14 +225,14 @@ export default function HeroSection() {
                 className="text-lg sm:text-xl font-black text-white leading-none drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
-                <AnimatedCounter end={stat.value} suffix={stat.suffix} delay={0.8 + i * 0.1} />
+                <AnimatedCounter end={stat.value} suffix={stat.suffix} />
               </div>
               <div className="text-white/90 text-[10px] sm:text-[11px] font-medium mt-1 leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                 {stat.label}
               </div>
             </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Scroll Indicator */}
         <motion.div

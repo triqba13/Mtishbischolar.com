@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useInView } from "framer-motion";
 
 interface Props {
   end: number;
@@ -15,15 +14,19 @@ export default function AnimatedCounter({
   end,
   suffix = "",
   prefix = "",
-  delay = 0,
-  duration = 2,
+  delay = 0.2,
+  duration = 1.6,
 }: Props) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
+  // Initialize with final value so SSR and initial browser paint have zero layout shift and instant text
+  const [count, setCount] = useState(end);
+  const started = useRef(false);
 
   useEffect(() => {
-    if (!inView) return;
+    if (started.current) return;
+    started.current = true;
+
+    // Reset to 0 and count up smoothly without blocking the critical rendering path
+    setCount(0);
     let startTime: number;
     let raf: number;
 
@@ -31,21 +34,29 @@ export default function AnimatedCounter({
       if (!startTime) startTime = timestamp + delay * 1000;
       const elapsed = Math.max(0, timestamp - startTime);
       const progress = Math.min(elapsed / (duration * 1000), 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.floor(eased * end));
-      if (progress < 1) raf = requestAnimationFrame(step);
+      if (progress < 1) {
+        raf = requestAnimationFrame(step);
+      }
     };
 
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, end, delay, duration]);
+    const timer = setTimeout(() => {
+      raf = requestAnimationFrame(step);
+    }, delay * 1000);
+
+    return () => {
+      clearTimeout(timer);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [end, delay, duration]);
 
   return (
-    <span ref={ref}>
+    <span>
       {prefix}
       {count}
       {suffix}
     </span>
   );
 }
+
