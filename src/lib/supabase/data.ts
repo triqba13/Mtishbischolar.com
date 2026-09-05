@@ -840,28 +840,43 @@ export async function saveApplicationPreference(
         return { success: false, error: error.message };
       }
       return { success: true, data: data as DbApplication };
-    } else {
-      // Create new preparation / draft application record
-      const { data, error } = await supabase
-        .from("applications")
-        .insert([
-          {
-            student_id: studentId,
-            target_country: preferencePayload.target_country,
-            target_intake: preferencePayload.target_intake || "",
-            preferred_course: preferencePayload.preferred_course || "",
-            status: "Profile Completed",
-          },
-        ])
-        .select("*")
-        .single();
-
-      if (error) {
-        console.error("Error inserting application preference:", error);
-        return { success: false, error: error.message };
-      }
-      return { success: true, data: data as DbApplication };
     }
+
+    // 2. If student ALREADY has official/submitted applications, DO NOT insert a blank new application!
+    const hasOfficialApp = (userApps as DbApplication[] || []).some((app) => {
+      const statusLower = (app.status || "").toLowerCase().trim();
+      return protectedStatuses.some((p) => statusLower.includes(p));
+    });
+
+    if (hasOfficialApp) {
+      const sortedOfficial = [...(userApps as DbApplication[] || [])].sort((a, b) => {
+        const weightDiff = getApplicationMilestoneWeight(b) - getApplicationMilestoneWeight(a);
+        if (weightDiff !== 0) return weightDiff;
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
+      return { success: true, data: sortedOfficial[0] };
+    }
+
+    // 3. Create new preparation / draft application record only if no applications exist
+    const { data, error } = await supabase
+      .from("applications")
+      .insert([
+        {
+          student_id: studentId,
+          target_country: preferencePayload.target_country,
+          target_intake: preferencePayload.target_intake || "",
+          preferred_course: preferencePayload.preferred_course || "",
+          status: "Profile Completed",
+        },
+      ])
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Error inserting application preference:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, data: data as DbApplication };
   } catch (err: any) {
     console.error("Failed to save application preference:", err);
     return { success: false, error: err.message || "Failed to save application" };
@@ -1447,6 +1462,22 @@ export async function updateOfficerHeartbeat(officerId: string): Promise<boolean
 }
 
 /**
+ * Rank applications by their milestone progress to determine primary active application
+ */
+export function getApplicationMilestoneWeight(app: DbApplication): number {
+  if (!app) return 0;
+  const status = (app.status || "").toLowerCase().trim();
+  if (status.includes("ready to fly") || status.includes("enrolled")) return 100;
+  if (status.includes("visa approved")) return 95;
+  if (status.includes("visa processing") || status.includes("visa stage") || status.includes("visa")) return 90;
+  if (status.includes("offer letter") || status.includes("offer issued") || status.includes("university offer issued") || app.offer_letter_url) return 70;
+  if (status.includes("submitted to university") || status.includes("submitted")) return 55;
+  if (status.includes("under review") || status.includes("review") || status.includes("processing")) return 40;
+  if (app.university_id || app.preferred_course || app.target_country) return 25;
+  return 10;
+}
+
+/**
  * Centralized Progress & Stage Calculation Helper for Multi-University Architecture
  * Evaluates real live database state across profile, payments, and applications.
  */
@@ -1501,10 +1532,12 @@ export function calculateStudentProgress(
     latestPayment &&
     (latestPayment.status || "").toLowerCase() === "rejected";
 
-  // Primary active application
-  const sortedApps = [...applications].sort(
-    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  );
+  // Primary active application - prioritized by highest milestone progress first
+  const sortedApps = [...applications].sort((a, b) => {
+    const weightDiff = getApplicationMilestoneWeight(b) - getApplicationMilestoneWeight(a);
+    if (weightDiff !== 0) return weightDiff;
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
   const primaryApp = sortedApps[0] || null;
 
   // 2. Profile Complete, No Payment Submitted (15%)
@@ -1879,12 +1912,18 @@ export async function fetchStudentDashboardData(userId: string): Promise<Student
     };
   }
 
-  const applications: DbApplication[] = rawApplications.map((app) => ({
-    ...app,
-    admission_officer: app.admission_officer_id
-      ? officersMap.get(app.admission_officer_id) || defaultAdmissionOfficer
-      : defaultAdmissionOfficer,
-  }));
+  const applications: DbApplication[] = rawApplications
+    .map((app) => ({
+      ...app,
+      admission_officer: app.admission_officer_id
+        ? officersMap.get(app.admission_officer_id) || defaultAdmissionOfficer
+        : defaultAdmissionOfficer,
+    }))
+    .sort((a, b) => {
+      const weightDiff = getApplicationMilestoneWeight(b) - getApplicationMilestoneWeight(a);
+      if (weightDiff !== 0) return weightDiff;
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
 
   const assignedOfficer: DbProfile | null = applications[0]?.admission_officer || defaultAdmissionOfficer;
 

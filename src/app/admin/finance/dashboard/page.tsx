@@ -185,7 +185,7 @@ export default function FinanceOverviewDashboard() {
             <span>Finance Officer Portal</span>
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
-            Welcome, {fullName}
+            {new Date().getHours() < 12 ? "Good Morning" : new Date().getHours() < 17 ? "Good Afternoon" : "Good Evening"}, {fullName}
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm mt-1">
             Real-time financial overview, fee collections, and verification metrics.

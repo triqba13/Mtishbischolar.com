@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const applicationId = formData.get("applicationId") as string | null;
-    const documentType = (formData.get("documentType") as string | null) || "Offer_Letter"; // Offer_Letter, PAL, Acceptance_Letter
-    const newStatus = (formData.get("newStatus") as string | null) || "Offer Letter Received";
+    const documentType = (formData.get("documentType") as string | null) || "Offer_Letter";
+    const newStatus = (formData.get("newStatus") as string | null) || "KEEP_CURRENT";
     const notes = (formData.get("notes") as string | null) || null;
 
     if (!file || !applicationId) {
@@ -94,18 +94,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: `Upload failed: ${uploadError.message}` }, { status: 500 });
     }
 
-    const validStatus =
-      newStatus === "Offer Letter Received" || newStatus === "Offer Letter" || !newStatus
-        ? "Submitted to University"
-        : newStatus;
+    // Determine readable label for document
+    const docLabels: Record<string, string> = {
+      Offer_Letter: "Official Offer Letter / Acceptance",
+      PAL: "Provincial Attestation Letter (PAL)",
+      Visa_Support_Letter: "Visa Support Letter",
+      Scholarship_Award: "Scholarship Award Letter",
+    };
+    const documentLabel = docLabels[documentType] || documentType.replace(/_/g, " ");
 
     // 3. Update application record
-    const updatePayload: any = {
-      offer_letter_url: storagePath,
-      status: validStatus,
+    const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
-    if (notes) updatePayload.notes = notes;
+
+    if (documentType === "Offer_Letter") {
+      updatePayload.offer_letter_url = storagePath;
+    }
+
+    if (newStatus && newStatus !== "KEEP_CURRENT") {
+      const validStatus =
+        newStatus === "Offer Letter Received" || newStatus === "Offer Letter"
+          ? "Submitted to University"
+          : newStatus;
+      updatePayload.status = validStatus;
+    }
+
+    if (notes) {
+      const existingNotes = application.notes ? `${application.notes}\n` : "";
+      const dateHeader = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      updatePayload.notes = `${existingNotes}[${dateHeader}] [${documentLabel} Uploaded] ${notes}`.trim();
+    }
 
     const { data: updatedApp, error: updateAppErr } = await adminClient
       .from("applications")
@@ -123,7 +142,7 @@ export async function POST(req: NextRequest) {
       {
         student_id: studentId,
         application_id: applicationId,
-        document_type: documentType,
+        document_type: documentLabel,
         file_name: file.name,
         file_url: storagePath,
         file_size: file.size,
@@ -132,20 +151,52 @@ export async function POST(req: NextRequest) {
       },
     ]);
 
-    // 5. Send notification to the student
+    // 5. Send notification to the student (NO EMOJIS)
     const uniName = application.universities?.name || application.target_country || "University";
     const courseName = application.courses?.title || application.preferred_course || "Degree Program";
+
+    let notifTitle = `${documentLabel} Uploaded`;
+    let notifMessage = `Your ${documentLabel} for ${courseName} at ${uniName} has been uploaded by the Admission Desk. You can view and download it in your portal now.`;
+
+    if (documentType === "Offer_Letter") {
+      notifTitle = "Official Offer Letter / Acceptance Received";
+      notifMessage = `Your official Offer Letter for ${courseName} at ${uniName} has been uploaded by the Admission Desk. Please review and take next steps.`;
+    } else if (documentType === "PAL") {
+      notifTitle = "Provincial Attestation Letter (PAL) Available";
+      notifMessage = `Your Provincial Attestation Letter (PAL) for ${courseName} at ${uniName} has been issued and uploaded.`;
+    } else if (documentType === "Visa_Support_Letter") {
+      notifTitle = "Visa Support Letter Uploaded";
+      notifMessage = `Your Visa Support Letter for ${courseName} at ${uniName} is now available in your documents.`;
+    } else if (documentType === "Scholarship_Award") {
+      notifTitle = "Scholarship Award Letter Uploaded";
+      notifMessage = `Your Scholarship Award Letter for ${courseName} at ${uniName} has been issued and uploaded.`;
+    }
 
     await adminClient.from("notifications").insert([
       {
         user_id: studentId,
-        title: `🎉 Official ${documentType.replace("_", " ")} Received!`,
-        message: `Congratulations! Your official ${documentType.replace("_", " ")} for ${courseName} at ${uniName} has been uploaded by the Admission Desk. You can view and download it now.`,
+        title: notifTitle,
+        message: notifMessage,
         type: "application",
         is_read: false,
         created_at: new Date().toISOString(),
       },
     ]);
+
+    // Audit log entry
+    await adminClient.from("audit_logs").insert({
+      user_id: authenticatedUserId,
+      action: "university_decision_document_uploaded",
+      target_type: "application",
+      target_id: applicationId,
+      details: {
+        document_type: documentType,
+        document_label: documentLabel,
+        file_name: file.name,
+        status_updated_to: updatePayload.status || "unchanged",
+        student_id: studentId,
+      },
+    });
 
     // 6. Generate signed URL for immediate preview
     let signedUrl = storagePath;
@@ -163,6 +214,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("[UploadOfferLetter] Error:", err);
-    return NextResponse.json({ success: false, error: err.message || "Failed to upload offer letter." }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message || "Failed to upload decision document." }, { status: 500 });
   }
 }

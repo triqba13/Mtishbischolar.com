@@ -252,6 +252,54 @@ function DashboardContent() {
   const [, setPresenceTick] = useState<number>(0);
   const hasApprovedPayment = checkHasApprovedPayment(dashData);
 
+  // ── QUICK THEME TOGGLE STATE & HANDLER ──
+  const [isDark, setIsDark] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("mtb_theme") || localStorage.getItem("mtishbi_theme");
+      const isDarkMode =
+        document.documentElement.classList.contains("dark") ||
+        document.documentElement.classList.contains("theme-dark") ||
+        document.documentElement.classList.contains("theme-gold-dark") ||
+        savedTheme === "dark" ||
+        savedTheme === "gold_dark";
+      setIsDark(isDarkMode);
+    } catch {}
+
+    const handleThemeChange = (e: any) => {
+      try {
+        const theme = e?.detail || localStorage.getItem("mtb_theme");
+        setIsDark(theme === "dark" || theme === "gold_dark" || document.documentElement.classList.contains("dark"));
+      } catch {}
+    };
+
+    window.addEventListener("mtb_theme_change", handleThemeChange);
+    return () => window.removeEventListener("mtb_theme_change", handleThemeChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    try {
+      const root = document.documentElement;
+      if (nextDark) {
+        root.classList.add("dark", "theme-dark");
+        root.setAttribute("data-theme", "dark");
+        localStorage.setItem("mtb_theme", "dark");
+        localStorage.setItem("mtishbi_theme", "dark");
+      } else {
+        root.classList.remove("dark", "theme-dark", "theme-gold-dark");
+        root.removeAttribute("data-theme");
+        localStorage.setItem("mtb_theme", "light");
+        localStorage.setItem("mtishbi_theme", "light");
+      }
+      window.dispatchEvent(
+        new CustomEvent("mtb_theme_change", { detail: nextDark ? "dark" : "light" })
+      );
+    } catch {}
+  };
+
   // ── RECEIPT PREVIEW MODAL STATE & HANDLER ──
   const [previewReceiptModal, setPreviewReceiptModal] = useState<{
     isOpen: boolean;
@@ -990,6 +1038,9 @@ function DashboardContent() {
 
   // Sync / Prefill Passport Data (ONLY on initial load or when not actively in edit mode)
   useEffect(() => {
+    // Wait until dashboard data has finished loading from Supabase
+    if (dataLoading) return;
+
     // If user is currently editing the form, do NOT let background polling overwrite what they are typing!
     if (passportFormInitializedRef.current && isEditingPassport) {
       return;
@@ -1073,7 +1124,7 @@ function DashboardContent() {
         passportFormInitializedRef.current = true;
       }
     }
-  }, [dashData?.passportAssistance, dashData?.profile, dashData?.contacts, currentUser, isEditingPassport]);
+  }, [dashData?.passportAssistance, dashData?.profile, dashData?.contacts, currentUser, isEditingPassport, dataLoading]);
 
   const PASSPORT_REQUIRED_DOC_LIST = [
     {
@@ -1116,6 +1167,10 @@ function DashboardContent() {
 
   const handleSavePassport = async () => {
     if (!currentUser?.id) return;
+    if (isPassportLocked) {
+      setPassportFormError("Passport details are locked because your application has been submitted to Immigration. Contact Admissions for corrections.");
+      return;
+    }
     setSavingPassport(true);
     setPassportFormError("");
     setPassportSaveSuccess(false);
@@ -2628,6 +2683,7 @@ function DashboardContent() {
   const isPassportDone = isOfferDone && (hasPassportOnFile || progressPct >= 80);
   const isVisaDone = isPassportDone && (progressPct >= 90 || (primaryApp && ["Visa Approved", "Ready to Fly"].includes(primaryApp.status)));
   const isReadyToFlyDone = isVisaDone;
+  const isProfileLocked = isAppSubmittedDone || progressPct >= 55;
 
   const journeySteps = [
     { label: "Profile Completed", status: isProfileDone ? (progressPct === 15 ? "current" : "completed") : "upcoming" },
@@ -2793,6 +2849,16 @@ function DashboardContent() {
       (p) =>
         (p.status === "Approved" || p.status === "Paid" || p.status === "verified") &&
         (p.payment_type === "passport_assistance" || (p as any).payment_type === "passport" || p.amount === 300000 || p.payment_method?.toLowerCase().includes("passport"))
+    )
+  );
+
+  const isPassportLocked = Boolean(
+    dashData?.passportAssistance && (
+      dashData.passportAssistance.assistance_status === "processing" ||
+      dashData.passportAssistance.assistance_status === "completed" ||
+      dashData.passportAssistance.status === "submitted" ||
+      dashData.passportAssistance.status === "processing" ||
+      dashData.passportAssistance.status === "completed"
     )
   );
 
@@ -3043,7 +3109,14 @@ function DashboardContent() {
 
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <span>Good Afternoon, {studentFirstName}</span>
+                <span>
+                  {new Date().getHours() < 12
+                    ? "Good Morning"
+                    : new Date().getHours() < 17
+                    ? "Good Afternoon"
+                    : "Good Evening"}
+                  , {studentFirstName}
+                </span>
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
                 Welcome back to MtishbiScholar.
@@ -3051,10 +3124,25 @@ function DashboardContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Quick Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center justify-center shrink-0"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme mode"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-200" />
+              )}
+            </button>
+
             <button
               onClick={() => setActiveNav("notifications")}
-              className="relative p-2.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-600 transition-colors cursor-pointer"
+              className="relative p-2.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition-colors cursor-pointer shrink-0"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -3966,15 +4054,35 @@ function DashboardContent() {
                             </button>
                           )}
 
-                          {/* Edit Profile Details */}
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingProfile(true)}
-                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95"
-                          >
-                            <UserCheck className="w-4 h-4" />
-                            <span>Edit Profile</span>
-                          </button>
+                          {/* Edit Profile Details (Locked once application is submitted to university) */}
+                          {isProfileLocked ? (
+                            <div className="relative group">
+                              <button
+                                type="button"
+                                disabled
+                                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-extrabold text-xs rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 cursor-not-allowed opacity-80 shadow-2xs select-none"
+                                title="Profile editing is locked because your application has been officially submitted to the university."
+                              >
+                                <Lock className="w-4 h-4 text-slate-400" />
+                                <span>Profile Locked</span>
+                              </button>
+                              <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex z-30 w-72 p-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl shadow-xl border border-slate-700 items-center gap-2 pointer-events-none">
+                                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span className="leading-snug text-left">
+                                  Profile details are locked because your application has been officially submitted to the university. Contact Admissions for changes.
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingProfile(true)}
+                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <UserCheck className="w-4 h-4" />
+                              <span>Edit Profile</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -10353,6 +10461,11 @@ function DashboardContent() {
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>Completed</span>
                               </span>
+                            ) : dashData?.passportAssistance?.assistance_status === "processing" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                                <span>Processing with Immigration</span>
+                              </span>
                             ) : dashData?.passportAssistance?.assistance_status === "under_review" ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
@@ -10382,14 +10495,34 @@ function DashboardContent() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           {!isEditingPassport ? (
-                            <button
-                              type="button"
-                              onClick={() => setIsEditingPassport(true)}
-                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit Details</span>
-                            </button>
+                            isPassportLocked ? (
+                              <div className="relative group">
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-extrabold text-xs rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-not-allowed opacity-80 shadow-2xs select-none"
+                                  title="Passport details are locked because your application has been submitted to Immigration."
+                                >
+                                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Passport Details Locked</span>
+                                </button>
+                                <div className="absolute right-0 top-full mt-1.5 hidden group-hover:flex z-30 w-72 p-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl shadow-xl border border-slate-700 items-center gap-2 pointer-events-none">
+                                  <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                                  <span className="leading-snug text-left">
+                                    Passport details are locked because your application has been submitted to Immigration. Contact Admissions for corrections.
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingPassport(true)}
+                                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Edit Details</span>
+                              </button>
+                            )
                           ) : (
                             <button
                               type="button"
@@ -10676,14 +10809,34 @@ function DashboardContent() {
                               &larr; View My Documents
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => setIsEditingPassport(true)}
-                              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              <span>Edit Passport Details</span>
-                            </button>
+                            {isPassportLocked ? (
+                              <div className="relative group w-full sm:w-auto">
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="px-6 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-extrabold text-xs rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 cursor-not-allowed opacity-80 shadow-2xs select-none w-full sm:w-auto"
+                                  title="Passport details are locked because your application has been submitted to Immigration."
+                                >
+                                  <Lock className="w-4 h-4 text-slate-400" />
+                                  <span>Passport Details Locked</span>
+                                </button>
+                                <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:flex z-30 w-72 p-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl shadow-xl border border-slate-700 items-center gap-2 pointer-events-none">
+                                  <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                                  <span className="leading-snug text-left">
+                                    Passport details are locked because your application has been submitted to Immigration. Contact Admissions for corrections.
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingPassport(true)}
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto active:scale-95"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                                <span>Edit Passport Details</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -11370,14 +11523,34 @@ function DashboardContent() {
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setActiveNav("profile")}
-                            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>Edit Profile</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
+                          {isProfileLocked ? (
+                            <div className="relative group">
+                              <button
+                                type="button"
+                                disabled
+                                className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-not-allowed opacity-80 select-none"
+                                title="Profile editing is locked because your application has been submitted to the university."
+                              >
+                                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Locked</span>
+                              </button>
+                              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex z-30 w-64 p-2 bg-slate-900 text-white text-[10px] font-medium rounded-lg shadow-xl border border-slate-700 items-center gap-1.5 pointer-events-none">
+                                <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span className="leading-tight text-left">
+                                  Profile details are locked after application submission.
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setActiveNav("profile")}
+                              className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>Edit Profile</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

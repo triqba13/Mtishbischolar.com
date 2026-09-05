@@ -51,18 +51,20 @@ function OfferLetterModal({
   appDisplayId,
   studentName,
   applicationId,
+  currentStatus,
   onClose,
   onSuccess,
 }: {
   appDisplayId: string;
   studentName: string;
   applicationId: string;
+  currentStatus?: string;
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState("Offer_Letter");
-  const [status, setStatus] = useState("Offer Letter Received");
+  const [status, setStatus] = useState("KEEP_CURRENT");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,13 +105,13 @@ function OfferLetterModal({
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.error || "Failed to upload offer letter.");
+        throw new Error(json.error || "Failed to upload decision letter.");
       }
 
       await onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to upload offer letter.");
+      setError(err.message || "Failed to upload decision letter.");
     } finally {
       setLoading(false);
     }
@@ -188,10 +190,16 @@ function OfferLetterModal({
               onChange={(e) => setStatus(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none font-semibold text-slate-800"
             >
+              <option value="KEEP_CURRENT">
+                Keep Current Status {currentStatus ? `(${currentStatus})` : "(No change to application milestone)"}
+              </option>
               <option value="Offer Letter Received">Offer Letter Received</option>
               <option value="Submitted to University">Submitted to University</option>
               <option value="Under Review">Under Review</option>
             </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Selecting &quot;Keep Current Status&quot; will upload the document without rolling back or altering the student&apos;s current milestone.
+            </p>
           </div>
 
           <div>
@@ -983,10 +991,11 @@ export default function ViewApplicationPage({
           appDisplayId={application.displayId}
           studentName={student.fullName}
           applicationId={appId}
+          currentStatus={application.status}
           onClose={() => setShowOfferModal(false)}
           onSuccess={async () => {
             await loadData();
-            setActionFeedback({ type: "success", message: "Official university offer letter uploaded successfully! Student has been notified." });
+            setActionFeedback({ type: "success", message: "University decision document uploaded successfully! Student has been notified." });
           }}
         />
       )}
@@ -1359,29 +1368,43 @@ export default function ViewApplicationPage({
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {contacts.map((contact: any) => (
-                        <div key={contact.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-150 space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900">{contact.full_name}</span>
-                            <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase">
-                              {contact.relationship || "Sponsor"}
-                            </span>
-                          </div>
-                          <p className="text-slate-600 flex items-center gap-1.5">
-                            <Phone className="w-3 h-3 text-slate-400" /> {contact.phone}
-                          </p>
-                          {contact.email && (
+                      {contacts.map((contact: any) => {
+                        const contactFullName =
+                          [contact.first_name, contact.middle_name, contact.last_name]
+                            .filter(Boolean)
+                            .join(" ") ||
+                          contact.full_name ||
+                          contact.name ||
+                          "Contact";
+                        const relationship =
+                          contact.relationship_type ||
+                          contact.relationship ||
+                          "Sponsor";
+
+                        return (
+                          <div key={contact.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-150 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900">{contactFullName}</span>
+                              <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase">
+                                {relationship}
+                              </span>
+                            </div>
                             <p className="text-slate-600 flex items-center gap-1.5">
-                              <Mail className="w-3 h-3 text-slate-400" /> {contact.email}
+                              <Phone className="w-3 h-3 text-slate-400" /> {contact.phone}
                             </p>
-                          )}
-                          {contact.occupation && (
-                            <p className="text-slate-500 flex items-center gap-1.5 text-[11px]">
-                              <Briefcase className="w-3 h-3 text-slate-400" /> Occupation: {contact.occupation}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                            {contact.email && (
+                              <p className="text-slate-600 flex items-center gap-1.5">
+                                <Mail className="w-3 h-3 text-slate-400" /> {contact.email}
+                              </p>
+                            )}
+                            {contact.occupation && (
+                              <p className="text-slate-500 flex items-center gap-1.5 text-[11px]">
+                                <Briefcase className="w-3 h-3 text-slate-400" /> Occupation: {contact.occupation}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

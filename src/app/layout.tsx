@@ -111,6 +111,7 @@ export const metadata: Metadata = {
 
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import CookieConsentBanner from "@/components/analytics/CookieConsentBanner";
+// import TariqChatWidget from "@/components/ai/TariqChatWidget";
 
 export default function RootLayout({
   children,
@@ -148,6 +149,7 @@ export default function RootLayout({
         />
         <GoogleAnalytics />
         {children}
+        {/* <TariqChatWidget /> */}
         <CookieConsentBanner />
       </body>
     </html>
