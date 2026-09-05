@@ -100,8 +100,8 @@ export default function HeroSection() {
           );
         })}
 
-        {/* Uniform, light overlay across whole screen: no dark side fade, picha zinaonekana wazi kabisa */}
-        <div className="absolute inset-0 bg-slate-950/20 pointer-events-none z-20" />
+        {/* Uniform, ultra-light overlay (10% darkness, 90% light passthrough): picha zote zinaonekana angavu sana */}
+        <div className="absolute inset-0 bg-slate-950/10 pointer-events-none z-20" />
       </div>
 
       {/* ── Floating Subtle Particles (CSS-only for zero mobile TBT blocking) ───────────────── */}
@@ -152,12 +152,12 @@ export default function HeroSection() {
 
             {/* Headline - Instant Paint for optimal LCP */}
             <h1
-              className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.1] tracking-tight mb-4 sm:mb-6 drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)]"
+              className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.1] tracking-tight mb-4 sm:mb-6 drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)]"
               style={{ fontFamily: "var(--font-heading)" }}
             >
               Your Pathway to{" "}
               <span className="relative inline-block">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#F4D968] to-[#D4AF37] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#F4D968] to-[#D4AF37] drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   Global Education
                 </span>
                 <span
@@ -166,9 +166,9 @@ export default function HeroSection() {
               </span>
             </h1>
 
-            {/* Description - Zero Render Delay LCP Element */}
+            {/* Description - Zero Render Delay LCP Element with strong shadow for high brightness background */}
             <p
-              className="text-white text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed mb-6 sm:mb-8 max-w-xl font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+              className="text-white text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed mb-6 sm:mb-8 max-w-xl font-medium drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"
             >
               From university applications to offer letters, we manage your
               entire international admission journey on one secure platform.
